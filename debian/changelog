@@ -1,0 +1,15 @@
+vmware-view-open-client (2.1.1-153227+dfsg-1) unstable; urgency=low
+
+  * Merging upstream version 2.1.1-153227+dfsg.
+  * Adding upstream target in rules.
+  * Updating debhelper docs file.
+  * Removing ftbfs-curl.patch, went upstream.
+  * Adding patch to not relay on removed pdf documents.
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 14 Mar 2009 07:17:00 +0100
+
+vmware-view-open-client (2.1.1-144835-1) unstable; urgency=low
+
+  * Initial release (Closes: #514130).
+
+ -- Daniel Baumann <daniel@debian.org>  Tue,  3 Feb 2009 12:19:47 +0100
