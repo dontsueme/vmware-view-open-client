@@ -1,3 +1,9 @@
+vmware-view-open-client (2.1.1-153227+dfsg-2) unstable; urgency=low
+
+  * Limiting architectures to amd64 and i386 only (Closes: #520865).
+
+ -- Daniel Baumann <daniel@debian.org>  Mon, 23 Mar 2009 19:02:00 +0100
+
 vmware-view-open-client (2.1.1-153227+dfsg-1) unstable; urgency=low
 
   * Merging upstream version 2.1.1-153227+dfsg.

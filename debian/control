@@ -9,7 +9,7 @@ Vcs-Browser: http://git.debian.net/?p=debian/vmware-view-open-client.git
 Vcs-Git: git://git.debian.net/git/debian/vmware-view-open-client.git
 
 Package: vmware-view-open-client
-Architecture: any
+Architecture: amd64 i386
 Depends: ${shlibs:Depends}, ${misc:Depends}, rdesktop
 Description: VMware View Open Client
  VMware View Open Client allows users to connect to desktops on a VMware View
