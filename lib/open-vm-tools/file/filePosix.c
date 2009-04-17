@@ -171,6 +171,8 @@ FileDeletion(ConstUnicode pathName,   // IN:
    char *primaryPath = Unicode_GetAllocBytes(pathName,
                                              STRING_ENCODING_DEFAULT);
 
+   ASSERT(pathName);
+
    if (primaryPath == NULL && pathName != NULL) {
       Log(LGPFX" %s: failed to convert \"%s\" to current encoding\n",
           __FUNCTION__, UTF8(pathName));
@@ -1798,6 +1800,9 @@ File_Replace(ConstUnicode oldName,  // IN: old file
    char *newPath = NULL;
    char *oldPath = NULL;
    struct stat st;
+
+   ASSERT(oldName);
+   ASSERT(newName);
 
    newPath = Unicode_GetAllocBytes(newName, STRING_ENCODING_DEFAULT);
    if (newPath == NULL && newName != NULL) {

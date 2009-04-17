@@ -34,9 +34,11 @@
 
 #include <boost/function.hpp>
 #include <exception>
+#include <glib/gi18n.h>
 #include <gtk/gtkbutton.h>
 #include <gtk/gtkcomboboxentry.h>
 #include <gtk/gtkmessagedialog.h>
+#include <map>
 
 #ifdef UTF_STRING
 #include "stringxx/string.hh"
@@ -57,10 +59,6 @@ namespace cdk {
 namespace Util {
 
 
-#define CDK_MSG(_id, _str) \
-   cdk::Util::GetLocalString(MSGID("cdk.linux." #_id) _str)
-
-
 // From lui/vm_gtk.h
 #define VM_SPACING 10
 
@@ -71,6 +69,7 @@ typedef utf::string string;
 typedef std::string string;
 #endif
 
+typedef std::map<string, string> ClientInfoMap;
 
 class exception
    : public std::exception
@@ -103,37 +102,15 @@ GtkButton *CreateButton(const string stockId, string label = "");
 GtkWidget *CreateActionArea(GtkButton *button1, ...);
 void OverrideWindowUserTime(GtkWindow *window);
 void UserWarning(const char *format, ...);
+string GetUsefulPath(const string systemPath, const string relativePath);
 
 
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Util::GetLocalString --
- *
- *      Returns a localized string from the specified msg ID.  Callers should
- *      use the CDK_MSG wrapper if possible.
- *
- *      XXX: typedef to utf::LocalizedString once it's moved there from cui.
- *
- * Results:
- *      The localized string.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
+string IDNToASCII(const string &text);
+string ParseHostLabel(const string &label, unsigned short *port, bool *secure);
+string GetHostLabel(const string &hostname, unsigned short port, bool secure);
 
-string inline
-GetLocalString(const char *msgID) // IN
-{
-   ASSERT(msgID != NULL);
-   char *msg = Msg_GetString(msgID);
-   ASSERT(msg != NULL);
-   string s(msg);
-   free(msg);
-   return s;
-}
+ClientInfoMap GetClientInfo(const string broker, int port);
+ClientInfoMap GetNICInfo(const string broker, int port);
 
 
 /*

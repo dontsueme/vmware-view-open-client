@@ -29,7 +29,10 @@
  */
 
 
+#include <glib/gi18n.h>
+#include <gmodule.h>
 #include <libxml/parser.h>
+#include <list>
 
 
 #include "brokerXml.hh"
@@ -37,6 +40,7 @@
 
 #define BROKER_V1_HDR "<?xml version=\"1.0\"?><broker version=\"1.0\">"
 #define BROKER_V2_HDR "<?xml version=\"1.0\"?><broker version=\"2.0\">"
+#define BROKER_V3_HDR "<?xml version=\"1.0\"?><broker version=\"3.0\">"
 #define BROKER_TAIL "</broker>"
 
 
@@ -66,7 +70,7 @@ BrokerXml::BrokerXml(Util::string hostname, // IN
      mPort(port),
      mSecure(secure),
      mCookieJar(BasicHttp_CreateCookieJar()),
-     mVersion(VERSION_2)
+     mVersion(VERSION_3)
 {
 }
 
@@ -117,7 +121,7 @@ BrokerXml::GetContent(xmlNode *parentNode) // IN
       for (xmlNode *currentNode = parentNode->children; currentNode;
            currentNode = currentNode->next) {
          if (XML_TEXT_NODE == currentNode->type) {
-            return (const char*) currentNode->content;
+            return (const char  *)currentNode->content;
          }
       }
    }
@@ -279,8 +283,8 @@ BrokerXml::Result::Parse(xmlNode *parentNode,     // IN
 
    result = GetChildContent(parentNode, "result");
    if (result.empty()) {
-      onAbort(false, Util::exception(CDK_MSG(invalidResponseEmptyResult,
-         "Invalid response from broker: Invalid \"result\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker: "
+                                       "Invalid \"result\" in XML.")));
       return false;
    }
 
@@ -298,11 +302,9 @@ BrokerXml::Result::Parse(xmlNode *parentNode,     // IN
       } else if (!errorMessage.empty()) {
          onAbort(false, Util::exception(errorMessage, errorCode));
       } else {
-         onAbort(false, Util::exception(
-                    Util::Format(CDK_MSG(errorResponse.unknownError,
-                                          "Unknown error: %s").c_str(),
-                                 errorCode.c_str()),
-                    errorCode));
+         onAbort(false, Util::exception(Util::Format(_("Unknown error: %s"),
+                                                     errorCode.c_str()),
+                                        errorCode));
       }
       return false;
    }
@@ -335,8 +337,8 @@ BrokerXml::Param::Parse(xmlNode *parentNode,     // IN
 {
    name = GetChildContent(parentNode, "name");
    if (name.empty()) {
-      onAbort(false, Util::exception(CDK_MSG(invalidResponseParamNoNameValue,
-         "Invalid response from broker: Parameter with no name.")));
+      onAbort(false, Util::exception(_("Invalid response from broker: "
+                                       "Parameter with no name.")));
       return false;
    }
 
@@ -356,12 +358,20 @@ BrokerXml::Param::Parse(xmlNode *parentNode,     // IN
    }
 
    if (values.size() == 0) {
+      /*
+       * XXX: When logging in with a cert, the broker sometimes is not
+       * sending a value for the username (which we don't really care
+       * about anyway).
+       */
+#if 0
       onAbort(false, Util::exception(Util::Format(
-         CDK_MSG(invalidResponseParamNoValue,
-                  "Invalid response from broker: Parameter \"%s\" has no "
-                  "value.").c_str(),
+         _("Invalid response from broker: Parameter \"%s\" has no value."),
          name.c_str())));
       return false;
+#else
+      Warning("Invalid response from broker: Parameter \"%s\" has no value.\n",
+              name.c_str());
+#endif
    }
 
    return true;
@@ -393,23 +403,23 @@ BrokerXml::AuthInfo::Parse(xmlNode *parentNode,     // IN
 
    xmlNode *authNode = GetChild(parentNode, "authentication");
    if (!authNode) {
-      onAbort(false, Util::exception(CDK_MSG(invalidResponseNoAuth,
-         "Invalid response from broker: Invalid \"authentication\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker: "
+                                       "Invalid \"authentication\" in XML.")));
       return false;
    }
 
    xmlNode *screenNode = GetChild(authNode, "screen");
    if (!screenNode) {
-      onAbort(false, Util::exception(CDK_MSG(invalidResponseNoScreen,
-         "Invalid response from broker: Invalid \"screen\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker: "
+                                       "Invalid \"screen\" in XML.")));
       return false;
    }
 
    name = GetChildContent(screenNode, "name");
    if (GetAuthType() == AUTH_NONE) {
       Log("Broker XML AuthInfo name unknown: \"%s\"\n", name.c_str());
-      onAbort(false, Util::exception(CDK_MSG(badAuthType,
-         "Invalid response from broker: Invalid \"name\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker: "
+                                       "Invalid \"name\" in XML.")));
       return false;
    }
 
@@ -505,6 +515,8 @@ BrokerXml::AuthInfo::GetAuthType()
       return AUTH_WINDOWS_PASSWORD;
    } else if (name == "windows-password-expired") {
       return AUTH_WINDOWS_PASSWORD_EXPIRED;
+   } else if (name == "cert-auth") {
+      return AUTH_CERT_AUTH;
    } else {
       return AUTH_NONE;
    }
@@ -758,10 +770,28 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
    name = GetChildContent(parentNode, "name");
    type = GetChildContent(parentNode, "type");
    state = GetChildContent(parentNode, "state");
+
+   Util::string offline = GetChildContent(parentNode, "offline-state");
+   if (offline == "checked in") {
+      offlineState = OFFLINE_CHECKED_IN;
+   } else if (offline == "checked out") {
+      offlineState = OFFLINE_CHECKED_OUT;
+   } else if (offline == "checking in") {
+      offlineState = OFFLINE_CHECKING_IN;
+   } else if (offline == "checking out") {
+      offlineState = OFFLINE_CHECKING_OUT;
+   } else if (offline.empty()) {
+      offlineState = OFFLINE_NONE;
+   } else {
+      Log("Unknown offline state \"%s\" in XML.", offline.c_str());
+      offlineState = OFFLINE_NONE;
+   }
+
    sessionId = GetChildContent(parentNode, "session-id");
    resetAllowed = GetChildContentBool(parentNode, "reset-allowed");
    resetAllowedOnSession = GetChildContentBool(parentNode,
                                                "reset-allowed-on-session");
+   inMaintenance = GetChildContentBool(parentNode, "in-maintenance-mode");
    return userPreferences.Parse(parentNode, onAbort);
 }
 
@@ -774,7 +804,7 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
  *       Parse a <desktop-connection> parentNode's content.
  *
  * Results:
- *       Always true.
+ *       True on success, false on parser error.
  *
  * Side effects:
  *       None.
@@ -789,11 +819,70 @@ BrokerXml::DesktopConnection::Parse(xmlNode *parentNode,     // IN
    id = GetChildContent(parentNode, "id");
    address = GetChildContent(parentNode, "address");
    port = GetChildContentInt(parentNode, "port");
+   channelTicket = GetChildContent(parentNode, "framework-channel-ticket");
    protocol = GetChildContent(parentNode, "protocol");
    username = GetChildContent(parentNode, "user-name");
    password = GetChildContent(parentNode, "password");
    domainName = GetChildContent(parentNode, "domain-name");
    enableUSB = GetChildContentBool(parentNode, "enable-usb");
+
+   // Parse additional listeners, if available.
+   xmlNode *listenersNode = GetChild(parentNode, "additional-listeners");
+   if (listenersNode) {
+      // Iterate over the listeners and add them to the listeners map.
+      for (xmlNode *listenerNode = listenersNode->children; listenerNode;
+           listenerNode = listenerNode->next) {
+         if (Str_Strcasecmp((const char*) listenerNode->name, "additional-listener") == 0) {
+            Util::string listenerName;
+            Listener listener;
+            if (!listener.Parse(listenerNode, listenerName, onAbort)) {
+               return false;
+            }
+            listeners.insert(std::make_pair(listenerName, listener));
+         }
+      }
+   }
+
+   return true;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BrokerXml::Listener::Parse --
+ *
+ *       Parse a <additional-listener> parentNode's content.
+ *
+ * Results:
+ *       True on success, false if the XML is invalid and calls onAbort().
+ *
+ * Side effects:
+ *       None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+BrokerXml::Listener::Parse(xmlNode *parentNode,     // IN
+                           Util::string &name,      // OUT
+                           Util::AbortSlot onAbort) // IN
+{
+   // Name is an attribute
+   name = (const char *)xmlGetProp(parentNode, (const xmlChar *)"name");
+
+   // this will be hostname:port
+   Util::string hostAndPort = GetContent(parentNode);
+
+   Util::string::size_type colonIdx = hostAndPort.find(":");
+   if (colonIdx == std::string::npos) {
+      onAbort(false, Util::exception(_("Invalid response from broker: "
+                                       "Listener with invalid host name.")));
+      return false;
+   }
+
+   address = hostAndPort.substr(0, colonIdx);
+   port = atoi(hostAndPort.substr(colonIdx + 1).c_str());
    return true;
 }
 
@@ -888,7 +977,21 @@ BrokerXml::SendRequest(RequestState &req) // IN
                                    mSecure ? "https" : "http",
                                    mHostname.c_str(), mPort);
 
-   const char *hdr = mVersion == VERSION_1 ? BROKER_V1_HDR : BROKER_V2_HDR;
+   const char *hdr;
+   switch (mVersion) {
+   case VERSION_1:
+      hdr = BROKER_V1_HDR;
+      break;
+   case VERSION_2:
+      hdr = BROKER_V2_HDR;
+      break;
+   case VERSION_3:
+      hdr = BROKER_V3_HDR;
+      break;
+   default:
+      NOT_REACHED();
+   };
+
    Util::string body;
 
    if (req.args.empty()) {
@@ -901,9 +1004,32 @@ BrokerXml::SendRequest(RequestState &req) // IN
 
    DEBUG_ONLY(Warning("BROKER REQUEST: %s\n", body.c_str()));
 
+#ifdef VMX86_DEBUG
+   xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
+   xmlDocPtr tmpdoc;
+
+   if (ctxt) {
+      tmpdoc = xmlCtxtReadMemory(ctxt, body.c_str(), body.length(), "noname.xml",
+                                 NULL, XML_PARSE_DTDVALID);
+      if (tmpdoc) {
+         if (!ctxt->wellFormed) {
+            Warning("XML is not well formed\n");
+         }
+         xmlFreeDoc(tmpdoc);
+      } else {
+         Warning("Failed to parse the XML\n");
+      }
+      xmlFreeParserCtxt(ctxt);
+   } else {
+      Warning("No parser context, skipping XML validation...\n");
+   }
+#endif
+
    req.request = BasicHttp_CreateRequest(url.c_str(), BASICHTTP_METHOD_POST,
                                          mCookieJar, NULL, body.c_str());
    ASSERT_MEM_ALLOC(req.request);
+
+   BasicHttp_SetSslCtxProc(req.request, OnSslCtx);
 
    bool success = BasicHttp_SendRequest(req.request, &BrokerXml::OnResponse,
                                         this);
@@ -955,10 +1081,12 @@ BrokerXml::OnResponse(BasicHttpRequest *request,   // IN
       }
    }
    ASSERT(state.request == request);
+   BasicHttp_FreeRequest(request);
+   request = NULL;
+   state.request = NULL;
 
    if (response->errorCode != BASICHTTP_ERROR_NONE) {
-      state.onAbort(false, Util::exception(CDK_MSG(cantConnect,
-         "Could not connect to broker.")));
+      state.onAbort(false, Util::exception(_("Could not connect to broker.")));
       goto exit;
    }
 
@@ -966,6 +1094,9 @@ BrokerXml::OnResponse(BasicHttpRequest *request,   // IN
 
    doc = xmlReadMemory(response->content, strlen(response->content),
                        "notused.xml", NULL, 0);
+   BasicHttp_FreeResponse(response);
+   response = NULL;
+
    if (!doc) {
       Warning("The response could not be parsed as XML.\n");
       goto malformedXml;
@@ -982,9 +1113,8 @@ BrokerXml::OnResponse(BasicHttpRequest *request,   // IN
       Util::string errCode = GetChildContent(docNode, "error-code");
       Log("Broker XML general error: %s\n", errCode.c_str());
       if (result.Parse(docNode, state.onAbort)) {
-         state.onAbort(false, 
-            Util::exception(CDK_MSG(brokerXmlGeneralError,
-               "Invalid response from broker: General error.")));
+         state.onAbort(false,
+            Util::exception(_("Invalid response from broker: General error.")));
       }
       goto exit;
    }
@@ -1044,16 +1174,22 @@ BrokerXml::OnResponse(BasicHttpRequest *request,   // IN
       state.onDone.killSession(result);
    } else if (state.responseOp == "reset-desktop") {
       state.onDone.reset(result);
+   } else if (state.responseOp == "rollback-checkout-desktop") {
+      state.onDone.rollback(result);
    } else {
-      NOT_REACHED();
+      state.onAbort(false, Util::exception(_("Invalid response from broker: "
+                                             "Unknown response \"%s\"."),
+                                           state.responseOp.c_str()));
+      goto exit;
    }
    goto exit;
 
 malformedXml:
    {
       Util::string msg = Util::Format(
-         "The server %s may not be a compatible VMware View connection server. "
-         "Check the server address and try again.", that->mHostname.c_str());
+         _("The server \"%s\" may not be a compatible View Connection "
+           "Server. Check the server address and try again."),
+         that->mHostname.c_str());
       state.onAbort(false, Util::exception(msg));
    }
 
@@ -1430,6 +1566,41 @@ BrokerXml::ChangePassword(Util::string oldPassword,  // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::BrokerXml::SubmitCertAuth --
+ *
+ *      Respond to a cert-auth authentication message.  Submits
+ *      cert-auth either accepting or rejecting the user the server
+ *      thinks we are.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BrokerXml::SubmitCertAuth(bool accept,               // IN
+                          Util::AbortSlot onAbort,   // IN
+                          AuthenticationSlot onDone) // IN
+{
+   AuthInfo authInfo;
+   authInfo.name = "cert-auth";
+
+   Param acceptParam;
+   acceptParam.name = "accept";
+   acceptParam.values.push_back(accept ? "true" : "false");
+   authInfo.params.push_back(acceptParam);
+
+   SubmitAuthentication(authInfo, onAbort, onDone);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::BrokerXml::GetTunnelConnection --
  *
  *      Send a "get-tunnel-connection" request to the broker server.
@@ -1617,9 +1788,10 @@ BrokerXml::SetUserDesktopPreferences(Util::string desktopId,        // IN
  */
 
 void
-BrokerXml::GetDesktopConnection(Util::string desktopId,       // IN
-                                Util::AbortSlot onAbort,      // IN
-                                DesktopConnectionSlot onDone) // IN
+BrokerXml::GetDesktopConnection(Util::string desktopId,          // IN
+                                Util::AbortSlot onAbort,         // IN
+                                DesktopConnectionSlot onDone,    // IN
+                                const Util::ClientInfoMap &info) // IN
 {
    ASSERT(!desktopId.empty());
 
@@ -1627,6 +1799,18 @@ BrokerXml::GetDesktopConnection(Util::string desktopId,       // IN
    req.requestOp = "get-desktop-connection";
    req.responseOp = "desktop-connection";
    req.args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
+
+   if (!info.empty()) {
+      req.args += "<environment-information>";
+      for (Util::ClientInfoMap::const_iterator iter = info.begin();
+           iter != info.end(); ++iter) {
+         req.args += Util::Format("<info name=\"%s\">%s</info>",
+                                  Encode(iter->first).c_str(),
+                                  Encode(iter->second).c_str());
+      }
+      req.args += "</environment-information>";
+   }
+
    req.onAbort = onAbort;
    req.onDone.desktopConnection = onDone;
    SendRequest(req);
@@ -1732,6 +1916,39 @@ BrokerXml::ResetDesktop(Util::string desktopId,  // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::BrokerXml::Rollback --
+ *
+ *      Send a "rollback-checkout-desktop" request to the broker server.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BrokerXml::Rollback(Util::string desktopId,  // IN
+                    Util::AbortSlot onAbort, // IN
+                    RollbackSlot onDone)     // IN
+{
+   ASSERT(!desktopId.empty());
+
+   RequestState req;
+   req.requestOp = "rollback-checkout-desktop";
+   req.responseOp = "rollback-checkout-desktop";
+   req.args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
+   req.onAbort = onAbort;
+   req.onDone.rollback = onDone;
+   SendRequest(req);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::BrokerXml::BadBrokerException --
  *
  *      Returns a standard exception for wacky broker responses.
@@ -1748,7 +1965,7 @@ BrokerXml::ResetDesktop(Util::string desktopId,  // IN
 Util::exception
 BrokerXml::BadBrokerException()
 {
-   return Util::exception(CDK_MSG(badBroker, "Invalid response from broker."));
+   return Util::exception(_("Invalid response from broker."));
 }
 
 
@@ -1786,8 +2003,7 @@ BrokerXml::CancelRequests()
    Log("Cancelling %d Broker XML requests.\n", slots.size());
    for (std::list<Util::AbortSlot>::iterator i = slots.begin();
         i != slots.end(); i++) {
-      (*i)(true, Util::exception(CDK_MSG(requestCancelled,
-                                         "Request cancelled by user.")));
+      (*i)(true, Util::exception(_("Request cancelled by user.")));
    }
 }
 
@@ -1813,6 +2029,33 @@ BrokerXml::ForgetCookies()
 {
    BasicHttp_FreeCookieJar(mCookieJar);
    mCookieJar = BasicHttp_CreateCookieJar();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BrokerXml::ResetConnections --
+ *
+ *      Force cURL to close all connections.  This resets BasicHttp,
+ *      which is a bit heavy handed, but we are wading through a lot
+ *      of layers of abstractions, and this works.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      BasicHttp is reinitialized.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BrokerXml::ResetConnections()
+{
+   CancelRequests();
+   BasicHttp_Shutdown();
+   BasicHttp_Init(Poll_Callback, Poll_CallbackRemove);
 }
 
 
@@ -1857,8 +2100,10 @@ BrokerXml::Tunnel::Tunnel()
  */
 
 BrokerXml::Desktop::Desktop()
-   : resetAllowed(false),
-     resetAllowedOnSession(false)
+   : offlineState(OFFLINE_NONE),
+     resetAllowed(false),
+     resetAllowedOnSession(false),
+     inMaintenance(false)
 {
 }
 
@@ -1883,6 +2128,85 @@ BrokerXml::DesktopConnection::DesktopConnection()
    : port(-1),
      enableUSB(false)
 {
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BrokerXml::OnSslCtx --
+ *
+ *      Callback from basicHttp when an SSL context is set up by cURL.
+ *      Add our certificate request handler.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BrokerXml::OnSslCtx(BasicHttpRequest *request, // IN
+                    void *sslctx,              // IN
+                    void *clientData)          // IN
+{
+   BrokerXml *that = reinterpret_cast<BrokerXml*>(clientData);
+   ASSERT(that);
+   SSL_CTX *ctx = (SSL_CTX *)sslctx;
+   SSL_CTX_set_app_data(ctx, that);
+
+   /*
+    * SSL_CTX_set_client_cert_cb was turned into a real function in
+    * 0.9.8e. Prior to that it was just a macro to set a member of the
+    * SSL_CTX directly.  This tries to use the function if it's
+    * available, or sets the member directly if not.
+    */
+   static bool certCbChecked = false;
+   static bool hasCertCb = false;
+   if (!certCbChecked) {
+      GModule *self = g_module_open(NULL, (GModuleFlags)0);
+      gpointer func = NULL;
+      hasCertCb = g_module_symbol(self, "SSL_CTX_set_client_cert_cb", &func);
+      g_module_close(self);
+      DEBUG_ONLY(Log("Has SSL_CTX_set_client_cert_cb: %d\n", hasCertCb));
+   }
+   if (hasCertCb) {
+      SSL_CTX_set_client_cert_cb(ctx, OnCertificateRequest);
+   } else {
+      ctx->client_cert_cb = OnCertificateRequest;
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BrokerXml::OnCertificateRequest --
+ *
+ *      Callback when the server requests a certificate.  Emit the
+ *      certificateRequested signal.
+ *
+ * Results:
+ *      Those of the certificate requested signal.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+int
+BrokerXml::OnCertificateRequest(SSL *ssl,           // IN
+                                X509 **x509,        // OUT
+                                EVP_PKEY **privKey) // OUT
+{
+   BrokerXml *that =
+      reinterpret_cast<BrokerXml *>(SSL_CTX_get_app_data(ssl->ctx));
+   ASSERT(that);
+   return that->certificateRequested(ssl, x509, privKey);
 }
 
 

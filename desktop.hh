@@ -2,7 +2,7 @@
  * Copyright (C) 2008 VMware, Inc. All rights reserved.
  *
  * This file is part of VMware View Open Client.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation version 2.1 and no later version.
@@ -32,9 +32,12 @@
 #define DESKTOP_HH
 
 
+#include <boost/signal.hpp>
+
+
 #include "brokerXml.hh"
-#include "rdesktop.hh"
-#include "util.hh"
+#include "dlg.hh"
+#include "usb.hh"
 
 
 namespace cdk {
@@ -43,37 +46,32 @@ namespace cdk {
 class Desktop
 {
 public:
-   enum DesktopType {
-      TYPE_FREE,
-      TYPE_STICKY,
-      TYPE_AUTO
-   };
-
-   enum ScreenSize {
-      SIZE_WINDOWED,
-      SIZE_FULL,
-      SIZE_FULL_MULTI
-   };
-
+   /*
+    * This enum captures various states of connection as well as in-flight
+    * commands being executed on the desktop (reset, logout, rollback).
+    * These commands are remembered here because they're asynchronous, and
+    * we can't always tell what's going on otherwise.
+    */
    enum ConnectionState {
       STATE_DISCONNECTED,
       STATE_CONNECTING,
-      STATE_CONNECTED
+      STATE_CONNECTED,
+      STATE_RESETTING,
+      STATE_KILLING_SESSION,
+      STATE_ROLLING_BACK
    };
 
    Desktop(BrokerXml &xml, BrokerXml::Desktop &desktopInfo);
    ~Desktop();
 
+   void SetInfo(BrokerXml::Desktop &desktopInfo);
    ConnectionState GetConnectionState() const { return mConnectionState; }
 
-   void Connect(Util::AbortSlot onAbort, Util::DoneSlot onDone);
+   void Connect(Util::AbortSlot onAbort, Util::DoneSlot onDone,
+                Util::ClientInfoMap &info);
    void Disconnect();
 
-   RDesktop* GetRDesktop();
-   bool StartRDesktop(const GdkRectangle *geometry,
-                      const std::vector<Util::string> &devRedirectArgs =
-                         std::vector<Util::string>());
-
+   bool CanConnect() const;
    bool CanReset() const { return mDesktopInfo.resetAllowed; }
    bool CanResetSession() const { return mDesktopInfo.resetAllowedOnSession; }
    void ResetDesktop(Util::AbortSlot onAbort, Util::DoneSlot onDone);
@@ -82,22 +80,29 @@ public:
    Util::string GetName() const { return mDesktopInfo.name; }
    Util::string GetSessionID() const { return mDesktopInfo.sessionId; }
    void KillSession(Util::AbortSlot onAbort, Util::DoneSlot onDone);
+   void Rollback(Util::AbortSlot onAbort, Util::DoneSlot onDone);
 
-   DesktopType GetDesktopType() const;
    Util::string GetState() const { return mDesktopInfo.state; }
+   BrokerXml::OfflineState GetOfflineState() const
+      { return mDesktopInfo.offlineState; }
+   bool InMaintenanceMode() const { return mDesktopInfo.inMaintenance; }
 
    bool GetIsUSBEnabled() const { return mDesktopConn.enableUSB; }
 
    bool GetAutoConnect() const;
-   // Desktop preferences not yet supported...
-   /*
-   void SetAutoConnect(bool val);
 
-   ScreenSize GetScreenSize() const;
-   void SetScreenSize(ScreenSize size);
-   */
+   Dlg* GetUIDlg();
+   bool StartUI(GdkRectangle *geometry,
+                const std::vector<Util::string> &devRedirectArgs =
+                   std::vector<Util::string>(),
+                const std::vector<Util::string> &usbRedirectArgs =
+                   std::vector<Util::string>());
+
+   boost::signal0<void> changed;
 
 private:
+   void SetConnectionState(ConnectionState state);
+
    void OnGetDesktopConnectionDone(BrokerXml::Result &result,
                                    BrokerXml::DesktopConnection &conn,
                                    Util::DoneSlot onDone);
@@ -110,14 +115,19 @@ private:
 
    void OnKillSessionAbort(bool canceled, Util::exception err,
                            Util::AbortSlot onAbort);
+   void OnRollbackAbort(bool canceled, Util::exception err,
+                        Util::AbortSlot onAbort);
+
+   void StartUsb(const std::vector<Util::string> &usbRedirectArgs);
 
    BrokerXml &mXml;
    BrokerXml::Desktop mDesktopInfo;
 
    ConnectionState mConnectionState;
    BrokerXml::DesktopConnection mDesktopConn;
+   Usb mUsb;
 
-   RDesktop *mRDesktop;
+   Dlg *mDlg;
 };
 
 

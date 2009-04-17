@@ -75,7 +75,13 @@ public:
 
    int GetDefaultDesktopHeight() const;
    void SetDefaultDesktopHeight(int height);
+#else
+   bool GetDefaultUseAllMonitors() const;
+   void SetDefaultUseAllMonitors(bool use);
 #endif
+
+   bool GetDefaultShowBrokerOptions() const;
+   void SetDefaultShowBrokerOptions(bool val);
 
 private:
    static Prefs *sPrefs;

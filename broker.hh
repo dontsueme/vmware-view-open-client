@@ -36,6 +36,7 @@
 
 
 #include "brokerXml.hh"
+#include "cryptoki.hh"
 #include "util.hh"
 #include "restartMonitor.hh"
 #include "tunnel.hh"
@@ -60,6 +61,9 @@ protected:
                    int port, bool secure,
                    const Util::string &defaultUser,
                    const Util::string &defaultDomain);
+   void SubmitScInsertPrompt(bool useCert);
+   void SubmitScPin(const char *pin);
+   void SubmitCertificate(X509 *x509);
    void AcceptDisclaimer();
    void SubmitPasscode(const Util::string &username,
                        const Util::string &passcode);
@@ -72,17 +76,25 @@ protected:
    void ChangePassword(const Util::string &oldPassword,
                        const Util::string &newPassword,
                        const Util::string &confirm);
-   void LoadDesktops() { RequestDesktop(mDesktops); }
+   void LoadDesktops() { RequestDesktop(); }
    void ConnectDesktop(Desktop *desktop);
    void ReconnectDesktop();
+   void ResetDesktop(Desktop *desktop, bool andQuit = false);
+   void KillSession(Desktop *desktop);
+   void RollbackDesktop(Desktop *desktop);
    void Logout();
 
    // Status notifications
    virtual void SetBusy(const Util::string &message) = 0;
    virtual void SetReady() = 0;
+   virtual void UpdateDesktops() = 0;
 
    // State change notifications
    virtual void RequestBroker() = 0;
+   virtual void RequestScInsertPrompt(Cryptoki *cryptoki) = 0;
+   virtual void RequestScPin(const Util::string &tokenName,
+                             const X509 *x509) = 0;
+   virtual void RequestCertificate(std::list<X509 *> &certs) = 0;
    virtual void RequestDisclaimer(const Util::string &disclaimer) = 0;
    virtual void RequestPasscode(const Util::string &username) = 0;
    virtual void RequestNextTokencode(const Util::string &username) = 0;
@@ -95,7 +107,7 @@ protected:
                                 const Util::string &domain) = 0;
    virtual void RequestPasswordChange(const Util::string &username,
                                       const Util::string &domain) = 0;
-   virtual void RequestDesktop(std::vector<Desktop *> &desktops) = 0;
+   virtual void RequestDesktop() = 0;
    virtual void RequestTransition(const Util::string &message) = 0;
    virtual void RequestLaunchDesktop(Desktop *desktop) = 0;
    virtual void Quit() = 0;
@@ -114,7 +126,28 @@ protected:
    */
    void CancelRequests() { ASSERT(mXml); mXml->CancelRequests(); }
 
+   std::vector<Util::string> GetSmartCardRedirects();
+
+   Desktop *GetDesktop() const { return mDesktop; }
+   void GetDesktops(bool refresh = false);
+
+   std::vector<Desktop*> mDesktops;
+
 private:
+   enum CertState {
+      // The server has not requested a certificate from us.
+      CERT_NOT_REQUESTED,
+      // The server has requested a certificate (but we have not sent one).
+      CERT_REQUESTED,
+      // THe next time the server requests a certificate, return one.
+      CERT_SHOULD_RESPOND,
+      // We have sent a certificate, if one was available.
+      CERT_DID_RESPOND
+   };
+
+   static gboolean RefreshDesktopsTimeout(gpointer data);
+
+   void SetLocale();
    bool GetTunnelReady();
    bool GetDesktopReady();
    void MaybeLaunchDesktop();
@@ -127,25 +160,41 @@ private:
    void OnAuthInfo(BrokerXml::Result &result, BrokerXml::AuthInfo &authInfo,
                    bool treatOkAsPartial = false);
    void OnAuthInfoPinChange(std::vector<BrokerXml::Param> &params);
+   void OnAuthComplete();
    void InitTunnel();
    void OnGetTunnelConnectionDone(BrokerXml::Tunnel &tunnel);
    void OnTunnelConnected();
    void OnTunnelDisconnect(int status, Util::string disconnectReason);
-   void OnGetDesktopsDone(BrokerXml::EntitledDesktops &desktops);
+   void OnGetDesktopsSet(BrokerXml::EntitledDesktops &desktops);
+   void OnGetDesktopsRefresh(BrokerXml::EntitledDesktops &desktops);
    void OnLogoutResult();
+   void OnDesktopOpDone(Desktop *desktop);
 
    void OnAbort(bool cancelled, Util::exception err);
    void OnInitialRPCAbort(bool cancelled, Util::exception err);
    void OnTunnelRPCAbort(bool cancelled, Util::exception err);
 
+   int OnCertificateRequested(SSL *ssl, X509 **x509, EVP_PKEY **privKey);
+   char *OnScPinRequested(const Util::string &label, const X509 *x509);
+
+   void StartWatchingForTokenEvents();
+   void StopWatchingForTokenEvents();
+   static gboolean TokenEventMonitor(gpointer data);
+
    BrokerXml *mXml;
-   std::vector<Desktop*> mDesktops;
    Tunnel *mTunnel;
    Desktop *mDesktop;
    Util::string mUsername;
    Util::string mDomain;
    boost::signals::connection mTunnelDisconnectCnx;
    RestartMonitor mTunnelMonitor;
+   Cryptoki *mCryptoki;
+   char *mPin;
+   X509 *mX509;
+   CertState mCertState;
+   unsigned int mRefreshTimeoutSourceID;
+   bool mGettingDesktops;
+   guint mTokenEventTimeout;
 };
 
 

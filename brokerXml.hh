@@ -33,9 +33,11 @@
 
 
 #include <boost/function.hpp>
+#include <boost/signal.hpp>
+#include <libxml/tree.h>
 #include <list>
+#include <openssl/ssl.h>
 #include <vector>
-#include "libxml/tree.h"
 
 
 #include "basicHttp.h"
@@ -51,6 +53,7 @@ public:
    enum BrokerVersion {
       VERSION_1,
       VERSION_2,
+      VERSION_3
    };
 
    enum AuthType {
@@ -62,6 +65,15 @@ public:
       AUTH_SECURID_WAIT,
       AUTH_WINDOWS_PASSWORD,
       AUTH_WINDOWS_PASSWORD_EXPIRED,
+      AUTH_CERT_AUTH
+   };
+
+   enum OfflineState {
+      OFFLINE_CHECKED_IN,
+      OFFLINE_CHECKED_OUT,
+      OFFLINE_CHECKING_IN,
+      OFFLINE_CHECKING_OUT,
+      OFFLINE_NONE
    };
 
    struct Result
@@ -149,9 +161,11 @@ public:
       Util::string name;
       Util::string type;
       Util::string state;
+      OfflineState offlineState;
       Util::string sessionId;
       bool resetAllowed;
       bool resetAllowedOnSession;
+      bool inMaintenance;
       UserPreferences userPreferences;
 
       Desktop();
@@ -167,11 +181,25 @@ public:
       bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
    };
 
+   struct Listener
+   {
+      Util::string address;
+      int port;
+
+      bool Parse(xmlNode *parentNode, Util::string &name,
+                 Util::AbortSlot onAbort);
+   };
+
+   // Maps listener names to listener objects.
+   typedef std::map<Util::string, Listener> ListenerMap;
+
    struct DesktopConnection
    {
+      ListenerMap listeners;
       Util::string id;
       Util::string address;
       int port;
+      Util::string channelTicket;
       Util::string protocol;
       Util::string username;
       Util::string password;
@@ -195,6 +223,7 @@ public:
    typedef boost::function1<void, Result&> LogoutSlot;
    typedef boost::function1<void, Result&> KillSessionSlot;
    typedef boost::function1<void, Result&> ResetDesktopSlot;
+   typedef boost::function1<void, Result&> RollbackSlot;
 
    static Util::exception BadBrokerException();
 
@@ -235,6 +264,9 @@ public:
                        Util::string confirm, Util::AbortSlot onAbort,
                        AuthenticationSlot onDone);
 
+   void SubmitCertAuth(bool accept, Util::AbortSlot onAbort,
+                       AuthenticationSlot onDone);
+
    void GetTunnelConnection(Util::AbortSlot onAbort,
                             TunnelConnectionSlot onDone);
 
@@ -254,7 +286,8 @@ public:
 
    void GetDesktopConnection(Util::string desktopId,
                              Util::AbortSlot onAbort,
-                             DesktopConnectionSlot onDone);
+                             DesktopConnectionSlot onDone,
+                             const Util::ClientInfoMap &info);
 
    void Logout(Util::AbortSlot onAbort, LogoutSlot onDone);
 
@@ -266,8 +299,15 @@ public:
                      Util::AbortSlot onAbort,
                      ResetDesktopSlot onDone);
 
+   void Rollback(Util::string sessionId,
+                 Util::AbortSlot onAbort,
+                 RollbackSlot onDone);
+
    void CancelRequests();
    void ForgetCookies();
+   void ResetConnections();
+
+   boost::signal3<int, SSL *, X509 **, EVP_PKEY **> certificateRequested;
 
 private:
    struct DoneSlots
@@ -283,6 +323,7 @@ private:
       LogoutSlot logout;
       KillSessionSlot killSession;
       ResetDesktopSlot reset;
+      RollbackSlot rollback;
    };
 
    struct RequestState
@@ -303,6 +344,9 @@ private:
    static void OnResponse(BasicHttpRequest *request,
                           BasicHttpResponse *response,
                           void *data);
+   static void OnSslCtx(BasicHttpRequest *request, void *sslctx,
+                        void *clientData);
+   static int OnCertificateRequest(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
 
    Util::string Encode(const Util::string& val);
    bool SendRequest(RequestState &req);

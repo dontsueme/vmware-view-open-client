@@ -1,0 +1,113 @@
+<span underline="double">VMware View Client Help</span>
+
+With VMware View Client, you can connect to the virtual desktops available for your use.
+
+For more information about your virtual desktops and the software installed in them, contact your View administrator.
+
+<span underline="single">Connect to View Connection Server</span>
+
+View Client runs as a native Linux application that connects to View Connection Server. You must connect to View Connection Server before you can log in and connect to a virtual desktop.
+
+Note: View Client can connect to only one instance of View Connection Server at a time. To connect, you must be able to supply the server host name or IP address.
+
+To connect to View Connection Server:
+1. Start View Client as instructed by your View administrator.
+2. Select your View Connection Server from the <b>Address</b> list, or enter the server host name or IP address.
+3. Click <b>Options</b> to view or hide options for connecting to the selected server. Configure options only if your View administrator instructs you to do so. Options include:
+
+<b>Port</b> - The port entry is set to the default port for View Connection Server.
+<b>SSL</b> - Use a secure (SSL) connection to protect sensitive corporate information and ensure that all connections are completely encrypted. Your View administrator might have configured View Connection Server to always use a secure connection, even if you set a non-secure connection.
+
+Note: You can also supply port and SSL options by typing them into the address field directly. For a non-SSL connection, type: http://&lt;URL&gt;[:port number]. For an SSL connection, type: https://&lt;URL&gt;[:port number].
+
+<b>Auto Connect</b> - Connect directly to the current instance of View Connection Server when you start View Client. Select this option if you always connect to the same View Connection Server. If left unselected, you are prompted to choose a View Connection Server when you start View Client.
+
+Note: If the connection fails, you are returned to the server selection dialog box. If the connection succeeds, you can return to the server selection dialog box by clicking <b>Cancel</b> in the first dialog box that appears on connection.
+
+4. Click <b>Connect</b>.
+
+<span underline="single">Log In to View Connection Server</span>
+
+After you connect to View Connection Server, you are prompted to log in using the user name and password supplied by your View administrator. Depending on how your system is configured, you might also be able to log in remotely using RSA SecurID, or by using a supported Smart Card. For specific instructions about how to log in using either of these methods, contact your View administrator.
+
+To log in:
+1. Connect to View Connection Server.
+2. In the login window, enter your user name and password.
+3. Select the appropriate domain from the list.
+4. Click <b>Login</b>.
+
+A list of the virtual desktops that you are authorized to use appears.
+
+<span underline="single">Connect to a Desktop</span>
+
+After you connect to View Connection Server and log in, you can connect to a virtual desktop. The View Client window displays a list of the desktops that you are authorized to use, as well as the current status of each desktop.
+
+To connect to a desktop:
+1. Select a desktop from the list in the View Client window.
+2. Double-click the desktop in the list, Click <b>Connect</b>, or click the down-arrow and select <b>Connect</b>.
+
+<span underline="single">Set a Desktop to Display Across Multiple Monitors</span>
+
+When you connect to a virtual desktop, you can set it to display in full screen mode across multiple monitors. This functionality is available only if your View administrator enables it, and if your system is properly configured.
+
+To set up multiple monitor display:
+1. In the View Client window, select a desktop from the list.
+2. Select <b>Use All Monitors</b>.
+3. Double-click the desktop in the list, click <b>Connect</b>, or click the down-arrow and select <b>Connect</b>.
+
+Your selection is saved as a preference for the next time you connect.
+
+<span underline="single">Roll Back a Desktop</span>
+
+You can roll back a virtual desktop that is checked out on another host. Rolling back a checked-out desktop discards any changes that were made to the desktop, and any data that was not backed up to the server is lost.
+
+To roll back a desktop:
+1. Click the down-arrow next to the checked out desktop you want to roll back.
+2. Select <b>Rollback</b>.
+
+The checkout on the remote host is cancelled and you can now log in to the desktop on the local host.
+
+<span underline="single">Disconnect from a Desktop</span>
+
+When you disconnect from a virtual desktop, you remain logged in. Any programs running in the desktop remain open. You can reconnect to the desktop at any time and resume your session.
+
+To disconnect from within a desktop:
+1. Save any open files in the desktop.
+2. From the <b>Start</b> menu in the desktop, select <b>Disconnect</b>, or press <b>Ctrl+Alt+Del</b> and click <b>Disconnect</b>.
+
+<span underline="single">Log Off from a Desktop</span>
+
+When you log off a virtual desktop, the current session ends, all programs are closed, and any unsaved data is lost. You can log off from within the desktop, or from the View Client window.
+
+To log off from within a desktop:
+1. Save any open files in the desktop.
+2. From the <b>Start</b> menu, select <b>Log Off</b>.
+3. In the confirmation dialog box, click <b>Log Off</b>.
+You are prompted to save any open files if you have not already done so.
+
+To log off from within the View Client window:
+1. Click the down-arrow next to the checked out desktop to roll back.
+2. Select <b>Log Off</b>.
+
+<span underline="single">Reset a Desktop</span>
+
+When you reset a desktop, the desktop is closed and rebooted, and any unsaved data is lost. You must be logged into a desktop to reset it.
+
+You can reset a desktop from the View Client window, or from within the desktop itself.
+
+To reset a desktop from the View Client window:
+1. In the View Client window, click the down-arrow next to the desktop to be reset.
+2. Select <b>Reset</b>.
+3. Click <b>Reset</b> to confirm.
+
+To reset a desktop from within the desktop:
+1. Press <b>Ctrl+Alt+Del</b>.
+2. Click <b>Reset</b>.
+
+<span underline="single">Refresh the Desktop List</span>
+
+You can refresh the list of desktops to show changes since the list was last retrieved from the View Connection Server. To do this, press the <b>F5</b> key.
+
+-------------------
+
+Copyright © 2009 VMware, Inc. All rights reserved. This product is protected by U.S. and international copyright and intellectual property laws. VMware software products are protected by one or more patents listed at http://www.vmware.com/go/patents

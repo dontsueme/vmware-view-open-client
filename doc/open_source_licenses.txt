@@ -1,7 +1,6 @@
 open_source_licenses.txt
-VMware View Manager 2.1.1
-Client for Linux [Thin Client Edition] - GA
-Build 153227, 2009-03-10
+VMware View Open Client 3.1.0
+Build 160969, 2009-04-15
 
 
 The following copyright statements and licenses apply to various open source

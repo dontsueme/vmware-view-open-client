@@ -29,6 +29,8 @@
  */
 
 
+#include <glib/gi18n.h>
+#include <gtk/gtkbbox.h>
 #include <gtk/gtkalignment.h>
 #include <gtk/gtkstock.h>
 #include <gtk/gtktable.h>
@@ -99,7 +101,7 @@ SecurIDDlg::SecurIDDlg()
    AddRequiredEntry(mSecondEntry);
 
    GtkButton *authenticate = Util::CreateButton(GTK_STOCK_OK,
-      CDK_MSG(authenticate, "_Authenticate").c_str());
+                                                _("_Authenticate"));
    gtk_widget_show(GTK_WIDGET(authenticate));
    AddSensitiveWidget(GTK_WIDGET(authenticate));
    GTK_WIDGET_SET_FLAGS(authenticate, GTK_CAN_DEFAULT);
@@ -109,10 +111,13 @@ SecurIDDlg::SecurIDDlg()
                     G_CALLBACK(&SecurIDDlg::OnAuthenticate), this);
    SetForwardButton(authenticate);
 
+   GtkButton *help = GetHelpButton();
    GtkWidget *actionArea = Util::CreateActionArea(authenticate, GetCancelButton(),
-                                                  NULL);
+                                                  help, NULL);
    gtk_widget_show(actionArea);
    gtk_table_attach_defaults(table, GTK_WIDGET(actionArea), 0, 2, 3, 4);
+   gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(actionArea),
+                                      GTK_WIDGET(help), true);
 
    UpdateForwardButton(this);
 }
@@ -145,21 +150,20 @@ SecurIDDlg::SetState(State state,          // IN
                      Util::string message, // IN/OPT
                      bool userSelectable)  // IN/OPT
 {
-   Util::string usernameMsg = CDK_MSG(username, "_Username:");
+   Util::string usernameMsg = _("_Username:");
 
    gtk_entry_set_text(mFirstEntry, first.c_str());
    switch(state) {
    case STATE_PASSCODE:
-      gtk_label_set_text(mLabel, CDK_MSG(passcodeLabel,
-         "Enter your RSA SecurID user name and passcode.").c_str());
+      gtk_label_set_text(mLabel,
+                         _("Enter your RSA SecurID user name and passcode."));
 
       gtk_label_set_text_with_mnemonic(mFirstLabel, usernameMsg.c_str());
 
       gtk_widget_set_sensitive(GTK_WIDGET(mFirstEntry), true);
       gtk_entry_set_visibility(mFirstEntry, true);
 
-      gtk_label_set_text_with_mnemonic(mSecondLabel,
-         CDK_MSG(passcode, "_Passcode:").c_str());
+      gtk_label_set_text_with_mnemonic(mSecondLabel, _("_Passcode:"));
 
       gtk_entry_set_visibility(mSecondEntry, false);
       gtk_entry_set_text(mSecondEntry, "");
@@ -168,17 +172,15 @@ SecurIDDlg::SetState(State state,          // IN
                      GTK_WIDGET(mSecondEntry));
       break;
    case STATE_NEXT_TOKEN:
-      gtk_label_set_text(mLabel, CDK_MSG(nextTokenLabel,
-         "Wait until the next tokencode appears on your RSA SecurID token, "
-         "then enter it.").c_str());
+      gtk_label_set_text(mLabel, _("Wait until the next tokencode appears on "
+                                   "your RSA SecurID token, then enter it."));
 
       gtk_label_set_text_with_mnemonic(mFirstLabel, usernameMsg.c_str());
 
       gtk_widget_set_sensitive(GTK_WIDGET(mFirstEntry), false);
       gtk_entry_set_visibility(mFirstEntry, true);
 
-      gtk_label_set_text_with_mnemonic(mSecondLabel,
-         CDK_MSG(tokencode, "_Tokencode:").c_str());
+      gtk_label_set_text_with_mnemonic(mSecondLabel, _("_Tokencode:"));
 
       gtk_entry_set_visibility(mSecondEntry, false);
       gtk_entry_set_text(mSecondEntry, "");
@@ -188,27 +190,24 @@ SecurIDDlg::SetState(State state,          // IN
    case STATE_SET_PIN: {
       Util::string labelText;
       if (first.empty()) {
-         labelText = CDK_MSG(newPin, "Enter a new RSA SecurID PIN.");
+         labelText = _("Enter a new RSA SecurID PIN.");
       } else if (userSelectable) {
-         labelText = CDK_MSG(selectPin,
-            "Enter a new RSA SecurID PIN or accept the system-generated PIN.");
+         labelText = _("Enter a new RSA SecurID PIN or accept the "
+                       "system-generated PIN.");
       } else {
-         labelText = CDK_MSG(acceptPin,
-            "Accept the system-generated RSA SecurID PIN.");
+         labelText = _("Accept the system-generated RSA SecurID PIN.");
       }
       if (!message.empty()) {
          labelText += "\n\n" + message;
       }
       gtk_label_set_text(mLabel, labelText.c_str());
 
-      gtk_label_set_text_with_mnemonic(mFirstLabel,
-                                       CDK_MSG(firstPin, "_PIN:").c_str());
+      gtk_label_set_text_with_mnemonic(mFirstLabel, _( "_PIN:"));
 
       gtk_widget_set_sensitive(GTK_WIDGET(mFirstEntry), userSelectable);
       gtk_entry_set_visibility(mFirstEntry, !first.empty());
 
-      gtk_label_set_text_with_mnemonic(mSecondLabel,
-         CDK_MSG(confirmPin, "Con_firm PIN:").c_str());
+      gtk_label_set_text_with_mnemonic(mSecondLabel, _("Con_firm PIN:"));
 
       gtk_entry_set_text(mSecondEntry, "");
 

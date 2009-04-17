@@ -37,6 +37,8 @@ NULL :=
 
 BUILT_SOURCES :=
 CLEANFILES :=
+CONFIGURE_DEPENDENCIES :=
+CONFIG_STATUS_DEPENDENCIES :=
 
 TESTS :=
 
@@ -47,9 +49,15 @@ AM_CPPFLAGS += -I$(srcdir)/lib/bora/include
 applicationdir := $(datadir)/applications
 pixmapsdir := $(datadir)/pixmaps
 
+helpdir :=$(docdir)/help
+
+application_DATA = $(desktop_in_files:.desktop.in=.desktop)
 bin_PROGRAMS :=
-application_DATA :=
+bin_SCRIPTS :=
+desktop_in_files :=
+dist_bin_SCRIPTS :=
 dist_doc_DATA :=
+dist_help_DATA :=
 dist_man_MANS :=
 dist_noinst_DATA :=
 dist_noinst_HEADERS :=
@@ -60,7 +68,10 @@ pixmaps_DATA :=
 
 include_subdirs :=
 
+SUBDIRS := po
 DIST_SUBDIRS := $(SUBDIRS) $(include_subdirs)
+
+@INTLTOOL_DESKTOP_RULE@
 
 all:
 
@@ -89,8 +100,11 @@ include lib/bora/productState/Makefile.inc
 include lib/bora/sig/Makefile.inc
 include lib/bora/ssl/Makefile.inc
 include lib/bora/stubs/Makefile.inc
-include lib/bora/unicode/Makefile.inc
 include lib/bora/user/Makefile.inc
+
+include lib/libp11/Makefile.inc
+
+include lib/gtm/Makefile.inc
 
 include Makefile.inc
 include doc/Makefile.inc

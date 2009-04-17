@@ -29,6 +29,9 @@
  */
 
 
+#include <glib/gi18n.h>
+
+
 #include "passwordDlg.hh"
 
 
@@ -58,8 +61,7 @@ PasswordDlg::PasswordDlg()
               GTK_ENTRY(gtk_entry_new()),
               GTK_ENTRY(gtk_entry_new()),
               GTK_COMBO_BOX(gtk_combo_box_new_text()),
-              Util::CreateButton(GTK_STOCK_OK,
-                                 CDK_MSG(changeButton, "C_hange").c_str()),
+              Util::CreateButton(GTK_STOCK_OK, _("Ch_ange")),
               true),
      mNew(GTK_ENTRY(gtk_entry_new())),
      mConfirm(GTK_ENTRY(gtk_entry_new()))
@@ -71,8 +73,7 @@ PasswordDlg::PasswordDlg()
    gtk_table_set_row_spacings(mTable, VM_SPACING);
    gtk_table_set_col_spacings(mTable, VM_SPACING);
 
-   l = GTK_LABEL(gtk_label_new(CDK_MSG(passwordDlgUsername,
-                                        "Username:").c_str()));
+   l = GTK_LABEL(gtk_label_new(_("Username:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 0, 1, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -82,7 +83,7 @@ PasswordDlg::PasswordDlg()
    gtk_table_attach_defaults(mTable, GTK_WIDGET(mUsername), 1, 2, 0, 1);
    gtk_widget_set_sensitive(GTK_WIDGET(mUsername), false);
 
-   l = GTK_LABEL(gtk_label_new(CDK_MSG(passwordDlgDomain, "Domain:").c_str()));
+   l = GTK_LABEL(gtk_label_new(_("Domain:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 1, 2, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -92,8 +93,7 @@ PasswordDlg::PasswordDlg()
    gtk_table_attach_defaults(mTable, GTK_WIDGET(mDomain), 1, 2, 1, 2);
    gtk_widget_set_sensitive(GTK_WIDGET(mDomain), false);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(passwordDlgOldPassword, "Old _Password:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("Old _Password:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 2, 3, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -107,8 +107,7 @@ PasswordDlg::PasswordDlg()
    gtk_entry_set_activates_default(mPasswd, true);
    AddRequiredEntry(mPasswd);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(passwordDlgNewPassword, "_New Password:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_New Password:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 3, 4, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -122,8 +121,7 @@ PasswordDlg::PasswordDlg()
    gtk_entry_set_activates_default(mNew, true);
    AddRequiredEntry(mNew);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(passwordDlgConfirmPassword, "Con_firm:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("Con_firm:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 4, 5, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -143,10 +141,13 @@ PasswordDlg::PasswordDlg()
    g_signal_connect(G_OBJECT(mLogin), "clicked",
                     G_CALLBACK(&PasswordDlg::OnLogin), this);
 
+   GtkButton *help = GetHelpButton();
    GtkWidget *actionArea = Util::CreateActionArea(mLogin, GetCancelButton(),
-                                                  NULL);
+                                                  help, NULL);
    gtk_widget_show(actionArea);
    gtk_table_attach_defaults(mTable, GTK_WIDGET(actionArea), 0, 2, 5, 6);
+   gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(actionArea),
+                                      GTK_WIDGET(help), true);
 
    UpdateForwardButton(this);
 }

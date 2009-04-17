@@ -117,20 +117,25 @@ if test "$TCROOT" ; then
          CFLAGS="$CFLAGS -O0 -g3"
          ;;
       [release|beta|*])
-         CFLAGS="$CFLAGS -O2 -g3"
+         CFLAGS="$CFLAGS -Os -g3"
          ;;
    esac
    CXXFLAGS="$CFLAGS"
    # C-only warning options
    CFLAGS="$CFLAGS -Wno-pointer-sign -Wno-strict-prototypes"
 
+   icuversion="3.8"
+
    AMTAR="$BUILD_TCROOT/tar-1.20/bin/tar"
    AWK="$BUILD_TCROOT/gawk-3.1.5/bin/awk"
    CC="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-gcc"
    CXX="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-g++"
    DPKG_DEB="$BUILD_TCROOT/dpkg-1.13.24/bin/dpkg-deb"
+   GENCCODE="$BUILD_TCROOT/icu4c-$icuversion/sbin/genccode"
+   GENSPREP="$BUILD_TCROOT/icu4c-$icuversion/sbin/gensprep"
    GZIP="$BUILD_TCROOT/gzip-1.3.5/bin/gzip"
    FAKEROOT="$BUILD_TCROOT/fakeroot-1.5.9ubuntu1-1/bin/fakeroot"
+   ICUPKG="$BUILD_TCROOT/icu4c-$icuversion/sbin/icupkg"
    LD="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-gcc"
    LN="$BUILD_TCROOT/coreutils-5.97/bin/ln"
    LN_S="$BUILD_TCROOT/coreutils-5.97/bin/ln -s"
@@ -189,6 +194,9 @@ if test "$TCROOT" ; then
    done
    GTK_LIBS="$GTK_LIBS -lglib-2.0 -lgobject-2.0 -latk-1.0 -lgtk-x11-2.0 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lpng"
 
+   ICU_CPPFLAGS="-I$HOST_TCROOT/icu4c-$icuversion/include"
+   ICU_LIBS="-L$HOST_TCROOT/icu4c-$icuversion/lib"
+
    XML_CFLAGS="-I$HOST_TCROOT/libxml2-2.6.30/include/libxml2"
    XML_LIBS="-L$HOST_TCROOT/libxml2-2.6.30/lib -lxml2"
 
@@ -226,8 +234,17 @@ if test "$TCROOT" ; then
    LIB_MISC_CPPFLAGS="$LIB_MISC_CPPFLAGS -DGLIBC_VERSION_22"
 else
    AC_MSG_RESULT([not requested])
+   if test -z "$GENCCODE" ; then
+      GENCCODE="/usr/sbin/genccode"
+   fi
+   if test -z "$GENSPREP" ; then
+      GENSPREP="/usr/sbin/gensprep"
+   fi
    if test -z "$GZIP" ; then
       GZIP=gzip
+   fi
+   if test -z "$ICUPKG" ; then
+      ICUPKG="/usr/sbin/icupkg"
    fi
    if test -z "$MKSQUASHFS" ; then
       MKSQUASHFS=mksquashfs
@@ -268,6 +285,7 @@ AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CC
 AC_PROG_CXX
 AM_PROG_CC_C_O
+AM_PROG_AS
 AC_PROG_LN_S
 AC_PROG_RANLIB
 AC_PROG_SED
@@ -275,10 +293,22 @@ AC_PATH_PROG([AR],[ar])
 AC_PATH_PROG([DATE],[date])
 AC_PATH_PROG([DPKG_DEB],[dpkg-deb])
 AC_PATH_PROG([FAKEROOT],[fakeroot])
+AC_PATH_PROG([GENCCODE],[genccode])
+AC_PATH_PROG([GENSPREP],[gensprep])
 AC_PATH_PROG([GZIP],[gzip])
+AC_PATH_PROG([ICUPKG],[icupkg])
 AC_PATH_PROG([MKSQUASHFS],[mksquashfs])
 AC_PATH_PROG([RPMBUILD],[rpmbuild])
 AC_PATH_PROG([STRIP],[strip])
+AC_PROG_INTLTOOL([0.21])
+
+GETTEXT_PACKAGE="vmware-view"
+AC_SUBST(GETTEXT_PACKAGE)
+# Change this when [language].po files are added to cdk/po/.
+ALL_LINGUAS="ja de"
+AC_SUBST(ALL_LINGUAS)
+AM_GLIB_GNU_GETTEXT
+
 # These need to be after AC_PROG_SED
 if test -z "$TCROOT" ; then
    changequote(,)dnl
@@ -361,8 +391,11 @@ VIEW_VERSION=`echo $PACKAGE_VERSION | $SED -e 's/-.*//'`
 changequote(,)dnl
 BUILD_NUMBER=`echo $PACKAGE_VERSION | $SED -e 's/[^-].*-//'`
 changequote([,])dnl
-VIEW_VERSION_NUM=m4_esyscmd([echo ${VDM_VERSION_NUM:-2.1.1} | tr -d '\n'])
-PRODUCT_BUILD_NUMBER=m4_esyscmd([echo -n ${PRODUCT_BUILD_NUMBER:-0}])
+BUILD_MAJOR=m4_esyscmd([echo ${BUILD_MAJOR:-3} | tr -d '\n'])
+BUILD_MINOR=m4_esyscmd([echo ${BUILD_MINOR:-1} | tr -d '\n'])
+BUILD_REV=m4_esyscmd([echo ${BUILD_REV:-0} | tr -d '\n'])
+VIEW_VERSION_NUM="${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_REV}"
+PRODUCT_BUILD_NUMBER=m4_esyscmd([echo ${PRODUCT_BUILD_NUMBER:-0} | tr -d '\n'])
 
 AC_DEFINE_UNQUOTED([VIEW_CLIENT_VERSION_NUMBER],["$VIEW_VERSION"])
 
@@ -398,6 +431,38 @@ case "$host_os" in
       LIB_USER_CPPFLAGS="$LIB_USER_CPPFLAGS -D_POSIX_PTHREAD_SEMANTICS"
       ;;
 esac
+
+AC_ARG_ENABLE([static-icu],
+   [AS_HELP_STRING([--enable-static-icu],
+      [statically link against libicu])],
+   [],[enable_static_icu="no"])
+if test "$enable_static_icu" = "no" ; then
+   ICU_LIBS="$ICU_LIBS -licuuc -licudata"
+else
+   ICU_LIBS="$ICU_LIBS -lsicuuc"
+   AC_MSG_CHECKING([for U_ICUDATA_ENTRY_POINT])
+   # Sadly AC_EGREP_CPP doesn't let us grab the result of the grep, so
+   # it's somewhat duplicated here.
+   AC_LANG_CONFTEST([AC_LANG_SOURCE(
+      [#include <unicode/udata.h>
+vm_grep_value=U_ICUDATA_ENTRY_POINT])])
+   CPPFLAGS_save="$CPPFLAGS"
+   CPPFLAGS="$CPPFLAGS $ICU_CPPFLAGS"
+   vm_grep_value=
+   AS_IF([(eval "$ac_cpp conftest.$ac_ext") 2>&AS_MESSAGE_LOG_FD |
+      $EGREP "^vm_grep_value=" > conftest.grep 2>/dev/null],
+      [eval `cat conftest.grep`])
+   CPPFLAGS="$CPPFLAGS_save"
+   rm -f conftest*
+   if test "$vm_grep_value" ; then
+      ICUDATA_ENTRY_POINT=`echo $vm_grep_value | sed -e s/_dat//`
+      AC_MSG_RESULT([$ICUDATA_ENTRY_POINT])
+   else
+      AC_MSG_RESULT([unknown])
+      AC_MSG_FAILURE([Could not determine the value of U_ICUDATA_ENTRY_POINT; check config.log for details.])
+   fi
+fi
+AM_CONDITIONAL([STATIC_ICU],[test "$enable_static_icu" != "no"])
 
 if test ! "$TCROOT" ; then
    AC_CHECK_FUNCS([lseek],[LIB_FILE_CPPFLAGS="$LIB_FILE_CPPFLAGS -DGLIBC_VERSION_21"])
@@ -469,6 +534,36 @@ if test ! "$TCROOT" ; then
 
    AX_BOOST_BASE([1.34.1])
    AX_BOOST_SIGNALS
+
+   AC_CHECK_HEADER([unicode/uidna.h],,
+	[AC_MSG_ERROR([libicu is required, but not found.  Check config.log for details.])])
+
+   # Due to icu symbol version renaming, we can't do a simple
+   # AC_CHECK_LIB here...
+   AC_MSG_CHECKING([for uidna_IDNToASCII in -licuuc])
+   LIBS_save="$LIBS"
+   LIBS="$LIBS $ICU_LIBS"
+   if test "$enable_static_icu" != "no" ; then
+      LIBS="$LIBS -lsicudata"
+   fi
+   AC_LANG_PUSH([C++])
+   AC_LINK_IFELSE([AC_LANG_CALL([#include <unicode/urename.h>],[uidna_IDNToASCII])],
+      [AC_MSG_RESULT([yes])],
+      [AC_MSG_RESULT([no])
+       AC_MSG_ERROR([libicu is required, but not found.  Check config.log for details.])])
+   AC_LANG_POP([C++])
+   LIBS="$LIBS_save"
+   if test "$enable_static_icu" != "no" ; then
+    if test -z "$GENCCODE" ; then
+       AC_MSG_ERROR([genccode is required when linking ICU statically.])
+    fi
+    if test -z "$GENSPREP" ; then
+       AC_MSG_ERROR([gensprep is required when linking ICU statically.])
+    fi
+    if test -z "$ICUPKG" ; then
+       AC_MSG_ERROR([icupkg is required when linking ICU statically.])
+    fi
+  fi
 fi
 
 RPM_STAGE_ROOT="`pwd`/rpm-stage"
@@ -504,6 +599,10 @@ AC_SUBST(RPM_CONFLICTS_LITE)
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
+AC_SUBST(ICU_CPPFLAGS)
+AC_SUBST(ICU_LIBS)
+AC_SUBST(ICUDATA_ENTRY_POINT)
+
 AC_SUBST(XML_CFLAGS)
 AC_SUBST(XML_LIBS)
 
@@ -527,7 +626,11 @@ VMware-view-open-client.control
 VMware-view-open-client.spec
 buildNumber.h
 doc/changelog.Debian
-vmware-view.desktop
+intltool-update
+intltool-merge
+intltool-extract
+po/Makefile.in
+vmware-view.desktop.in
 ])
 
 AC_OUTPUT

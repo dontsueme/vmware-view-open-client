@@ -13,8 +13,11 @@ Obsoletes: VMware-vdm-client < %{version}
 Conflicts: @RPM_CONFLICTS@
 
 %description
-@PRODUCT_VIEW_CLIENT_NAME@ allows users to connect to desktops on a
-View Connection Server.
+Allows users to connect to desktops on a View Connection Server.
+%description -l de
+Ermöglicht Benutzern die Verbindungsherstellung mit Desktops auf einem View Connection Server.
+%description -l ja
+ユーザーは、View Connection Server 上のデスクトップに接続できます。
 
 %package -n @PACKAGING_NAME@-lite
 Summary: @PRODUCT_VIEW_CLIENT_NAME@
@@ -25,8 +28,11 @@ Obsoletes: VMware-vdm-thinclient < %{version}
 Conflicts: @RPM_CONFLICTS_LITE@
 
 %description -n @PACKAGING_NAME@-lite
-@PRODUCT_VIEW_CLIENT_NAME@ allows users to connect to desktops on a
-View Connection Server.
+Allows users to connect to desktops on a View Connection Server.
+%description -l de -n @PACKAGING_NAME@-lite
+Ermöglicht Benutzern die Verbindungsherstellung mit Desktops auf einem View Connection Server.
+%description -l ja -n @PACKAGING_NAME@-lite
+ユーザーは、View Connection Server 上のデスクトップに接続できます。
 
 %install
 
@@ -41,16 +47,18 @@ exit 0
 %defattr(-, root, root, -)
 %attr(0555, root, root) "/usr/bin/vmware-view"
 %attr(0555, root, root) "/usr/bin/vmware-view-tunnel"
+%attr(0555, root, root) "/usr/bin/vmware-view-log-collector"
 %dir "/usr/share/doc/@PACKAGING_NAME@"
 %doc "/usr/share/doc/@PACKAGING_NAME@/README.txt"
 %doc "/usr/share/doc/@PACKAGING_NAME@/open_source_licenses.txt"
 %doc "/usr/share/doc/@PACKAGING_NAME@/EULA_English-View_GA.rtf"
 %doc "/usr/share/doc/@PACKAGING_NAME@/View_Client_Admin_Guide.pdf"
-%doc "/usr/share/doc/@PACKAGING_NAME@/View_Client_Help.pdf"
+%doc "/usr/share/doc/@PACKAGING_NAME@/help/integrated_help-*.txt"
 %doc "/usr/share/man/man1/vmware-view.1.gz"
 %doc "/usr/share/man/man1/vmware-view-tunnel.1.gz"
 %attr(0444, root, root) "/usr/share/pixmaps/vmware-view.png"
 %attr(0444, root, root) "/usr/share/applications/vmware-view.desktop"
+%attr(0444, root, root) "/usr/share/locale/*/*/*"
 
 %if @BUILD_THINCLIENT_RPM@
 %files -n @PACKAGING_NAME@-lite

@@ -29,9 +29,7 @@
  */
 
 
-extern "C" {
 #include <glib/gutils.h> // For g_get_user_name
-}
 
 
 #include "prefs.hh"
@@ -83,7 +81,7 @@ Prefs::Prefs()
    Msg_Reset(true);
    if (!Util_MakeSureDirExistsAndAccessible(Util_ExpandString(VMWARE_HOME_DIR),
                                             0755)) {
-      Util::UserWarning("Creating ~/.vmware failed: %s\n",
+      Util::UserWarning(_("Creating ~/.vmware failed: %s\n"),
                         Msg_GetMessagesAndReset());
    }
 
@@ -672,7 +670,120 @@ Prefs::SetDefaultDesktopHeight(int val) // IN
 }
 
 
-#endif // VIEW_ENABLE_WINDOW_MODE
+#else // !VIEW_ENABLE_WINDOW_MODE
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::GetDefaultUseAllMonitors --
+ *
+ *      Return the view.defaultUseAllMonitors key, to be used as the default
+ *      state of the "Use all monitors" checkbox.
+ *
+ * Results:
+ *      True if the default is to use all monitors.
+ *
+ * Side effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Prefs::GetDefaultUseAllMonitors()
+   const
+{
+   if (GetBool("view.allowDefaultUseAllMonitors", true)) {
+       return GetBool("view.defaultUseAllMonitors", false);
+   }
+   return false;
+}
 
 
- } // namespace cdk
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::SetDefaultUseAllMonitors --
+ *
+ *      Sets the view.defaultUseAllMonitors preference key.  Only set if the
+ *      view.allowDefaultUseAllMonitors pref is not FALSE.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Prefs::SetDefaultUseAllMonitors(bool use) // IN
+{
+   if (GetBool("view.allowDefaultUseAllMonitors", true)) {
+      SetBool("view.defaultUseAllMonitors", use);
+   } else {
+      Log("Not saving \"Use all monitors\" preference "
+          "(view.allowDefaultUseAllMonitors=false).\n");
+   }
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::GetDefaultShowBrokerOptions --
+ *
+ *      Sets the view.defaultShowBrokerOptions preference key.
+ *      Toggles whether advanced options should be displayed on the
+ *      broker screen.
+ *
+ * Results:
+ *      true if advanced options should be displayed.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Prefs::GetDefaultShowBrokerOptions()
+   const
+{
+   if (GetBool("view.allowDefaultShowBrokerOptions", true)) {
+      return GetBool("view.defaultShowBrokerOptions");
+   }
+   return false;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::SetDefaultShowBrokerOptions --
+ *
+ *      Sets the view.defaultShowBrokerOptions preference key, if
+ *      view.allowDefaultShowBrokerOptions is true.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Prefs::SetDefaultShowBrokerOptions(bool val)
+{
+   if (GetBool("view.allowDefaultShowBrokerOptions", true)) {
+      SetBool("view.defaultShowBrokerOptions", val);
+   } else {
+      Log("Not saving broker options (view.allowDefaultShowBrokerOptions=false).\n");
+   }
+}
+
+
+} // namespace cdk

@@ -52,27 +52,40 @@ class DesktopSelectDlg
    : public Dlg
 {
 public:
-   DesktopSelectDlg(std::vector<Desktop*> desktops,
-                    Util::string initalDesktop = ""
+   enum Action {
+      ACTION_CONNECT,
+      ACTION_RESET,
+      ACTION_KILL_SESSION,
+      ACTION_ROLLBACK
+   };
+
+   DesktopSelectDlg(std::vector<Desktop *> &desktops,
+                    Util::string initalDesktop = "",
+                    bool offerMultiMon = false
 #ifdef VIEW_ENABLE_WINDOW_MODE
                     , bool offerWindowSizes = true
 #endif // VIEW_ENABLE_WINDOW_MODE
                     );
-   ~DesktopSelectDlg() { }
+   ~DesktopSelectDlg();
 
+   void UpdateList(std::vector<Desktop *> &desktops, Util::string select = "");
    Desktop *GetDesktop();
 #ifdef VIEW_ENABLE_WINDOW_MODE
-   bool GetDesktopSize(GdkRectangle *geometry);
+   bool GetDesktopSize(GdkRectangle *geometry, bool *useAllMonitors = NULL);
+#else
+   bool GetUseAllMonitors() const;
 #endif // VIEW_ENABLE_WINDOW_MODE
    bool IsResizable() const { return true; }
 
-   boost::signal0<void> connect;
+   boost::signal1<void, Action> action;
 
 private:
    enum ListColumns {
       ICON_COLUMN,
+      LABEL_COLUMN,
       NAME_COLUMN,
       DESKTOP_COLUMN,
+      BUTTON_COLUMN,
       N_COLUMNS,
    };
 
@@ -84,35 +97,60 @@ private:
       N_WINDOW_COLUMNS
    };
 #endif
-   void ShowPopup(GdkEventButton *evt = NULL);
 
-   void OnResetDesktopAbort(bool canceled, Util::exception err);
-   void OnResetDesktopDone();
+   void ShowPopup(GdkEventButton *evt = NULL, bool customPosition = false);
+   void KillPopup();
+   inline bool PopupVisible()
+      { return mPopup && GTK_WIDGET_VISIBLE(GTK_WIDGET(mPopup)); }
+   void DestroyPopup();
+   GtkTreePath *GetPathForButton(int x, int y);
+   void CheckHover(int x, int y);
+   void KillHover();
 
-   void OnKillSessionDone();
-   void OnKillSessionAbort(bool canceled, Util::exception err);
+   void ConfirmAction(Action act);
 
    static void OnConnect(GtkButton *button, gpointer userData);
    static void OnResetDesktop(GtkMenuItem *item, gpointer data);
    static void OnKillSession(GtkMenuItem *item, gpointer data);
+   static void OnRollback(GtkMenuItem *item, gpointer data);
    static void OnPopupDeactivate(GtkWidget *widget, gpointer data);
-   static gboolean OnPopupDeactivateIdle(gpointer data);
+   static void OnPopupDetach(GtkWidget *widget, GtkMenu *popup);
    static gboolean OnPopupSignal(GtkWidget *widget, gpointer data);
-   static gboolean OnPopupEvent(GtkWidget *widget, GdkEventButton *button,
-                                gpointer data);
+   static gboolean OnButtonPress(GtkWidget *widget, GdkEventButton *button,
+                                 gpointer data);
+   static void PopupPositionFunc(GtkMenu *menu, int *x, int *y,
+                                 gboolean *pushIn, gpointer data);
    static void ActivateToplevelDefault(GtkWidget *widget);
+   static gboolean OnPointerMove(GtkWidget *widget, GdkEventMotion *event,
+                                 gpointer data);
+   static gboolean OnPointerLeave(GtkWidget *widget, GdkEventCrossing *event,
+                                  gpointer data);
+   static void UpdateButton(DesktopSelectDlg *that);
 #ifdef VIEW_ENABLE_WINDOW_MODE
    static void UpdateWindowSizes(gpointer data);
 #endif // VIEW_ENABLE_WINDOW_MODE
 
    GtkVBox *mBox;
    GtkTreeView *mDesktopList;
+   GtkListStore *mStore;
    GtkButton *mConnect;
 #ifdef VIEW_ENABLE_WINDOW_MODE
    GtkComboBox *mWindowSize;
+   bool mOfferMultiMon;
    bool mOfferWindowSizes;
+#else
+   GtkCheckButton *mMultiMon;
 #endif // VIEW_ENABLE_WINDOW_MODE
    gboolean mInButtonPress;
+   GtkMenu *mPopup;
+
+   // ListView button members.
+   GtkTreePath *mButtonPath;
+   GtkTreeViewColumn *mButtonColumn;
+   // ListView button pixbufs for three states.
+   GdkPixbuf *mButtonNormal;
+   GdkPixbuf *mButtonHover;
+   GdkPixbuf *mButtonOpen;
 };
 
 

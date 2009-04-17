@@ -135,6 +135,8 @@ const char * AsyncSocket_Err2String(int err);
 
 const char * AsyncSocket_MsgError(int asyncSockErr);
 
+int AsyncSocket_GetGenericErrno(AsyncSocket *s);
+
 /*
  * Return a "unique" ID
  */

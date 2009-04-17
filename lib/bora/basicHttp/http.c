@@ -25,7 +25,6 @@
 /*
  * http.c --
  */
-// #define BASIC_HTTP_TRACE 1
 
 #include "vmware.h"
 #include "vm_version.h"
@@ -37,7 +36,6 @@
 #include "str.h"
 #include "basicHttp.h"
 #include "requestQueue.h"
-#include "sslPRNG.h"
 
 #include <curl/curl.h>
 #include <curl/types.h>
@@ -88,6 +86,9 @@ struct BasicHttpRequest {
 
    int                  authType;
    char                 *userNameAndPassword;
+   char                 *userAgent;
+
+   BasicHttpSslCtxProc *sslCtxProc;
 
    CURLcode             result;
 };
@@ -111,7 +112,7 @@ typedef struct CurlSocketState {
    int                     action;
 } CurlSocketState;
 
-static const char *userAgent = "VMware-client";
+static const char *defaultUserAgent = "VMware-client";
 
 static CurlSocketState *BasicHttpFindSocket(curl_socket_t sock);
 
@@ -160,6 +161,8 @@ static BasicHttpCookieJar *defaultCookieJar = NULL;
 static PollCallbackProc *pollCallbackProc = NULL;
 static PollCallbackRemoveProc *pollCallbackRemoveProc = NULL;
 
+static Bool basicHttpTrace = 0;
+
 /*
  *-----------------------------------------------------------------------------
  *
@@ -205,6 +208,11 @@ BasicHttp_InitEx(PollCallbackProc *pollCbProc,              // IN
    Bool success = TRUE;
    CURLcode code = CURLE_OK;
 
+   char *traceVar = getenv("VMWARE_BASICHTTP_TRACE");
+   if (traceVar && strcmp(traceVar, "0")) {
+      basicHttpTrace = 1;
+   }
+
    ASSERT(pollCbProc);
    ASSERT(pollCbRemoveProc);
 
@@ -213,7 +221,6 @@ BasicHttp_InitEx(PollCallbackProc *pollCbProc,              // IN
    }
 
 #ifdef _WIN32
-   SSLPRNG_Install();
    code = curl_global_init(CURL_GLOBAL_WIN32);
 #else
    code = curl_global_init(CURL_GLOBAL_ALL);
@@ -261,6 +268,32 @@ abort:
 
    return success;
 } // BasicHttp_InitEx
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * BasicHttp_SetSslCtxProc --
+ *
+ *      Sets the ssl context function for a given request.  This
+ *      callback will be called after curl initializes all ssl
+ *      options, but before the request is issued.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BasicHttp_SetSslCtxProc(BasicHttpRequest *request,       // IN
+                        BasicHttpSslCtxProc *sslCtxProc) // IN
+{
+   request->sslCtxProc = sslCtxProc;
+}
 
 
 /*
@@ -329,9 +362,6 @@ BasicHttp_Shutdown(void)
       curlGlobalState = NULL;
    }
 
-#ifdef _WIN32
-   SSLPRNG_Restore();
-#endif
 } // BasicHttp_Shutdown
 
 
@@ -838,10 +868,10 @@ BasicHttpCompleteRequestCallback(void *clientData)          // IN
           contentLength);
    response->content[contentLength] = '\0';
 
-#ifdef BASIC_HTTP_TRACE
+   if (basicHttpTrace) {
    fprintf(stderr, "RECEIVED RECEIVED RECEIVED RECEIVED RECEIVED RECEIVED\n");
    fprintf(stderr, "%s\n\n\n", response->content); 
-#endif
+   }
 
    (request->onSentProc)(request, response, request->clientData);
 
@@ -1070,6 +1100,7 @@ BasicHttp_CreateRequest(const char *url,                 // IN
    DynBuf_Init(&request->receiveBuf);
    request->authType = BASICHTTP_AUTHENTICATION_NONE;
    request->userNameAndPassword = NULL;
+   request->userAgent = NULL;
 
 abort:
    return request;
@@ -1133,14 +1164,75 @@ BasicHttp_SetRequestNameAndPassword(BasicHttpRequest *request,     // IN
    if ((NULL != userName) && (NULL != userPassword)) {
       size_t strLength = strlen(userName) + strlen(userPassword) + 2;
       request->userNameAndPassword = (char *) Util_SafeCalloc(1, strLength);
-      snprintf(request->userNameAndPassword, 
-                  strLength, 
-                  "%s:%s", 
-                  userName, 
-                  userPassword);                                                  
+      snprintf(request->userNameAndPassword,
+                  strLength,
+                  "%s:%s",
+                  userName,
+                  userPassword);
    }
 } // BasicHttp_SetRequestNameAndPassword
 
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * BasicHttp_SetUserAgent --
+ *
+ *       Sets the userAgent string for the HTTP request.
+ *
+ *
+ * Results:
+ *       None.
+ *
+ * Side effects:
+ *       None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BasicHttp_SetUserAgent(BasicHttpRequest *request,     // IN
+                       const char *userAgent)         // IN: New UserAgent string
+{
+   ASSERT(request);
+   if (NULL == request) {
+      return;
+   }
+
+   free(request->userAgent);
+   request->userAgent = Util_SafeStrdup(userAgent);
+} // BasicHttp_SetUserAgent
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * BasicHttpSslCtxCb --
+ *
+ *      Callback from curl, after all of its ssl options have been
+ *      set, before the connection has been made.  Pass the sslctx on
+ *      to the caller, if it has set a callback.
+ *
+ * Results:
+ *      OK
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+static CURLcode
+BasicHttpSslCtxCb(CURL *curl,   // IN
+                  void *sslctx, // IN
+                  void *parm)   // IN
+{
+    BasicHttpRequest *request = parm;
+    if (request->sslCtxProc) {
+        request->sslCtxProc(request, sslctx, request->clientData);
+    }
+    return CURLE_OK;
+}
 
 /*
  *-----------------------------------------------------------------------------
@@ -1171,28 +1263,30 @@ BasicHttpStartRequest(BasicHttpRequest *request)
 
    ASSERT(NULL != request->url);
    curl_easy_setopt(request->curl, CURLOPT_URL, request->url);
-   curl_easy_setopt(request->curl, CURLOPT_USERAGENT, userAgent);
    curl_easy_setopt(request->curl, CURLOPT_SSL_VERIFYPEER, (long) 0);
    curl_easy_setopt(request->curl, CURLOPT_SSL_VERIFYHOST, (long) 0);
+   if (request->sslCtxProc) {
+       curl_easy_setopt(request->curl, CURLOPT_SSL_CTX_FUNCTION,
+                        BasicHttpSslCtxCb);
+       curl_easy_setopt(request->curl, CURLOPT_SSL_CTX_DATA, request);
+   }
    curl_easy_setopt(request->curl, CURLOPT_COOKIEFILE, ""); // Activate cookie engine.
    curl_easy_setopt(request->curl, CURLOPT_FOLLOWLOCATION, (long) 1);
 #ifdef CURLOPT_POST301
    curl_easy_setopt(request->curl, CURLOPT_POST301, (long) 1);
 #endif
    curl_easy_setopt(request->curl, CURLOPT_NOSIGNAL, (long) 1);
-#ifdef _WIN32
    curl_easy_setopt(request->curl, CURLOPT_CONNECTTIMEOUT, (long) 60);
+#ifdef _WIN32
    /*
     * Set a dummy random file, this is pretty much a no-op in libcurl
     * however, it triggers the libcurl to check if the random seed has enough
     * entrophy and skips a lengthy rand_screen() if that is the case.
     */
    curl_easy_setopt(request->curl, CURLOPT_RANDOM_FILE, "");
-#else
-   curl_easy_setopt(request->curl, CURLOPT_CONNECTTIMEOUT, (long) 5);
 #endif
 
-   if ((BASICHTTP_AUTHENTICATION_NONE != request->authType) 
+   if ((BASICHTTP_AUTHENTICATION_NONE != request->authType)
          && (NULL != request->userNameAndPassword)) {
       curl_easy_setopt(request->curl, CURLOPT_USERPWD, request->userNameAndPassword);
       switch(request->authType) {
@@ -1212,6 +1306,9 @@ BasicHttpStartRequest(BasicHttpRequest *request)
       }
    } // Set the username/password.
 
+   curl_easy_setopt(request->curl, CURLOPT_USERAGENT,
+                    request->userAgent ? request->userAgent : defaultUserAgent);
+
    if (NULL != request->cookieJar) {
       curl_easy_setopt(request->curl, CURLOPT_SHARE, request->cookieJar->curlShare);
       /*
@@ -1226,9 +1323,9 @@ BasicHttpStartRequest(BasicHttpRequest *request)
       }
    }
 
-#ifdef BASIC_HTTP_TRACE
+   if (basicHttpTrace) {
    curl_easy_setopt(request->curl, CURLOPT_VERBOSE, (long) 1);
-#endif
+   }
 
    switch (request->httpMethod) {
       case BASICHTTP_METHOD_GET:
@@ -1267,13 +1364,13 @@ BasicHttpStartRequest(BasicHttpRequest *request)
    }
 
 
-#ifdef BASIC_HTTP_TRACE
+   if (basicHttpTrace) {
    fprintf(stderr, "SENDING SENDING SENDING SENDING SENDING SENDING\n");
    if (request->url)
       fprintf(stderr, "%s\n", request->url);
    if (request->body)
       fprintf(stderr, "%s\n\n\n", request->body);
-#endif
+   }
 
    BasicHttpSocketPollCallback(NULL);
 
@@ -1497,6 +1594,7 @@ BasicHttp_FreeRequest(BasicHttpRequest *request)            // IN
    free((void *) request->body);
    DynBuf_Destroy(&request->receiveBuf);
    free(request->userNameAndPassword);
+   free(request->userAgent);
    if (NULL != request->curl) {
       curl_easy_cleanup(request->curl);
    }

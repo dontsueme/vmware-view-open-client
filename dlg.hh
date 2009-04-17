@@ -54,6 +54,7 @@ public:
    GtkWidget *GetContent() const { return mContent; }
    virtual void SetSensitive(bool sensitive);
    bool IsSensitive() const { return mSensitive; }
+   virtual bool IsValid();
    virtual bool IsResizable() const { return false; }
 
    virtual void Cancel();
@@ -69,12 +70,14 @@ protected:
    void SetForwardButton(GtkButton *button) { mForwardButton = button; }
    void AddRequiredEntry(GtkEntry *entry);
    GtkButton *GetCancelButton();
+   GtkButton *GetHelpButton();
 
 private:
    static void OnContentHierarchyChanged(GtkWidget *widget,
                                          GtkWidget *oldToplevel,
                                          gpointer userData);
    static void OnCancel(GtkButton *button, gpointer userData);
+   static void OnHelp(GtkButton *button, gpointer userData);
    static void OnTreeViewRealizeGrabFocus(GtkWidget *widget);
 
    void GrabFocus();
@@ -83,6 +86,7 @@ private:
    GtkWidget *mFocusWidget;
    GtkButton *mCancel;
    GtkButton *mForwardButton;
+   GtkButton *mHelp;
    std::list<GtkEntry *> mRequiredEntries;
    std::list<GtkWidget *> mSensitiveWidgets;
    bool mSensitive;

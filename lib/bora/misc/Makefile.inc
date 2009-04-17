@@ -22,4 +22,4 @@ libMisc_a_SOURCES += lib/bora/misc/loglevel_tools.c
 libMisc_a_SOURCES += lib/bora/misc/msgfmt.c
 libMisc_a_SOURCES += lib/bora/misc/url.c
 
-libMisc_a_CPPFLAGS += -I$(top_srcdir)/lib/bora/unicode
+libMisc_a_CPPFLAGS += $(ICU_CPPFLAGS)
