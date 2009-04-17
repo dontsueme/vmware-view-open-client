@@ -30,14 +30,21 @@
 
 
 #include <boost/bind.hpp>
+#include <glib/gi18n.h>
 
 
 #include "app.hh"
 #include "desktopSelectDlg.hh"
 #include "icons/desktop_remote32x.h"
+#include "icons/list_button_normal.h"
+#include "icons/list_button_hover.h"
+#include "icons/list_button_open.h"
 #include "prefs.hh"
 #include "util.hh"
 
+
+#define BUTTON_SIZE 16
+#define DIALOG_DATA_KEY "cdk-dialog"
 
 #ifdef VIEW_ENABLE_WINDOW_MODE
 // Shorter versions of these defines.
@@ -56,7 +63,9 @@ namespace cdk {
  *
  *      Constructor.  Lists the available desktops passed in the constructor in
  *      a ListView, and fires the onConnect signal when the "Connect" button is
- *      clicked.
+ *      clicked. If initialDesktop is given, selects it.
+ *      If offerMultiMon is true, creates and shows the "Use all monitors"
+ *      checkbox.
  *
  * Results:
  *      None
@@ -67,30 +76,40 @@ namespace cdk {
  *-----------------------------------------------------------------------------
  */
 
-DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop*> desktops, // IN
-                                   Util::string initialDesktop     // IN/OPT
+DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop *> &desktops, // IN
+                                   Util::string initialDesktop,      // IN/OPT
+                                   bool offerMultiMon                // IN/OPT
 #ifdef VIEW_ENABLE_WINDOW_MODE
-                                   , bool offerWindowSizes         // IN/OPT
+                                   , bool offerWindowSizes           // IN/OPT
 #endif // VIEW_ENABLE_WINDOW_MODE
                                    )
    : Dlg(),
      mBox(GTK_VBOX(gtk_vbox_new(false, VM_SPACING))),
      mDesktopList(GTK_TREE_VIEW(gtk_tree_view_new())),
-     mConnect(Util::CreateButton(GTK_STOCK_OK,
-        CDK_MSG(connectDesktopSelectDlg, "C_onnect"))),
+     mStore(gtk_list_store_new(N_COLUMNS,
+                               GDK_TYPE_PIXBUF,   // ICON_COLUMN
+                               G_TYPE_STRING,     // LABEL_COLUMN
+                               G_TYPE_STRING,     // NAME_COLUMN
+                               G_TYPE_POINTER,    // DESKTOP_COLUMN
+                               GDK_TYPE_PIXBUF)), // BUTTON_COLUMN
+     mConnect(Util::CreateButton(GTK_STOCK_OK, _("C_onnect"))),
 #ifdef VIEW_ENABLE_WINDOW_MODE
      mWindowSize(NULL),
+     mOfferMultiMon(offerMultiMon),
      mOfferWindowSizes(offerWindowSizes),
+#else
+     mMultiMon(NULL),
 #endif // VIEW_ENABLE_WINDOW_MODE
-     mInButtonPress(false)
+     mInButtonPress(false),
+     mPopup(NULL),
+     mButtonPath(NULL)
 {
    GtkLabel *l;
 
    Init(GTK_WIDGET(mBox));
    gtk_container_set_border_width(GTK_CONTAINER(mBox), VM_SPACING);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(availableComputers, "_Available Desktops:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Available Desktops:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_box_pack_start(GTK_BOX(mBox), GTK_WIDGET(l), false, true, 0);
    gtk_misc_set_alignment(GTK_MISC(l), 0.0, 0.5);
@@ -100,7 +119,7 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop*> desktops, // IN
       GTK_SCROLLED_WINDOW(gtk_scrolled_window_new(NULL, NULL));
    gtk_widget_show(GTK_WIDGET(swin));
    gtk_box_pack_start(GTK_BOX(mBox), GTK_WIDGET(swin), true, true, 0);
-   g_object_set(swin, "height-request", 100, NULL);
+   g_object_set(swin, "height-request", 130, NULL);
    gtk_scrolled_window_set_policy(swin, GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
    gtk_scrolled_window_set_shadow_type(swin, GTK_SHADOW_IN);
 
@@ -110,18 +129,19 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop*> desktops, // IN
    gtk_tree_view_set_reorderable(mDesktopList, false);
    gtk_tree_view_set_rules_hint(mDesktopList, true);
    AddSensitiveWidget(GTK_WIDGET(mDesktopList));
-   g_signal_connect(G_OBJECT(mDesktopList),
-                    "row-activated",
+   g_signal_connect(G_OBJECT(mDesktopList), "row-activated",
                     G_CALLBACK(&DesktopSelectDlg::ActivateToplevelDefault),
                     NULL);
-   g_signal_connect(G_OBJECT(mDesktopList),
-                    "popup-menu",
-                    G_CALLBACK(&DesktopSelectDlg::OnPopupSignal),
-                    this);
-   g_signal_connect(G_OBJECT(mDesktopList),
-                    "button-press-event",
-                    G_CALLBACK(&DesktopSelectDlg::OnPopupEvent),
-                    this);
+   g_signal_connect(G_OBJECT(mDesktopList), "popup-menu",
+                    G_CALLBACK(&DesktopSelectDlg::OnPopupSignal), this);
+   g_signal_connect(G_OBJECT(mDesktopList), "button-press-event",
+                    G_CALLBACK(&DesktopSelectDlg::OnButtonPress), this);
+   g_signal_connect(G_OBJECT(mDesktopList), "motion-notify-event",
+                    G_CALLBACK(&DesktopSelectDlg::OnPointerMove), this);
+   g_signal_connect(G_OBJECT(mDesktopList), "leave-notify-event",
+                    G_CALLBACK(&DesktopSelectDlg::OnPointerLeave), this);
+   // Widget needs to remember us in OnPopupDetach.
+   g_object_set_data(G_OBJECT(mDesktopList), DIALOG_DATA_KEY, this);
 
    SetFocusWidget(GTK_WIDGET(mDesktopList));
 
@@ -141,54 +161,40 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop*> desktops, // IN
    renderer = gtk_cell_renderer_text_new();
    column = gtk_tree_view_column_new_with_attributes("XXX",
                                                      renderer,
-                                                     "markup", NAME_COLUMN,
+                                                     "markup", LABEL_COLUMN,
                                                      NULL);
    gtk_tree_view_append_column(mDesktopList, column);
+   gtk_tree_view_column_set_expand(column, true);
+   gtk_tree_view_column_set_resizable(column, true);
+
+   renderer = gtk_cell_renderer_pixbuf_new();
+   mButtonColumn =
+      gtk_tree_view_column_new_with_attributes("XXX", renderer,
+                                               "pixbuf", BUTTON_COLUMN,
+                                               NULL);
+   gtk_tree_view_append_column(mDesktopList, mButtonColumn);
+   gtk_tree_view_column_set_sizing(mButtonColumn,
+                                   GTK_TREE_VIEW_COLUMN_FIXED);
+   gtk_tree_view_column_set_fixed_width(mButtonColumn,
+                                        VM_SPACING * 2 + BUTTON_SIZE);
+
+   mButtonNormal = gdk_pixbuf_new_from_inline(-1, list_button_normal, false,
+                                              NULL);
+   mButtonHover = gdk_pixbuf_new_from_inline(-1, list_button_hover, false,
+                                             NULL);
+   mButtonOpen = gdk_pixbuf_new_from_inline(-1, list_button_open, false, NULL);
 
    GtkTreeSelection *sel = gtk_tree_view_get_selection(mDesktopList);
    gtk_tree_selection_set_mode(sel, GTK_SELECTION_BROWSE);
+   g_signal_connect_swapped(G_OBJECT(sel), "changed",
+                            G_CALLBACK(&DesktopSelectDlg::UpdateButton), this);
 
-   GtkListStore *store = gtk_list_store_new(N_COLUMNS,
-                                            GDK_TYPE_PIXBUF, // ICON_COLUMN
-                                            G_TYPE_STRING, // NAME_COLUMN
-                                            G_TYPE_POINTER); // DESKTOP_COLUMN
-   gtk_tree_view_set_model(mDesktopList, GTK_TREE_MODEL(store));
+   gtk_tree_view_set_model(mDesktopList, GTK_TREE_MODEL(mStore));
 
-   GdkPixbuf *pb = gdk_pixbuf_new_from_inline(-1, desktop_remote32x, false,
-                                              NULL);
-   GtkTreeIter iter;
-   for (std::vector<Desktop*>::iterator i = desktops.begin();
-        i != desktops.end(); i++) {
-      Util::string name = (*i)->GetName();
-
-      char *label = g_markup_printf_escaped(
-         "<b>%s</b>\n<span size=\"smaller\">%s</span>",
-         name.c_str(),
-         (*i)->GetSessionID().empty()
-            ? CDK_MSG(desktopHasSession,
-                       "Log in to new session").c_str()
-            : CDK_MSG(desktopNoSession,
-                       "Reconnect to existing session").c_str());
-
-      gtk_list_store_append(store, &iter);
-      gtk_list_store_set(store, &iter,
-                         ICON_COLUMN, pb,
-                         NAME_COLUMN, label,
-                         DESKTOP_COLUMN, *i,
-                         -1);
-
-      g_free(label);
-
-      if (name == initialDesktop || i == desktops.begin()) {
-         gtk_tree_selection_select_iter(sel, &iter);
-      }
-   }
-   if (pb) {
-      g_object_unref(pb);
-   }
+   UpdateList(desktops, initialDesktop);
 
 #ifdef VIEW_ENABLE_WINDOW_MODE
-   if (mOfferWindowSizes) {
+   if (mOfferWindowSizes || mOfferMultiMon) {
       GtkHBox *box = GTK_HBOX(gtk_hbox_new(0, VM_SPACING));
       gtk_widget_show(GTK_WIDGET(box));
       gtk_box_pack_start(GTK_BOX(mBox), GTK_WIDGET(box), false, false, 0);
@@ -213,10 +219,21 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop*> desktops, // IN
       g_signal_connect_swapped(mWindowSize, "screen-changed",
                                G_CALLBACK(UpdateWindowSizes), this);
 
-      l = GTK_LABEL(gtk_label_new_with_mnemonic("_Display:"));
+      l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Display:")));
       gtk_widget_show(GTK_WIDGET(l));
       gtk_box_pack_end(GTK_BOX(box), GTK_WIDGET(l), false, false, 0);
       gtk_label_set_mnemonic_widget(l, GTK_WIDGET(mWindowSize));
+   }
+#else
+   if (offerMultiMon) {
+      mMultiMon = GTK_CHECK_BUTTON(gtk_check_button_new_with_mnemonic(
+         _("_Use all monitors")));
+      gtk_widget_show(GTK_WIDGET(mMultiMon));
+      gtk_box_pack_start_defaults(GTK_BOX(mBox), GTK_WIDGET(mMultiMon));
+      AddSensitiveWidget(GTK_WIDGET(mMultiMon));
+      gtk_toggle_button_set_active(
+         GTK_TOGGLE_BUTTON(mMultiMon),
+         Prefs::GetPrefs()->GetDefaultUseAllMonitors());
    }
 #endif // VIEW_ENABLE_WINDOW_MODE
 
@@ -226,10 +243,198 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop*> desktops, // IN
    g_signal_connect(G_OBJECT(mConnect), "clicked",
                     G_CALLBACK(&DesktopSelectDlg::OnConnect), this);
 
+   GtkButton *help = GetHelpButton();
+
    GtkWidget *actionArea = Util::CreateActionArea(mConnect, GetCancelButton(),
-                                                  NULL);
+                                                  help, NULL);
    gtk_widget_show(actionArea);
    gtk_box_pack_start(GTK_BOX(mBox), actionArea, false, true, 0);
+   gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(actionArea),
+                                      GTK_WIDGET(help), true);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::~DesktopSelectDlg --
+ *
+ *      Destructor. Unrefs the button pixbufs and frees mButtonPath if it
+ *      exists.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+DesktopSelectDlg::~DesktopSelectDlg()
+{
+   DestroyPopup();
+   g_object_unref(mButtonNormal);
+   g_object_unref(mButtonHover);
+   g_object_unref(mButtonOpen);
+   if (mButtonPath) {
+      gtk_tree_path_free(mButtonPath);
+      mButtonPath = NULL;
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::UpdateButton --
+ *
+ *      Updates the sensitivity of the Connect button.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::UpdateButton(DesktopSelectDlg *that) // IN
+{
+   ASSERT(that);
+
+   Desktop *desktop = that->GetDesktop();
+   gtk_widget_set_sensitive(GTK_WIDGET(that->mConnect),
+                            desktop && desktop->CanConnect());
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::GetUseAllMonitors --
+ *
+ *      Returns whether or not the user has checked "Use all monitors".
+ *
+ * Results:
+ *      State of "Use all monitors" checkbox, or false if it does not exist.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifndef VIEW_ENABLE_WINDOW_MODE
+bool
+DesktopSelectDlg::GetUseAllMonitors()
+   const
+{
+   return mMultiMon &&
+      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(mMultiMon));
+}
+#endif // !VIEW_ENABLE_WINDOW_MODE
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::UpdateList --
+ *
+ *      Clears and rebuilds the list of desktops, preserving selection.
+ *      Calls UpdateButton to update the Connect button state.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::UpdateList(std::vector<Desktop *> &desktops, // IN
+                             Util::string select)              // IN/OPT
+{
+   GtkTreeIter iter;
+   // If we weren't given a desktop to select, remember what's selected now.
+   if (select.empty()) {
+      // We can't use GetDesktop() now; the Desktop pointer may be invalid.
+      if (gtk_tree_selection_get_selected(
+             gtk_tree_view_get_selection(mDesktopList),
+             NULL,
+             &iter)) {
+         gchar *tmpName;
+         gtk_tree_model_get(GTK_TREE_MODEL(mStore), &iter,
+                            NAME_COLUMN, &tmpName,
+                            -1);
+         select = tmpName;
+         g_free(tmpName);
+      }
+   }
+
+   // Clear the list store and rebuild
+   gtk_list_store_clear(mStore);
+
+   GdkPixbuf *pb = gdk_pixbuf_new_from_inline(-1, desktop_remote32x, false,
+                                              NULL);
+   for (std::vector<Desktop*>::iterator i = desktops.begin();
+        i != desktops.end(); i++) {
+      Desktop *desktop = *i;
+      gtk_list_store_append(mStore, &iter);
+
+      Util::string status;
+      switch (desktop->GetConnectionState()) {
+      case Desktop::STATE_RESETTING:
+         status = _("Resetting desktop");
+         break;
+      case Desktop::STATE_KILLING_SESSION:
+         status = _("Logging off");
+         break;
+      case Desktop::STATE_ROLLING_BACK:
+         status = _("Rolling back checkout");
+         break;
+      default:
+         if (desktop->GetOfflineState() != BrokerXml::OFFLINE_NONE &&
+             desktop->GetOfflineState() != BrokerXml::OFFLINE_CHECKED_IN) {
+            status = _("Checked out to another machine");
+         } else if (desktop->InMaintenanceMode()) {
+            status = _("Maintenance - may not be available");
+         } else if (!desktop->GetSessionID().empty()) {
+            status = _("Logged on");
+         } else {
+            status = _("Available");
+         }
+         break;
+      }
+
+      Util::string name = desktop->GetName();
+      char *label = g_markup_printf_escaped(
+         "<b>%s</b>\n<span size=\"smaller\">%s</span>",
+         name.c_str(),
+         status.c_str());
+      gtk_list_store_set(mStore, &iter,
+                         ICON_COLUMN, pb,
+                         LABEL_COLUMN, label,
+                         NAME_COLUMN, name.c_str(),
+                         DESKTOP_COLUMN, desktop,
+                         BUTTON_COLUMN, mButtonNormal,
+                         -1);
+      g_free(label);
+
+      if (name == select || i == desktops.begin()) {
+         gtk_tree_selection_select_iter(
+            gtk_tree_view_get_selection(mDesktopList),
+            &iter);
+      }
+   }
+   if (pb) {
+      g_object_unref(pb);
+   }
+   UpdateButton(this);
 }
 
 
@@ -272,6 +477,66 @@ DesktopSelectDlg::GetDesktop()
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::DesktopSelectDlg::GetDesktopSize --
+ *
+ *      Get the window size the user has selected, and whether they
+ *      want full screen and/or all monitors.
+ *
+ * Results:
+ *      returns whether full screen mode was selected
+ *      geometry is filled with the window size (could be negative)
+ *      useAllMonitors whether all monitors was selected
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef VIEW_ENABLE_WINDOW_MODE
+bool
+DesktopSelectDlg::GetDesktopSize(GdkRectangle *geometry, // OUT
+                                 bool *useAllMonitors)   // OUT/OPT
+{
+   ASSERT(geometry != NULL);
+
+   if (!mWindowSize) {
+      geometry->width = geometry->height = FULL_SCREEN;
+      if (useAllMonitors) {
+         *useAllMonitors = false;
+      }
+      return true;
+   }
+
+   GtkTreeIter iter;
+   if (gtk_combo_box_get_active_iter(mWindowSize, &iter)) {
+      gtk_tree_model_get(gtk_combo_box_get_model(mWindowSize), &iter,
+                         WIDTH_COLUMN, &geometry->width,
+                         HEIGHT_COLUMN, &geometry->height,
+                         -1);
+   } else {
+      geometry->width = Prefs::GetPrefs()->GetDefaultDesktopWidth();
+      geometry->height = Prefs::GetPrefs()->GetDefaultDesktopHeight();
+      // Make sure width and height agree, and are allowed by our caller.
+      if (geometry->width == ALL_SCREENS || geometry->height == ALL_SCREENS) {
+         geometry->width = geometry->height = mOfferMultiMon ? ALL_SCREENS
+                                                             : FULL_SCREEN;
+      } else if (!mOfferWindowSizes || geometry->width == FULL_SCREEN ||
+                 geometry->height == FULL_SCREEN) {
+         geometry->width = geometry->height = FULL_SCREEN;
+      }
+   }
+   if (useAllMonitors) {
+      *useAllMonitors = mOfferMultiMon && geometry->width == ALL_SCREENS;
+   }
+   return geometry->width == FULL_SCREEN || geometry->width == ALL_SCREENS;
+}
+#endif // VIEW_ENABLE_WINDOW_MODE
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::DesktopSelectDlg::OnConnect --
  *
  *      Callback for Connect button click. Emits the connect signal.
@@ -280,7 +545,7 @@ DesktopSelectDlg::GetDesktop()
  *      None
  *
  * Side effects:
- *      connect signal emitted.
+ *      action signal emitted with ACTION_CONNECT
  *
  *-----------------------------------------------------------------------------
  */
@@ -299,9 +564,76 @@ DesktopSelectDlg::OnConnect(GtkButton *button, // IN/UNUSED
       that->GetDesktopSize(&geom);
       Prefs::GetPrefs()->SetDefaultDesktopWidth(geom.width);
       Prefs::GetPrefs()->SetDefaultDesktopHeight(geom.height);
+#else
+      Prefs::GetPrefs()->SetDefaultUseAllMonitors(that->GetUseAllMonitors());
 #endif // VIEW_ENABLE_WINDOW_MODE
-      that->connect();
+      that->action(ACTION_CONNECT);
    }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::ConfirmAction --
+ *
+ *      Pops up a dialog to confirm the given action. If the user confirms,
+ *      emits the action
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      connect(act) emitted if confirmed.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::ConfirmAction(Action act) // IN
+{
+   Util::string question;
+   Util::string button;
+   switch (act) {
+   case ACTION_RESET:
+      question = _("Are you sure you want to reset %s?\n\n"
+                   "Any unsaved data may be lost.");
+      button = _("_Reset");
+      break;
+   case ACTION_KILL_SESSION:
+      question = _("Are you sure you want to end your current session "
+                   "with %s?\n\nAny unsaved data may be lost.");
+      button = _("_Log Off");
+      break;
+   case ACTION_ROLLBACK:
+      question = _("Are you sure you want to rollback %s?\n\n"
+                   "Any changes made to the checked-out desktop on another "
+                   "machine since your last backup will be discarded.");
+      button = _("_Rollback");
+      break;
+   default:
+      NOT_IMPLEMENTED();
+      break;
+   }
+
+   GtkWidget *top = gtk_widget_get_toplevel(GTK_WIDGET(mDesktopList));
+   GtkWidget *dialog = gtk_message_dialog_new(
+      GTK_WINDOW(top),
+      GTK_DIALOG_MODAL,
+      GTK_MESSAGE_QUESTION,
+      GTK_BUTTONS_NONE,
+      question.c_str(),
+      GetDesktop()->GetName().c_str());
+   gtk_window_set_title(GTK_WINDOW(dialog),
+                        gtk_window_get_title(GTK_WINDOW(top)));
+   gtk_dialog_add_buttons(GTK_DIALOG(dialog),
+                          button.c_str(), GTK_RESPONSE_ACCEPT,
+                          GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                          NULL);
+   if (GTK_RESPONSE_ACCEPT == gtk_dialog_run(GTK_DIALOG(dialog))) {
+      action(act);
+   }
+   gtk_widget_destroy(dialog);
 }
 
 
@@ -310,7 +642,8 @@ DesktopSelectDlg::OnConnect(GtkButton *button, // IN/UNUSED
  *
  * cdk::DesktopSelectDlg::OnKillSession --
  *
- *      User selected the "Logout" menu item; try to kill our session.
+ *      User selected the "Logout" menu item; confirm and try to kill our
+ *      session.
  *
  * Results:
  *      None
@@ -328,117 +661,7 @@ DesktopSelectDlg::OnKillSession(GtkMenuItem *item, // IN/UNUSED
    DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
    ASSERT(that);
 
-   that->SetSensitive(false);
-   that->GetDesktop()->KillSession(
-      boost::bind(&DesktopSelectDlg::OnKillSessionAbort, that, _1, _2),
-      boost::bind(&DesktopSelectDlg::OnKillSessionDone, that));
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::DesktopSelectDlg::OnKillSessionAbort --
- *
- *      Display kill-session error message.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-DesktopSelectDlg::OnKillSessionAbort(bool canceled,       // IN
-                                     Util::exception err) // IN
-{
-   if (!canceled) {
-      App::ShowDialog(GTK_MESSAGE_ERROR, "%s", err.what());
-   }
-   SetSensitive(true);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::DesktopSelectDlg::GetDesktopSize --
- *
- *      Get the window size the user has selected, and whether they
- *      want full screen.
- *
- * Results:
- *      returns whether full screen mode was selected
- *      geometry is filled with the window size (could be negative)
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-#ifdef VIEW_ENABLE_WINDOW_MODE
-bool
-DesktopSelectDlg::GetDesktopSize(GdkRectangle *geometry) // OUT
-{
-   ASSERT(geometry != NULL);
-
-   if (!mWindowSize) {
-      geometry->width = geometry->height = FULL_SCREEN;
-      return true;
-   }
-
-   GtkTreeIter iter;
-   if (gtk_combo_box_get_active_iter(mWindowSize, &iter)) {
-      gtk_tree_model_get(gtk_combo_box_get_model(mWindowSize), &iter,
-                         WIDTH_COLUMN, &geometry->width,
-                         HEIGHT_COLUMN, &geometry->height,
-                         -1);
-   } else {
-      geometry->width = Prefs::GetPrefs()->GetDefaultDesktopWidth();
-      geometry->height = Prefs::GetPrefs()->GetDefaultDesktopHeight();
-      // Make sure width and height agree, and are allowed by our caller.
-      if (geometry->width == ALL_SCREENS || geometry->height == ALL_SCREENS) {
-         geometry->width = geometry->height = FULL_SCREEN;
-      } else if (!mOfferWindowSizes || geometry->width == FULL_SCREEN ||
-                 geometry->height == FULL_SCREEN) {
-         geometry->width = geometry->height = FULL_SCREEN;
-      }
-   }
-   return geometry->width == FULL_SCREEN;
-}
-#endif // VIEW_ENABLE_WINDOW_MODE
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::DesktopSelectDlg::OnKillSessionDone --
- *
- *      Success handler for kill-session; refresh the desktop list.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-DesktopSelectDlg::OnKillSessionDone()
-{
-#if 0 // disabled until we can reload the desktop list...
-   // Show desktop selector
-   mBroker->LoadDesktops(boost::bind(&DesktopSelectDlg::OnLoadDesktopsAbort, this, _1, _2),
-                         boost::bind(&DesktopSelectDlg::OnLoadDesktopsDone, this));
-#else
-   SetSensitive(true);
-#endif
+   that->ConfirmAction(ACTION_KILL_SESSION);
 }
 
 
@@ -447,7 +670,7 @@ DesktopSelectDlg::OnKillSessionDone()
  *
  * cdk::DesktopSelectDlg::OnResetDesktop --
  *
- *      User selected "Restart" menu item; confirm that they wish to
+ *      User selected "Reset" menu item; confirm that they wish to
  *      do this, and then start a reset-desktop RPC.
  *
  * Results:
@@ -466,39 +689,17 @@ DesktopSelectDlg::OnResetDesktop(GtkMenuItem *item, // IN/UNUSED
    DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
    ASSERT(that);
 
-   GtkWidget *top = gtk_widget_get_toplevel(GTK_WIDGET(that->mDesktopList));
-   GtkWidget *dialog = gtk_message_dialog_new(
-      GTK_WINDOW(top),
-      GTK_DIALOG_MODAL,
-      GTK_MESSAGE_QUESTION,
-      GTK_BUTTONS_NONE,
-      CDK_MSG(resetDesktopQuestion,
-              "Are you sure you want to restart %s?\n\n"
-              "Any unsaved data may be lost.").c_str(),
-      that->GetDesktop()->GetName().c_str());
-   gtk_window_set_title(GTK_WINDOW(dialog),
-                        gtk_window_get_title(GTK_WINDOW(top)));
-   gtk_dialog_add_buttons(GTK_DIALOG(dialog),
-                          CDK_MSG(restartButton, "Restart").c_str(),
-                          GTK_RESPONSE_ACCEPT,
-                          GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-                          NULL);
-   if (GTK_RESPONSE_ACCEPT == gtk_dialog_run(GTK_DIALOG(dialog))) {
-      that->SetSensitive(false);
-      that->GetDesktop()->ResetDesktop(
-         boost::bind(&DesktopSelectDlg::OnResetDesktopAbort, that, _1, _2),
-         boost::bind(&DesktopSelectDlg::OnResetDesktopDone, that));
-   }
-   gtk_widget_destroy(dialog);
+   that->ConfirmAction(ACTION_RESET);
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::DesktopSelectDlg::OnResetDesktopAbort --
+ * cdk::DesktopSelectDlg::OnRollback --
  *
- *      Display error from reset-desktop RPC
+ *      User selected the "Rollback" menu item; confirm and try to roll back
+ *      the desktop.
  *
  * Results:
  *      None
@@ -510,43 +711,13 @@ DesktopSelectDlg::OnResetDesktop(GtkMenuItem *item, // IN/UNUSED
  */
 
 void
-DesktopSelectDlg::OnResetDesktopAbort(bool canceled,       // IN
-                                      Util::exception err) // IN
+DesktopSelectDlg::OnRollback(GtkMenuItem *item, // IN/UNUSED
+                             gpointer data)     // IN
 {
-   if (!canceled) {
-      App::ShowDialog(GTK_MESSAGE_ERROR, "%s", err.what());
-   }
-   SetSensitive(true);
-}
+   DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
+   ASSERT(that);
 
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::DesktopSelectDlg::OnResetDesktopDone --
- *
- *      Success handler for reset-desktop RPC; refresh the desktop
- *      list.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-DesktopSelectDlg::OnResetDesktopDone()
-{
-#if 0 // disabled until we can reload the desktop list...
-   // Show desktop selector
-   mBroker->LoadDesktops(boost::bind(&DesktopSelectDlg::OnLoadDesktopsAbort, this, _1, _2),
-                         boost::bind(&DesktopSelectDlg::OnLoadDesktopsDone, this));
-#else
-   SetSensitive(true);
-#endif
+   that->ConfirmAction(ACTION_ROLLBACK);
 }
 
 
@@ -557,9 +728,115 @@ DesktopSelectDlg::OnResetDesktopDone()
  *
  *      Display a context menu for a desktop with "advanced" commands
  *      such as resetting a session, and VMDI options, etc.
+ *      Remembers the popup in mPopup.
+ *
+ *      If customPosition is true, uses DesktopSelectDlg::PopupPositionFunc to
+ *      position the menu at the list button corresponding to the currently-
+ *      selected desktop. This requires that mButtonPath is set.
  *
  * Results:
  *      None
+ *
+ * Side effects:
+ *      A popup is displayed.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
+                            bool customPosition) // IN/OPT
+{
+   ASSERT(!customPosition || mButtonPath);
+
+   Desktop *desktop = GetDesktop();
+   if (!desktop) {
+      return;
+   }
+
+   DestroyPopup();
+
+   mPopup = GTK_MENU(gtk_menu_new());
+   gtk_widget_show(GTK_WIDGET(mPopup));
+   gtk_menu_attach_to_widget(mPopup, GTK_WIDGET(mDesktopList), OnPopupDetach);
+   g_signal_connect_after(mPopup, "deactivate",
+                          G_CALLBACK(&DesktopSelectDlg::OnPopupDeactivate),
+                          this);
+
+   GtkWidget *item;
+
+   bool busy = desktop->GetConnectionState() != Desktop::STATE_DISCONNECTED;
+
+   item = gtk_menu_item_new_with_mnemonic(_("C_onnect"));
+   gtk_widget_show(item);
+   gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
+   if (desktop->CanConnect() && !busy) {
+      g_signal_connect(G_OBJECT(item), "activate",
+                       G_CALLBACK(&DesktopSelectDlg::OnConnect), this);
+   } else {
+      gtk_widget_set_sensitive(item, false);
+   }
+
+   item = gtk_separator_menu_item_new();
+   gtk_widget_show(item);
+   gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
+
+   item = gtk_menu_item_new_with_mnemonic(_("_Log Off"));
+   gtk_widget_show(item);
+   gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
+   if (!desktop->GetSessionID().empty() && !busy) {
+      g_signal_connect(G_OBJECT(item), "activate",
+                       G_CALLBACK(&DesktopSelectDlg::OnKillSession),
+                       this);
+   } else {
+      gtk_widget_set_sensitive(item, false);
+   }
+
+   item = gtk_menu_item_new_with_mnemonic(_("_Reset"));
+   gtk_widget_show(item);
+   gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
+   if (desktop->CanReset() && desktop->CanResetSession() && !busy) {
+      g_signal_connect(G_OBJECT(item), "activate",
+                       G_CALLBACK(&DesktopSelectDlg::OnResetDesktop), this);
+   } else {
+      gtk_widget_set_sensitive(item, false);
+   }
+
+   item = gtk_separator_menu_item_new();
+   gtk_widget_show(item);
+   gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
+
+   item = gtk_menu_item_new_with_mnemonic(_("Roll_back"));
+   gtk_widget_show(item);
+   gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
+   // XXX: Should also check policies here.
+   if (desktop->GetOfflineState() == BrokerXml::OFFLINE_CHECKED_OUT &&
+       !busy) {
+      g_signal_connect(G_OBJECT(item), "activate",
+                       G_CALLBACK(&DesktopSelectDlg::OnRollback), this);
+   } else {
+      gtk_widget_set_sensitive(item, false);
+   }
+
+   gtk_menu_popup(mPopup, NULL, NULL,
+                  customPosition ? &DesktopSelectDlg::PopupPositionFunc : NULL,
+                  customPosition ? this : NULL,
+                  evt ? evt->button : 0,
+                  evt ? evt->time : gtk_get_current_event_time());
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::KillPopup --
+ *
+ *      If any popup is visible, pop it down.
+ *      This does not destroy the popup. Kill the
+ *      hover image associated with it too.
+ *
+ * Results:
+ *      None.
  *
  * Side effects:
  *      None
@@ -568,59 +845,176 @@ DesktopSelectDlg::OnResetDesktopDone()
  */
 
 void
-DesktopSelectDlg::ShowPopup(GdkEventButton *evt) // IN
+DesktopSelectDlg::KillPopup()
 {
-   Desktop *desktop = GetDesktop();
-   if (!desktop) {
-      return;
+   if (PopupVisible()) {
+      gtk_menu_popdown(mPopup);
+   }
+   KillHover();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::DestroyPopup --
+ *
+ *      Ensure any popups have been destroyed and mPopup is NULL.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::DestroyPopup()
+{
+   if (mPopup) {
+      gtk_widget_destroy(GTK_WIDGET(mPopup));
+      // Hopefully the destroy triggered our detach callback.
+      ASSERT(!mPopup);
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::GetPathForButton --
+ *
+ *      Given coordinates (x,y) relative to the bin_window of mDesktopList,
+ *      returns the path of a row in the list if the coordinates are within
+ *      the area of the button corresponding to that row.
+ *      The returned GtkTreePath must be freed by the caller.
+ *
+ * Results:
+ *      Path corresponding to the list button's row, or NULL.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GtkTreePath *
+DesktopSelectDlg::GetPathForButton(int x, // IN
+                                   int y) // IN
+{
+   GtkTreePath *path;
+   GtkTreeViewColumn *col;
+
+   // cell_x, cell_y will be set with the in-cell coordinates of the pointer.
+   int cell_x, cell_y;
+   if (!gtk_tree_view_get_path_at_pos(mDesktopList,
+                                      x, y,
+                                      &path, &col,
+                                      &cell_x, &cell_y) ||
+       col != mButtonColumn) {
+      return NULL;
    }
 
-   GtkWidget *menu = gtk_menu_new();
-   gtk_widget_show(menu);
-   gtk_menu_attach_to_widget(GTK_MENU(menu), GTK_WIDGET(mDesktopList), NULL);
-   g_signal_connect_after(menu, "deactivate",
-                          G_CALLBACK(&DesktopSelectDlg::OnPopupDeactivate),
-                          NULL);
+   // Total area of cell in question.
+   GdkRectangle back;
+   gtk_tree_view_get_background_area(mDesktopList, path, col, &back);
 
-   GtkWidget *item = gtk_menu_item_new_with_mnemonic(
-      CDK_MSG(connectPopup, "C_onnect").c_str());
-   gtk_widget_show(item);
-   gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-   g_signal_connect(G_OBJECT(item), "activate",
-                    G_CALLBACK(&DesktopSelectDlg::OnConnect),
-                    this);
+   // Padding around the button image.
+   int xpad = (back.width - BUTTON_SIZE) / 2;
+   int ypad = (back.height - BUTTON_SIZE) / 2;
 
-   item = gtk_separator_menu_item_new();
-   gtk_widget_show(item);
-   gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+   /*
+    * For simplicity of comparison, pretend the button is at the upper-left
+    * corner of the cell.
+    */
+   cell_x -= xpad;
+   cell_y -= ypad;
 
-   item = gtk_menu_item_new_with_mnemonic(
-      CDK_MSG(menuLogOff, "_Log Off").c_str());
-   gtk_widget_show(item);
-   gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-   if (!desktop->GetSessionID().empty()) {
-      g_signal_connect(G_OBJECT(item), "activate",
-                       G_CALLBACK(&DesktopSelectDlg::OnKillSession),
-                       this);
+   /*
+    * The button's tiny and we've used integer division that might have
+    * resulted in an off-by-one discrepancy. So just make the bounds inclusive.
+    */
+   if (cell_x >= 0 && cell_x <= BUTTON_SIZE &&
+       cell_y >= 0 && cell_y <= BUTTON_SIZE) {
+      return path;
+   }
+   return NULL;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::CheckHover --
+ *
+ *      Check if coordinates (x,y) relative to the bin_window of mDesktopList
+ *      are hovering over a button. If so, change the pixbuf for the button.
+ *      If not, un-hover the hovered button (if any).
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::CheckHover(int x, // IN
+                             int y) // IN
+{
+   GtkTreePath *path = GetPathForButton(x, y);
+
+   if (path) {
+      // Only hover if there is no menu popped up.
+      if (!PopupVisible()) {
+         GtkTreeIter iter;
+         gtk_tree_model_get_iter(GTK_TREE_MODEL(mStore), &iter, path);
+         gtk_list_store_set(mStore, &iter,
+                            BUTTON_COLUMN, mButtonHover,
+                            -1);
+         mButtonPath = path;
+      } else {
+         gtk_tree_path_free(path);
+      }
    } else {
-      gtk_widget_set_sensitive(item, FALSE);
+      KillHover();
    }
+}
 
-   item = gtk_menu_item_new_with_mnemonic(
-      CDK_MSG(menuRestart, "_Restart").c_str());
-   gtk_widget_show(item);
-   gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-   if (desktop->CanReset() && desktop->CanResetSession()) {
-      g_signal_connect(G_OBJECT(item), "activate",
-                       G_CALLBACK(&DesktopSelectDlg::OnResetDesktop),
-                       this);
-   } else {
-      gtk_widget_set_sensitive(item, FALSE);
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::KillHover --
+ *
+ *      If any button is displaying the "hover" or "open" pixbuf, set it to
+ *      the "normal" pixbuf.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::KillHover()
+{
+   if (mButtonPath) {
+      GtkTreeIter iter;
+      gtk_tree_model_get_iter(GTK_TREE_MODEL(mStore), &iter, mButtonPath);
+      gtk_list_store_set(mStore, &iter,
+                         BUTTON_COLUMN, mButtonNormal,
+                         -1);
+      gtk_tree_path_free(mButtonPath);
+      mButtonPath = NULL;
    }
-
-   gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
-                  evt ? evt->button : 0,
-                  evt ? evt->time : gtk_get_current_event_time());
 }
 
 
@@ -647,15 +1041,27 @@ DesktopSelectDlg::OnPopupSignal(GtkWidget *widget, // IN/UNUSED
    DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
    ASSERT(that);
 
-   that->ShowPopup();
-   return true;
+   GtkTreeModel *model;
+   GtkTreeIter iter;
+   if (gtk_tree_selection_get_selected(
+          gtk_tree_view_get_selection(that->mDesktopList),
+          &model,
+          &iter)) {
+      gtk_list_store_set(that->mStore, &iter,
+                         BUTTON_COLUMN, that->mButtonOpen,
+                         -1);
+      that->mButtonPath = gtk_tree_model_get_path(model, &iter);
+      that->ShowPopup(NULL, true);
+      return true;
+   }
+   return false;
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::DesktopSelectDlg::OnPopupEvent --
+ * cdk::DesktopSelectDlg::OnButtonPress --
  *
  *      Handler for "button-press-event" signal; display the context
  *      menu if the correct button is pressed.
@@ -676,11 +1082,10 @@ DesktopSelectDlg::OnPopupSignal(GtkWidget *widget, // IN/UNUSED
  */
 
 gboolean
-DesktopSelectDlg::OnPopupEvent(GtkWidget *widget,   // IN
-                               GdkEventButton *evt, // IN
-                               gpointer data)       // IN
+DesktopSelectDlg::OnButtonPress(GtkWidget *widget,   // IN
+                                GdkEventButton *evt, // IN
+                                gpointer data)       // IN
 {
-   // The selection is fully updated by now.
    DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
    ASSERT(that);
 
@@ -688,10 +1093,45 @@ DesktopSelectDlg::OnPopupEvent(GtkWidget *widget,   // IN
       return false; // We re-entered.
    }
 
-   if (evt->button != 3 || evt->type != GDK_BUTTON_PRESS) {
+   if (evt->type != GDK_BUTTON_PRESS) {
       return false; // Let the normal handler run.
    }
 
+   /*
+    * If the user clicks on a row that is not fully visible, the widget's
+    * event handler will move the list so the row is selected and fully
+    * visible. Run our handling code before this so we register the need
+    * for a button-click popup properly. (Otherwise, we'll
+    * check for a button click after the button has moved out from under
+    * the pointer.) However, wait for the widget's handler to run before
+    * actually showing the popup, so the proper desktop is selected before
+    * ShowPopup runs. Though the list may have moved, we can be pretty sure
+    * that the row the user clicked on is now selected and fully visible.
+    */
+   bool killedPopup = false;
+   if (evt->button == 1) {
+      // If a menu's already open, this click should close it.
+      if (that->PopupVisible()) {
+         that->KillPopup();
+         killedPopup = true;
+      } else {
+         // Make sure we're using the right window coordinate system.
+         ASSERT(evt->window ==
+                gtk_tree_view_get_bin_window(that->mDesktopList));
+         GtkTreePath *path = that->GetPathForButton((int)evt->x,
+                                                    (int)evt->y);
+         if (path) {
+            GtkTreeIter iter;
+            gtk_tree_model_get_iter(GTK_TREE_MODEL(that->mStore), &iter, path);
+            gtk_list_store_set(that->mStore, &iter,
+                               BUTTON_COLUMN, that->mButtonOpen,
+                               -1);
+            that->mButtonPath = path;
+         }
+      }
+   }
+
+   // See block comment above.
    that->mInButtonPress = true;
    gboolean handled = gtk_widget_event(widget, (GdkEvent *)evt);
    that->mInButtonPress = false;
@@ -700,8 +1140,69 @@ DesktopSelectDlg::OnPopupEvent(GtkWidget *widget,   // IN
       return false;
    }
 
-   that->ShowPopup(evt);
-   return true;
+   // The selection is fully updated by now.
+   if (evt->button == 1) {
+      if (that->mButtonPath) {
+         that->ShowPopup(evt, true);
+      }
+      return killedPopup || that->PopupVisible();
+   } else if (evt->button == 3) {
+      that->ShowPopup(evt, false);
+      return true;
+   }
+
+   return false;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::PopupPositionFunc --
+ *
+ *      Position function for popup menu. Returns coordinates at the bottom-
+ *      center of the list button corresponding to that->mButtonPath.
+ *
+ * Results:
+ *      Coordinates for menu popup; pushIn = true.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopSelectDlg::PopupPositionFunc(GtkMenu *menu,    // IN/UNUSED
+                                    int *x,           // OUT
+                                    int *y,           // OUT
+                                    gboolean *pushIn, // OUT
+                                    gpointer data)    // IN
+{
+   DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
+   ASSERT(that);
+   ASSERT(that->mButtonPath);
+
+   // Cell coordinates relative to bin window.
+   GdkRectangle cell;
+   gtk_tree_view_get_cell_area(that->mDesktopList, that->mButtonPath,
+                               that->mButtonColumn, &cell);
+
+   // Bin window root coordinates.
+   int binX, binY;
+   gdk_window_get_origin(
+      gtk_tree_view_get_bin_window(that->mDesktopList), &binX, &binY);
+
+   // Place the menu at the bottom-center of the button image.
+   if (x) {
+      *x = binX + cell.x + cell.width / 2;
+   }
+   if (y) {
+      *y = binY + cell.y + cell.height / 2 + BUTTON_SIZE / 2;
+   }
+   if (pushIn) {
+      *pushIn = true;
+   }
 }
 
 
@@ -727,19 +1228,27 @@ void
 DesktopSelectDlg::OnPopupDeactivate(GtkWidget *widget, // IN/UNUSED
                                     gpointer data)     // IN
 {
-   g_idle_add(&DesktopSelectDlg::OnPopupDeactivateIdle, widget);
+   DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
+   ASSERT(that);
+
+   that->KillHover();
+   int x, y;
+   gdk_window_get_pointer(gtk_tree_view_get_bin_window(that->mDesktopList),
+                          &x, &y, NULL);
+   that->CheckHover(x, y);
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::DesktopSelectDlg::OnPopupDeactivateIdle --
+ * cdk::DesktopSelectDlg::OnPopupDetach --
  *
- *      Destroy the menu.
+ *      Handler for the popup detaching from mDesktopList. This means the
+ *      popup is being destroyed, so we clear our pointer to it.
  *
  * Results:
- *      false -> Remove this source.
+ *      None
  *
  * Side effects:
  *      None
@@ -747,11 +1256,16 @@ DesktopSelectDlg::OnPopupDeactivate(GtkWidget *widget, // IN/UNUSED
  *-----------------------------------------------------------------------------
  */
 
-gboolean
-DesktopSelectDlg::OnPopupDeactivateIdle(gpointer data) // IN
+void
+DesktopSelectDlg::OnPopupDetach(GtkWidget *widget, // IN
+                                GtkMenu *popup)    // IN
 {
-   gtk_widget_destroy(GTK_WIDGET(data));
-   return false;
+   gpointer data = g_object_get_data(G_OBJECT(widget), DIALOG_DATA_KEY);
+   DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
+   ASSERT(that);
+
+   ASSERT(that->mPopup == popup);
+   that->mPopup = NULL;
 }
 
 
@@ -779,6 +1293,76 @@ DesktopSelectDlg::ActivateToplevelDefault(GtkWidget *widget) // IN
    if (GTK_IS_WINDOW(toplevel)) {
       gtk_window_activate_default(GTK_WINDOW(toplevel));
    }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopDelectDlg::OnPointerMove --
+ *
+ *      Callback for pointer movement. Checks if the pointer is hovering over
+ *      a button (and updates its pixbuf accordingly).
+ *
+ * Results:
+ *      false--the event was not handled.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+gboolean
+DesktopSelectDlg::OnPointerMove(GtkWidget *widget,     // IN/UNUSED
+                                GdkEventMotion *event, // IN
+                                gpointer data)         // IN
+{
+   DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
+   ASSERT(that);
+
+   // Make sure we're using the right window coordinate system.
+   ASSERT(event->window == gtk_tree_view_get_bin_window(that->mDesktopList));
+   that->CheckHover((int)event->x, (int)event->y);
+
+   return false;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopDelectDlg::OnPointerLeave --
+ *
+ *      Callback for pointer leaving the ListView. Kills any hover if a
+ *      menu is not open.
+ *
+ * Results:
+ *      false--the event was not handled.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+gboolean
+DesktopSelectDlg::OnPointerLeave(GtkWidget *widget,       // IN/UNUSED
+                                 GdkEventCrossing *event, // IN
+                                 gpointer data)           // IN
+{
+   DesktopSelectDlg *that = reinterpret_cast<DesktopSelectDlg*>(data);
+   ASSERT(that);
+
+   /*
+    * We get this event when a popup appears, so don't undo the "open" image
+    * of the popup's button.
+    */
+   if (!that->PopupVisible()) {
+      that->KillHover();
+   }
+
+   return false;
 }
 
 
@@ -850,17 +1434,20 @@ DesktopSelectDlg::UpdateWindowSizes(gpointer data) // IN
       }                                                                 \
    }
 
-   APPEND_SIZE("Full Screen", FULL_SCREEN, FULL_SCREEN);
+   if (that->mOfferMultiMon) {
+      APPEND_SIZE(_("All Monitors"), ALL_SCREENS, ALL_SCREENS);
+   }
+   APPEND_SIZE(_("Full Screen"), FULL_SCREEN, FULL_SCREEN);
    if (that->mOfferWindowSizes) {
-      APPEND_SIZE("640 x 480", 640, 480);
-      APPEND_SIZE("800 x 600", 800, 600);
-      APPEND_SIZE("1024 x 768", 1024, 768);
-      APPEND_SIZE("1280 x 854", 1280, 854);
-      APPEND_SIZE("1280 x 1024", 1280, 1024);
-      APPEND_SIZE("1440 x 900", 1440, 900);
-      APPEND_SIZE("1600 x 1200", 1600, 1200);
-      APPEND_SIZE("1680 x 1050", 1680, 1050);
-      APPEND_SIZE("1920 x 1200", 1920, 1200);
+      APPEND_SIZE(_("640 x 480"), 640, 480);
+      APPEND_SIZE(_("800 x 600"), 800, 600);
+      APPEND_SIZE(_("1024 x 768"), 1024, 768);
+      APPEND_SIZE(_("1280 x 854"), 1280, 854);
+      APPEND_SIZE(_("1280 x 1024"), 1280, 1024);
+      APPEND_SIZE(_("1440 x 900"), 1440, 900);
+      APPEND_SIZE(_("1600 x 1200"), 1600, 1200);
+      APPEND_SIZE(_("1680 x 1050"), 1680, 1050);
+      APPEND_SIZE(_("1920 x 1200"), 1920, 1200);
    }
 #undef APPEND_SIZE
 

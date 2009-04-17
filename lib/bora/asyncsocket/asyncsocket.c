@@ -127,6 +127,7 @@ struct AsyncSocket {
    int type;  /* SOCK_STREAM or SOCK_DGRAM */
 
    unsigned int refCount;
+   int genericErrno;
    AsyncSocketErrorFn errorFn;
    void *errorClientData;
    VmTimeType drainTimeoutUS;
@@ -1224,6 +1225,7 @@ AsyncSocket_UseNodelay(AsyncSocket *asock, Bool nodelay)
 
    if (setsockopt(asock->fd, IPPROTO_TCP, TCP_NODELAY,
 		  (const void *) &flag, sizeof(flag)) != 0) {
+      asock->genericErrno = Err_Errno();
       LOG(0, (ASOCKPREFIX "could not set TCP_NODELAY, error %d: %s\n",
 	      Err_Errno(), Err_ErrString()));
       return ASOCKERR_GENERIC;
@@ -1450,11 +1452,13 @@ AsyncSocketPoll(AsyncSocket *s, Bool read, int timeoutMS)
                if (getsockopt(s->fd, SOL_SOCKET, SO_ERROR,
                               (void *) &sockErr, (void *) &sockErrLen) == 0) {
                   if (sockErr) {
+                     s->genericErrno = sockErr;
                      ASOCKLG0(s, ("getsockopt error lookup returned %d: %s\n",
                                   sockErr, Err_Errno2String(sockErr)));
                   }
                } else {
                   sysErr = ASOCK_LASTERROR();
+                  s->genericErrno = sysErr;
                   ASOCKLG0(s, ("getsockopt failed with error %d: %s\n", sysErr, 
                                Err_Errno2String(sysErr)));
                }
@@ -1481,6 +1485,7 @@ AsyncSocketPoll(AsyncSocket *s, Bool read, int timeoutMS)
              */
             continue;
          }
+         s->genericErrno = ASOCK_LASTERROR();
          return ASOCKERR_GENERIC;
       default:
          NOT_REACHED();
@@ -1596,6 +1601,7 @@ AsyncSocketBlockingWork(AsyncSocket *s,
                       read ? "recv" : "send"));
          return ASOCKERR_REMOTE_DISCONNECT;
       } else if ((sysErr = ASOCK_LASTERROR()) != ASOCK_EWOULDBLOCK) {
+         s->genericErrno = sysErr;
          ASOCKWARN(s, ("blocking %s error %d: %s\n",
                        read ? "recv" : "send",
                        sysErr, Err_Errno2String(sysErr)));
@@ -1805,6 +1811,9 @@ AsyncSocket_SendTo(AsyncSocket *asock, void *buf, int len,
 
 bye:
    va_end(ap);
+   if (ret == ASOCKERR_GENERIC) {
+      asock->genericErrno = ASOCK_LASTERROR();
+   }
 
    return ret;
 }
@@ -1980,6 +1989,7 @@ AsyncSocketFillRecvBuffer(AsyncSocket *s)
 	 break;
       } else {
 	 ASOCKLG0(s, ("recv error %d: %s\n", sysErr, Err_Errno2String(sysErr)));
+         s->genericErrno = sysErr;
 	 result = ASOCKERR_GENERIC;
 	 goto exit;
       }
@@ -2125,6 +2135,7 @@ AsyncSocketWriteBuffers(AsyncSocket *s)
          NOT_REACHED();
       } else if ((error = ASOCK_LASTERROR()) != ASOCK_EWOULDBLOCK) {
          ASOCKLG0(s, ("send error %d: %s\n", error, Err_Errno2String(error)));
+         s->genericErrno = error;
          result = ASOCKERR_GENERIC;
          goto exit;
       } else {
@@ -2184,6 +2195,7 @@ AsyncSocketAcceptInternal(AsyncSocket *s)
 
    if ((fd = accept(s->fd, &remoteAddr, &remoteAddrLen)) == -1) {
       sysErr = ASOCK_LASTERROR();
+      s->genericErrno = sysErr;
       if (sysErr == ASOCK_EWOULDBLOCK) {
          ASOCKWARN(s, ("spurious accept notification\n"));
          return ASOCKERR_GENERIC;
@@ -2249,12 +2261,14 @@ AsyncSocketConnectInternal(AsyncSocket *s)
    if (getsockopt(s->fd, SOL_SOCKET, SO_ERROR,
 		  (void *) &optval, (void *)&optlen) != 0) {
       sysErr = ASOCK_LASTERROR();
+      s->genericErrno = sysErr;
       Warning(ASOCKPREFIX "getsockopt for connect on fd %d failed with " 
       	      "error %d : %s\n", s->fd, sysErr, Err_Errno2String(sysErr));
       return ASOCKERR_GENERIC;
    }
 
    if (optval != 0) {
+      s->genericErrno = optval;
       Warning(ASOCKPREFIX "SO_ERROR for connect on fd %d: %s\n",
               s->fd, Err_Errno2String(optval));
       return ASOCKERR_GENERIC;
@@ -2263,6 +2277,32 @@ AsyncSocketConnectInternal(AsyncSocket *s)
    s->state = AsyncSocketConnected;
    s->connectFn(s, s->clientData);
    return ASOCKERR_SUCCESS;
+}
+
+
+/*
+ *----------------------------------------------------------------------------
+ *
+ * AsyncSocket_GetGenericErrno --
+ *
+ *      Used when an ASOCKERR_GENERIC is returned due to a system error.
+ *      The errno that was returned by the system is stored in the asock
+ *      struct and returned to the user in this function.
+ *
+ * Results:
+ *      int error code
+ *      
+ * Side effects:
+ *      None
+ *
+ *----------------------------------------------------------------------------
+ */
+
+int
+AsyncSocket_GetGenericErrno(AsyncSocket *s)
+{
+   ASSERT(s);
+   return s->genericErrno;
 }
 
 

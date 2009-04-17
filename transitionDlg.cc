@@ -29,6 +29,7 @@
  */
 
 
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
 
@@ -80,21 +81,23 @@ TransitionDlg::TransitionDlg(TransitionType type,         // IN
    gtk_box_pack_start_defaults(GTK_BOX(box), label);
    gtk_label_set_line_wrap(GTK_LABEL(label), true);
 
+   GtkButton *help = GetHelpButton();
    GtkWidget *actionArea;
    if (type == TRANSITION_PROGRESS) {
-      actionArea = Util::CreateActionArea(GetCancelButton(), NULL);
+      actionArea = Util::CreateActionArea(GetCancelButton(), help, NULL);
    } else {
-      GtkButton *retry = Util::CreateButton(
-         GTK_STOCK_REDO, CDK_MSG(transitionRetry, "_Retry"));
+      GtkButton *retry = Util::CreateButton(GTK_STOCK_REDO, _("_Retry"));
       GTK_WIDGET_SET_FLAGS(retry, GTK_CAN_DEFAULT);
       SetForwardButton(retry);
       g_signal_connect(retry, "clicked",
                        G_CALLBACK(&TransitionDlg::OnRetryClicked), this);
 
-      actionArea = Util::CreateActionArea(retry, GetCancelButton(), NULL);
+      actionArea = Util::CreateActionArea(retry, GetCancelButton(), help, NULL);
    }
    gtk_widget_show(actionArea);
    gtk_box_pack_start_defaults(GTK_BOX(box), actionArea);
+   gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(actionArea),
+                                      GTK_WIDGET(help), true);
 }
 
 

@@ -20,6 +20,9 @@
 
 bin_PROGRAMS += vmware-view
 
+dist_bin_SCRIPTS += vmware-view-log-collector
+
+nodist_vmware_view_SOURCES :=
 vmware_view_SOURCES :=
 vmware_view_SOURCES += app.cc
 vmware_view_SOURCES += app.hh
@@ -29,6 +32,8 @@ vmware_view_SOURCES += brokerDlg.cc
 vmware_view_SOURCES += brokerDlg.hh
 vmware_view_SOURCES += brokerXml.cc
 vmware_view_SOURCES += brokerXml.hh
+vmware_view_SOURCES += cryptoki.cc
+vmware_view_SOURCES += cryptoki.hh
 vmware_view_SOURCES += desktop.cc
 vmware_view_SOURCES += desktop.hh
 vmware_view_SOURCES += desktopSelectDlg.cc
@@ -37,6 +42,8 @@ vmware_view_SOURCES += disclaimerDlg.cc
 vmware_view_SOURCES += disclaimerDlg.hh
 vmware_view_SOURCES += dlg.cc
 vmware_view_SOURCES += dlg.hh
+vmware_view_SOURCES += helpDlg.cc
+vmware_view_SOURCES += helpDlg.hh
 vmware_view_SOURCES += loginDlg.cc
 vmware_view_SOURCES += loginDlg.hh
 vmware_view_SOURCES += main.cc
@@ -50,6 +57,14 @@ vmware_view_SOURCES += rdesktop.cc
 vmware_view_SOURCES += rdesktop.hh
 vmware_view_SOURCES += restartMonitor.cc
 vmware_view_SOURCES += restartMonitor.hh
+vmware_view_SOURCES += scCertDetailsDlg.cc
+vmware_view_SOURCES += scCertDetailsDlg.hh
+vmware_view_SOURCES += scCertDlg.cc
+vmware_view_SOURCES += scCertDlg.hh
+vmware_view_SOURCES += scInsertPromptDlg.cc
+vmware_view_SOURCES += scInsertPromptDlg.hh
+vmware_view_SOURCES += scPinDlg.cc
+vmware_view_SOURCES += scPinDlg.hh
 vmware_view_SOURCES += securIDDlg.cc
 vmware_view_SOURCES += securIDDlg.hh
 vmware_view_SOURCES += stubs.c
@@ -57,8 +72,36 @@ vmware_view_SOURCES += transitionDlg.cc
 vmware_view_SOURCES += transitionDlg.hh
 vmware_view_SOURCES += tunnel.cc
 vmware_view_SOURCES += tunnel.hh
+vmware_view_SOURCES += usb.cc
+vmware_view_SOURCES += usb.hh
 vmware_view_SOURCES += util.cc
 vmware_view_SOURCES += util.hh
+
+dist_noinst_DATA += icudata/NamePrepProfile.txt
+dist_noinst_DATA += icudata/NormalizationCorrections.txt
+dist_noinst_DATA += icudata/README
+
+dist_noinst_HEADERS += extraTranslations.hh
+
+if STATIC_ICU
+nodist_vmware_view_SOURCES += $(ICUDATA_ENTRY_POINT)l_dat.s
+
+uidna.spp: icudata/NamePrepProfile.txt icudata/NormalizationCorrections.txt
+	$(GENSPREP) -b uidna -s $(srcdir)/icudata -n $(srcdir)/icudata \
+		-u 3.2.0 -k NamePrepProfile.txt
+
+# l suffix means little endian
+$(ICUDATA_ENTRY_POINT)l.dat: uidna.spp
+	echo $^ > tmp.lst
+	$(ICUPKG) -tl -c -a tmp.lst new $@
+	-rm -f tmp.lst
+
+$(ICUDATA_ENTRY_POINT)l_dat.s: $(ICUDATA_ENTRY_POINT)l.dat
+	$(GENCCODE) -a gcc -n $(ICUDATA_ENTRY_POINT)l -e $(ICUDATA_ENTRY_POINT) $<
+
+uidna_spp.c: uidna.spp
+	$(GENCCODE) -n $(ICUDATA_ENTRY_POINT)l $<
+endif
 
 vmware_view_SOURCES += icons/desktop_remote32x.h
 vmware_view_SOURCES += icons/spinner_anim.h
@@ -66,11 +109,24 @@ vmware_view_SOURCES += icons/open/view_16x.h
 vmware_view_SOURCES += icons/open/view_32x.h
 vmware_view_SOURCES += icons/open/view_48x.h
 vmware_view_SOURCES += icons/open/view_client_banner.h
+vmware_view_SOURCES += icons/list_button_normal.h
+vmware_view_SOURCES += icons/list_button_hover.h
+vmware_view_SOURCES += icons/list_button_open.h
 
 vmware_view_CPPFLAGS =
 vmware_view_CPPFLAGS += $(AM_CPPFLAGS)
+vmware_view_CPPFLAGS += -DCRYPTOKI_COMPAT
+vmware_view_CPPFLAGS += -DLIBDIR="\"$(libdir)\""
+vmware_view_CPPFLAGS += -DBINDIR="\"$(bindir)\""
+vmware_view_CPPFLAGS += -DLOCALEDIR="\"$(localedir)\""
+vmware_view_CPPFLAGS += -DHELPDIR="\"$(helpdir)\""
+vmware_view_CPPFLAGS += -DDEBHELPDIR="\"$(datarootdir)/doc/$(DEB_PACKAGING_NAME)/help\""
+vmware_view_CPPFLAGS += -I$(top_srcdir)/lib/libp11/include
+vmware_view_CPPFLAGS += -I$(top_srcdir)/lib/gtm/include
 vmware_view_CPPFLAGS += $(BOOST_CPPFLAGS)
 vmware_view_CPPFLAGS += $(GTK_CFLAGS)
+vmware_view_CPPFLAGS += $(ICU_CPPFLAGS)
+vmware_view_CPPFLAGS += $(SSL_CFLAGS)
 vmware_view_CPPFLAGS += $(XML_CFLAGS)
 
 vmware_view_LDADD :=
@@ -86,6 +142,7 @@ vmware_view_LDADD += libNothread.a
 vmware_view_LDADD += libPoll.a
 vmware_view_LDADD += libPollDefault.a
 vmware_view_LDADD += libPollGtk.a
+vmware_view_LDADD += libGtm.a
 vmware_view_LDADD += libProductState.a
 vmware_view_LDADD += libSig.a
 vmware_view_LDADD += libSsl.a
@@ -98,10 +155,15 @@ vmware_view_LDADD += $(XML_LIBS)
 vmware_view_LDADD += $(CURL_LIBS)
 vmware_view_LDADD += $(SSL_LIBS)
 vmware_view_LDADD += $(BOOST_LDFLAGS) $(BOOST_SIGNALS_LIB)
+vmware_view_LDADD += $(ICU_LIBS)
 
 dist_noinst_DATA += icons/open/view_48x.png
 
-application_DATA += vmware-view.desktop
+dist_noinst_DATA += intltool-extract.in
+dist_noinst_DATA += intltool-merge.in
+dist_noinst_DATA += intltool-update.in
+
+desktop_in_files += vmware-view.desktop.in
 
 dist_noinst_DATA += INSTALL
 
@@ -115,7 +177,15 @@ vmware-view.png: $(ICONS_DIR)/view_48x.png
 
 CLEANFILES += vmware-view.png
 
-DEB_STAGE_ROOT := deb-stage
+# framework/cdk/po/Makefile.in.in wants mkinstalldirs.
+installdirs-recursive: $(top_srcdir)/mkinstalldirs
+
+$(top_srcdir)/mkinstalldirs: $(top_srcdir)/config/mkinstalldirs
+	cp $^ $@
+
+dist_noinst_DATA += mkinstalldirs
+
+DEB_STAGE_ROOT = $(shell pwd)/deb-stage
 
 deb-stage: doc/changelog.Debian all-am
 	rm -rf $(DEB_STAGE_ROOT)
@@ -165,10 +235,12 @@ rpms: VMware-view-open-client.spec rpm-stage
 
 TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION)
 
+# Make the locale stuff in the tar stage dir. Note the .. since we're entering
+# po/ and want the stage dir to be in the directory above it.
 bindist: all-am
 	rm -rf $(TAR_STAGE_DIR)
 	$(MKDIR_P) $(TAR_STAGE_DIR)/bin
-	$(MKDIR_P) $(TAR_STAGE_DIR)/doc
+	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help
 	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view \
 		$(TAR_STAGE_DIR)/bin
 	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view-tunnel \
@@ -178,9 +250,13 @@ bindist: all-am
 		$(TAR_STAGE_DIR)/doc
 	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide.pdf \
 		$(TAR_STAGE_DIR)/doc
-	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Help.pdf $(TAR_STAGE_DIR)/doc
 	$(INSTALL_DATA) $(srcdir)/doc/EULA_English-View_GA.rtf \
 		$(TAR_STAGE_DIR)/doc
+	$(INSTALL_SCRIPT) $(srcdir)/vmware-view-log-collector \
+		$(TAR_STAGE_DIR)/bin
+	$(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-*.txt \
+		$(TAR_STAGE_DIR)/doc/help
+	$(MAKE) -C po $(AM_MAKEFLAGS) install itlocaledir=../$(TAR_STAGE_DIR)/share/locale
 	tardir=$(TAR_STAGE_DIR) && $(am__tar) | GZIP=$(GZIP_ENV) $(GZIP) -c \
 		>$(TAR_STAGE_DIR).tar.gz
 	-rm -rf $(TAR_STAGE_DIR)
@@ -192,7 +268,8 @@ ifneq ($(DPKG_DEB),)
 deliverables: debs
 @ENDIF@
 ifeq ($(PACKAGING_NAME),VMware-view-open-client)
-deliverables: distcheck
+# XXX: dist should be distcheck
+deliverables: dist
 @ENDIF@
 deliverables: bindist
 ifneq ($(PUBLISH_DIR),)

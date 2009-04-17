@@ -57,6 +57,15 @@ class App
    : public Broker
 {
 public:
+   struct MonitorBounds {
+      long top;
+      long bottom;
+      long left;
+      long right;
+
+      MonitorBounds() : top(-1), bottom(-1), left(-1), right(-1) { }
+   };
+
    App(int argc, char **argv);
    ~App();
 
@@ -69,16 +78,17 @@ private:
    static void OnGLibLog(const gchar *domain,
                          GLogLevelFlags level,
                          const gchar *message);
-   static void InitLocalization();
 
-   static void FullscreenWindow(GtkWindow *win);
+   static void FullscreenWindow(GtkWindow *win, MonitorBounds *bounds = NULL);
    static void OnSizeAllocate(GtkWidget *widget, GtkAllocation *allocation,
                               gpointer userData);
+   static GtkWidget *CreateBanner();
    static void OnBannerSizeAllocate(GtkWidget *widget, GtkAllocation *allocation,
                                     gpointer userData);
    void ResizeBackground(GtkAllocation *allocation);
    static gboolean OnKeyPress(GtkWidget *widget, GdkEventKey *evt,
                               gpointer userData);
+   bool OnCtrlAltDel();
 
    static App *sApp;
    static gchar *sOptBroker;
@@ -92,6 +102,7 @@ private:
    static gchar *sOptFile;
    static gchar **sOptRedirect;
    static gboolean sOptVersion;
+   static gchar **sOptUsb;
 
    static GOptionEntry sOptEntries[];
    static GOptionEntry sOptFileEntries[];
@@ -100,12 +111,19 @@ private:
    void InitWindow();
    void SetContent(Dlg *dlg);
 
+   void GetFullscreenGeometry(bool allMonitors, GdkRectangle *geometry,
+                              MonitorBounds *bounds = NULL);
+
    // Status notifications, overrides Broker
    void SetBusy(const Util::string &message);
    void SetReady();
+   void UpdateDesktops();
 
    // Broker state change actions. overrides Broker
    void RequestBroker();
+   void RequestScInsertPrompt(Cryptoki *cryptoki);
+   void RequestScPin(const Util::string &tokenName, const X509 *x509);
+   void RequestCertificate(std::list<X509 *> &certs);
    void RequestDisclaimer(const Util::string &disclaimer);
    void RequestPasscode(const Util::string &username);
    void RequestNextTokencode(const Util::string &username);
@@ -118,7 +136,7 @@ private:
                         const Util::string &suggestedDomain);
    void RequestPasswordChange(const Util::string &username,
                               const Util::string &domain);
-   void RequestDesktop(std::vector<Desktop *> &desktops);
+   void RequestDesktop();
    void OnTunnelConnected(Tunnel *tunnel);
    void RequestTransition(const Util::string &message);
    void RequestLaunchDesktop(Desktop *desktop);
@@ -129,17 +147,20 @@ private:
 
    // Button click handlers
    void DoInitialize();
+   void DoSubmitScInsertPrompt();
+   void DoSubmitScPin();
+   void DoSubmitCertificate();
    void DoSubmitPasscode();
    void DoSubmitNextTokencode();
    void DoSubmitPins();
    void DoSubmitPassword();
    void DoChangePassword();
-   void DoConnectDesktop();
+   void DoDesktopAction(DesktopSelectDlg::Action action);
 
    void OnCancel();
    void UpdateDisplayEnvironment();
-   void OnRDesktopExit(RDesktop *rdesktop, int status);
-   void OnRDesktopCancel(RDesktop *rdesktop);
+   void OnDesktopUIExit(Dlg *dlg, int status);
+   void OnDesktopUICancel(Dlg *dlg);
 
    GtkWindow *mWindow;
    GtkVBox *mToplevelBox;
@@ -147,8 +168,10 @@ private:
    GtkAlignment *mFullscreenAlign;
    GtkImage *mBackgroundImage;
    Dlg *mDlg;
-   boost::signals::connection mRDesktopExitCnx;
+   boost::signals::connection mDesktopUIExitCnx;
    RestartMonitor mRDesktopMonitor;
+   bool mUseAllMonitors;
+   MonitorBounds mMonitorBounds;
 #ifdef VIEW_ENABLE_WINDOW_MODE
    GdkRectangle mDesktopSize;
    bool mFullScreen;

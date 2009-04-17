@@ -162,7 +162,9 @@ Posix_ReadLink(ConstUnicode pathName)  // IN:
    char link[PATH_MAX];
    Unicode result = NULL;
 
-   bytes = readlink(pathName, link, sizeof(link));
+   bytes = readlink(pathName, link, sizeof(link) - 1);
+   ASSERT_NOT_IMPLEMENTED(bytes < (ssize_t) sizeof link);
+
    if (bytes != -1) {
       /* add the missing NUL character to path */
       link[bytes] = '\0';

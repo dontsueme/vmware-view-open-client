@@ -2,32 +2,14 @@ Author: Daniel Baumann <daniel@debian.org>
 Description: Removing pdf documents without source.
 
 diff -Naurp vmware-view-open-client.orig/Makefile.in vmware-view-open-client/Makefile.in
---- vmware-view-open-client.orig/Makefile.in	2009-03-14 05:55:56.000000000 +0000
-+++ vmware-view-open-client/Makefile.in	2009-03-14 06:14:29.000000000 +0000
-@@ -626,7 +626,7 @@ TESTS =
- bin_PROGRAMS = vmware-view$(EXEEXT) vmware-view-tunnel$(EXEEXT)
- noinst_PROGRAMS =
- DIST_COMMON = $(am__configure_deps) $(dist_doc_DATA) $(dist_man_MANS) \
--	$(dist_noinst_DATA) $(dist_noinst_HEADERS) $(dist_pdf_DATA) \
-+	$(dist_noinst_DATA) $(dist_noinst_HEADERS) \
- 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
- 	$(srcdir)/Makefile.inc \
- 	$(srcdir)/VMware-view-open-client.control.in \
-@@ -948,7 +948,7 @@ dist_docDATA_INSTALL = $(INSTALL_DATA)
- dist_pdfDATA_INSTALL = $(INSTALL_DATA)
- pixmapsDATA_INSTALL = $(INSTALL_DATA)
- DATA = $(application_DATA) $(dist_doc_DATA) $(dist_noinst_DATA) \
--	$(dist_pdf_DATA) $(pixmaps_DATA)
-+	$(pixmaps_DATA)
- HEADERS = $(dist_noinst_HEADERS)
- RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
-   distclean-recursive maintainer-clean-recursive
-@@ -4477,7 +4477,7 @@ info: info-recursive
- info-am:
- 
- install-data-am: install-applicationDATA install-dist_docDATA \
--	install-dist_pdfDATA install-man install-pixmapsDATA
-+	install-man install-pixmapsDATA
- 
- install-dvi: install-dvi-recursive
- 
+--- vmware-view-open-client.orig/Makefile.in	2009-04-16 04:03:24.000000000 +0000
++++ vmware-view-open-client/Makefile.in	2009-04-17 18:34:21.000000000 +0000
+@@ -1290,7 +1290,7 @@ dist_noinst_HEADERS := lib/open-vm-tools
+ 	lib/bora/include/vmlocale.h lib/bora/include/vthread.h \
+ 	lib/bora/include/vthreadBase.h lib/libp11/include/pkcs11.h \
+ 	extraTranslations.hh
+-dist_pdf_DATA := doc/View_Client_Admin_Guide.pdf
++#dist_pdf_DATA := doc/View_Client_Admin_Guide.pdf
+ noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
+ 	libPanicDefault.a libString.a libStubs.a libUnicode.a \
+ 	libUser.a libAsyncSocket.a libBasicHttp.a libLog.a \

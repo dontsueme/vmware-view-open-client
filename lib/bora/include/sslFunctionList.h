@@ -124,11 +124,14 @@
    VMW_SSL_FUNC(crypto, unsigned long, ERR_peek_error, (void), ()) \
    VMW_SSL_FUNC(crypto, char *, ERR_error_string, (unsigned long e, char *buf), (e, buf)) \
    VMW_SSL_FUNC(crypto, unsigned long, ERR_get_error, (void), ()) \
+   VMW_SSL_FUNC(crypto, const char *, ERR_reason_error_string, \
+                (unsigned long e), (e)) \
    VMW_SSL_FUNC(ssl, SSL_CIPHER *, SSL_get_current_cipher, (const SSL *s), (s)) \
    VMW_SSL_FUNC(ssl, int, SSL_CIPHER_get_bits, (const SSL_CIPHER *c, int *bits), (c, bits)) \
    VMW_SSL_FUNC(ssl, int, SSL_get_error, (const SSL *s, int ret_code), (s, ret_code)) \
    VMW_SSL_FUNC(ssl, long, SSL_get_verify_result, (const SSL *s), (s)) \
    VMW_SSL_FUNC(ssl, X509 *, SSL_get_peer_certificate, (const SSL *s), (s)) \
+   VMW_SSL_FUNC(ssl, STACK_OF(X509_NAME) *, SSL_get_client_CA_list, (SSL *s), (s)) \
    VMW_SSL_FUNC(ssl, int, SSL_library_init, (void), ()) \
    VMW_SSL_FUNC(ssl, int, SSL_peek, (SSL *ssl, void *buf, int num), (ssl, buf, num)) \
    VMW_SSL_FUNC(ssl, SSL_SESSION *, SSL_get1_session, (SSL *ssl), (ssl)) \
@@ -199,6 +202,7 @@
                 (X509_NAME *name, int nid, char *buf, int len), \
                 (name, nid, buf, len)) \
    VMW_SSL_FUNC(crypto, X509_NAME *, X509_get_subject_name, (X509 *x), (x)) \
+   VMW_SSL_FUNC(crypto, int, X509_print_fp, (FILE *fp, X509 *x), (fp, x)) \
    VMW_SSL_FUNC(crypto, int, X509_STORE_add_cert, (X509_STORE *ctx, X509 *x), (ctx, x)) \
    VMW_SSL_FUNC(crypto, X509_LOOKUP *, X509_STORE_add_lookup, \
                 (X509_STORE *v, X509_LOOKUP_METHOD *m), (v, m)) \
@@ -250,6 +254,10 @@
                 (int type, const unsigned char *m, unsigned int m_length, \
                  unsigned char *sigbuf, unsigned int siglen, RSA *rsa), \
                 (type, m, m_length, sigbuf, siglen, rsa)) \
+   VMW_SSL_FUNC(crypto, int, RSA_set_method, \
+                (RSA *rsa, const RSA_METHOD *meth), (rsa, meth)) \
+   VMW_SSL_FUNC(crypto, const RSA_METHOD *, RSA_get_default_method, \
+                (void), ()) \
    VMW_SSL_FUNC(crypto, const EVP_MD *, EVP_sha, (void), ()) \
    VMW_SSL_FUNC(crypto, EVP_PKEY *, EVP_PKEY_new, (void), ()) \
    VMW_SSL_FUNC(crypto, int, i2d_PrivateKey, (EVP_PKEY *a, unsigned char **pp), (a, pp)) \
@@ -259,6 +267,8 @@
                 (type, a, pp, length)) \
    VMW_SSL_FUNC(crypto, X509 *, d2i_X509, \
                 (X509 **px,  D2I_X509_T1 in, long len), (px, in, len)) \
+   VMW_SSL_FUNC(crypto, int, EVP_PKEY_assign, \
+                (EVP_PKEY *pkey, int type, char *key), (pkey, type, key)) \
    VMW_SSL_FUNC(crypto, int, EVP_PKEY_size, (EVP_PKEY *pkey), (pkey)) \
    VMW_SSL_FUNC(crypto, int, EVP_PKEY_set1_RSA, (EVP_PKEY *pkey, struct rsa_st *key), \
                 (pkey, key)) \
@@ -310,16 +320,45 @@
    VMW_SSL_FUNC(crypto, const EVP_CIPHER *, EVP_des_cbc, (void), ()) \
    VMW_SSL_FUNC(crypto, const EVP_CIPHER *, EVP_des_ede3_cbc, (void), ()) \
    VMW_SSL_FUNC(crypto, const EVP_CIPHER *, EVP_aes_128_cbc, (void), ()) \
+   VMW_SSL_FUNC(crypto, int, sk_find, (STACK *st,char *data), (st, data)) \
    VMW_SSL_FUNC(ssl, SSL_METHOD *, TLSv1_method, (void), ()) \
    VMW_SSL_FUNC(crypto, size_t, BUF_strlcpy, (char *dst, const char *src, size_t siz), \
                 (dst, src, siz)) \
    VMW_SSL_FUNC(crypto, void *, X509_STORE_CTX_get_ex_data, \
                 (X509_STORE_CTX *ctx, int idx), (ctx, idx)) \
+   VMW_SSL_FUNC(crypto, void *, RSA_get_ex_data, \
+                (const RSA *r, int idx), (r, idx)) \
+   VMW_SSL_FUNC(crypto, int, RSA_set_ex_data, \
+                (RSA *r, int idx, void *arg), (r, idx, arg)) \
+   VMW_SSL_FUNC(crypto, void *, X509_get_ex_data, \
+                (X509 *r, int idx), (r, idx)) \
+   VMW_SSL_FUNC(crypto, int, X509_set_ex_data, \
+                (X509 *r, int idx, void *arg), (r, idx, arg)) \
+   VMW_SSL_FUNC(crypto, void *, CRYPTO_get_ex_data, \
+                (const CRYPTO_EX_DATA *ad, int idx), (ad, idx)) \
+   VMW_SSL_FUNC(crypto, int, CRYPTO_set_ex_data, \
+                (CRYPTO_EX_DATA *ad, int idx, void *arg), (ad, idx, arg)) \
    VMW_SSL_FUNC(ssl, int, SSL_get_ex_data_X509_STORE_CTX_idx, (void), ()) \
    VMW_SSL_FUNC(ssl, void *, SSL_get_ex_data, (const SSL *ssl, int idx), (ssl, idx)) \
    VMW_SSL_FUNC(ssl, int, SSL_set_ex_data, \
                 (SSL *ssl, int idx, void *arg), (ssl, idx, arg)) \
+   VMW_SSL_FUNC(ssl, void *, SSL_CTX_get_ex_data, \
+                (const SSL_CTX *ssl, int idx), (ssl, idx)) \
+   VMW_SSL_FUNC(ssl, int, SSL_CTX_set_ex_data, \
+                (SSL_CTX *ssl, int idx, void *data), (ssl, idx, data)) \
    VMW_SSL_FUNC(crypto, int, i2d_X509, (X509 *x, unsigned char **out), (x, out)) \
+   VMW_SSL_FUNC(crypto, int, CRYPTO_get_ex_new_index, \
+                (int class_index, long argl, void *argp, CRYPTO_EX_new *newFunc, \
+                 CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func), \
+                (class_index, argl, argp, newFunc, dup_func, free_func)) \
+   VMW_SSL_FUNC(crypto, int, RSA_get_ex_new_index, \
+                (long argl, void *argp, CRYPTO_EX_new *newFunc, \
+                 CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func), \
+                (argl, argp, newFunc, dup_func, free_func)) \
+   VMW_SSL_FUNC(crypto, int, X509_get_ex_new_index, \
+                (long argl, void *argp, CRYPTO_EX_new *newFunc, \
+                 CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func), \
+                (argl, argp, newFunc, dup_func, free_func)) \
    VMW_SSL_FUNC(ssl, int, SSL_get_ex_new_index, \
                 (long argl, void *argp, CRYPTO_EX_new *newFunc, \
                  CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func), \
@@ -382,6 +421,7 @@
    VMW_SSL_FUNC(crypto, const EVP_MD *, EVP_sha256, (void), ()) \
    VMW_SSL_FUNC(crypto, const EVP_MD *, EVP_sha384, (void), ()) \
    VMW_SSL_FUNC(crypto, const EVP_MD *, EVP_sha512, (void), ()) \
+   VMW_SSL_FUNC(crypto, const EVP_MD *, EVP_md5, (void), ()) \
    VMW_SSL_FUNC(crypto, int, AES_set_encrypt_key, \
                 (const unsigned char *userKey, const int bits, \
                  AES_KEY *key), \
@@ -406,7 +446,8 @@
                                            unsigned char *md, unsigned int *len), \
                                           (data, type, md, len)) \
    VMW_SSL_FUNC(crypto, int, X509_NAME_cmp, \
-                (const X509_NAME *a, const X509_NAME *b), (a, b))
+                (const X509_NAME *a, const X509_NAME *b), (a, b)) \
+   VMW_SSL_FUNC(crypto, int, ASN1_TIME_print, (BIO *fp, ASN1_TIME *a), (fp, a))
 
 #ifdef OPENSSL_098
 
@@ -418,7 +459,11 @@
 
 #define VMW_SSL_VOID_FUNCTIONS_098 \
    VMW_SSL_FUNC(crypto, void, BIO_set_flags, (BIO *b, int flags), (b, flags)) \
-   VMW_SSL_FUNC(crypto, void, BIO_clear_flags, (BIO *b, int flags), (b, flags))
+   VMW_SSL_FUNC(crypto, void, BIO_clear_flags, (BIO *b, int flags), (b, flags)) \
+   VMW_SSL_FUNC(ssl, void, SSL_CTX_set_client_cert_cb, \
+                (SSL_CTX *ctx, int (*client_cert_cb)(SSL *, X509 **, \
+                                                     EVP_PKEY **)), \
+                (ctx, client_cert_cb)) 
 #else
 #define VMW_SSL_RET_FUNCTIONS_098
 #define VMW_SSL_VOID_FUNCTIONS_098
@@ -476,6 +521,11 @@
                 (X509_NAME *name, int loc), (name, loc)) \
    VMW_SSL_FUNC(crypto, ASN1_STRING *, X509_NAME_ENTRY_get_data, \
                 (X509_NAME_ENTRY *ne), (ne)) \
+   VMW_SSL_FUNC(crypto, int, X509_NAME_entry_count, (X509_NAME *name), (name)) \
+   VMW_SSL_FUNC(crypto, ASN1_OBJECT *, X509_NAME_ENTRY_get_object, \
+                (X509_NAME *name, int idx), (name, idx)) \
+   VMW_SSL_FUNC(crypto, int, OBJ_obj2nid, (const ASN1_OBJECT *a), (a)) \
+   VMW_SSL_FUNC(crypto, const char *, OBJ_nid2ln, (const ASN1_OBJECT *a), (a)) \
    VMW_SSL_FUNC(crypto, int, ASN1_STRING_type, (ASN1_STRING *x), (x)) \
    VMW_SSL_FUNC(crypto, int, ASN1_STRING_to_UTF8, \
                 (unsigned char **out, ASN1_STRING *in), (out, in)) \

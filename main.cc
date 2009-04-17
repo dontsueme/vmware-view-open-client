@@ -28,15 +28,24 @@
  *      This module implements the main entry point for the Linux View client.
  */
 
+#include <glib/gi18n.h>
+
 
 #include "app.hh"
+#include "util.hh"
 
 extern "C" {
-#include "vmware.h"
+#include "hostinfo.h"
 #include "panic.h"
 #include "vm_atomic.h"
-#include "hostinfo.h"
+#include "vmware.h"
 }
+
+
+#define VMWARE_VIEW "vmware-view"
+
+
+using namespace cdk;
 
 
 /*
@@ -61,7 +70,22 @@ main(int argc,    // IN: the arg count
 {
    Atomic_Init();
 
-   gtk_set_locale();
+   Util::string localeDir = Util::GetUsefulPath(LOCALEDIR, "../share/locale");
+   if (localeDir.empty()) {
+      Util::UserWarning(_("Could not find locale directory; falling back "
+                          "to %s\n"), LOCALEDIR);
+      localeDir = LOCALEDIR;
+   } else {
+      Log("Using locale directory %s\n", localeDir.c_str());
+   }
+   bindtextdomain(VMWARE_VIEW, localeDir.c_str());
+   bind_textdomain_codeset(VMWARE_VIEW, "UTF-8");
+   textdomain(VMWARE_VIEW);
+
+   /*
+    * This needs to go after bindtextdomain so it handles GOption localization
+    * properly.
+    */
    gtk_init(&argc, &argv);
 
    cdk::App theApp(argc, argv);

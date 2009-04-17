@@ -156,6 +156,9 @@ typedef Bool PollCallbackRemoveProc(PollClassSet classSet, int flags,
                                     PollerFunction f, void *clientData,
                                     PollEventType type);
 
+typedef void BasicHttpSslCtxProc(BasicHttpRequest *request, void *sslctx,
+                                 void *clientData);
+
 Bool BasicHttp_Init(PollCallbackProc *pollCallbackProc,
                     PollCallbackRemoveProc *pollCallbackRemoveProc);
 
@@ -184,6 +187,12 @@ void BasicHttp_SetRequestNameAndPassword(BasicHttpRequest *request,
                                          int authenticationType,
                                          const char *userName,
                                          const char *userPassword);
+
+void BasicHttp_SetUserAgent(BasicHttpRequest *request,
+                            const char *userAgent);
+
+void BasicHttp_SetSslCtxProc(BasicHttpRequest *request,
+                             BasicHttpSslCtxProc *sslCtxProc);
 
 Bool BasicHttp_SendRequest(BasicHttpRequest *request,
                            BasicHttpOnSentProc *onSentProc,

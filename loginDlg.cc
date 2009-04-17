@@ -29,6 +29,9 @@
  */
 
 
+#include <glib/gi18n.h>
+
+
 #include "loginDlg.hh"
 #include "util.hh"
 
@@ -59,8 +62,7 @@ LoginDlg::LoginDlg()
      mUsername(GTK_ENTRY(gtk_entry_new())),
      mPasswd(GTK_ENTRY(gtk_entry_new())),
      mDomain(GTK_COMBO_BOX(gtk_combo_box_new_text())),
-     mLogin(Util::CreateButton(GTK_STOCK_OK,
-                               CDK_MSG(login, "_Login").c_str()))
+     mLogin(Util::CreateButton(GTK_STOCK_OK, _("_Login")))
 {
    GtkLabel *l;
 
@@ -69,8 +71,7 @@ LoginDlg::LoginDlg()
    gtk_table_set_row_spacings(mTable, VM_SPACING);
    gtk_table_set_col_spacings(mTable, VM_SPACING);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(username, "_Username:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Username:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 0, 1, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -82,8 +83,7 @@ LoginDlg::LoginDlg()
    gtk_entry_set_activates_default(mUsername, true);
    AddRequiredEntry(mUsername);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(password, "_Password:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Password:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 1, 2, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -97,8 +97,7 @@ LoginDlg::LoginDlg()
    gtk_entry_set_activates_default(mPasswd, true);
    AddRequiredEntry(mPasswd);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(
-      CDK_MSG(domain, "_Domain:").c_str()));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Domain:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_table_attach(mTable, GTK_WIDGET(l), 0, 1, 2, 3, GTK_FILL, GTK_FILL,
                     0, 0);
@@ -115,10 +114,14 @@ LoginDlg::LoginDlg()
    g_signal_connect(G_OBJECT(mLogin), "clicked",
                     G_CALLBACK(&LoginDlg::OnLogin), this);
 
+   GtkButton *help = GetHelpButton();
+
    GtkWidget *actionArea = Util::CreateActionArea(mLogin, GetCancelButton(),
-                                                  NULL);
+                                                  help, NULL);
    gtk_widget_show(actionArea);
    gtk_table_attach_defaults(mTable, GTK_WIDGET(actionArea), 0, 2, 3, 4);
+   gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(actionArea),
+                                      GTK_WIDGET(help), true);
 
    UpdateForwardButton(this);
 }

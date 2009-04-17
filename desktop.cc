@@ -30,10 +30,15 @@
 
 
 #include <boost/bind.hpp>
+#include <glib/gi18n.h>
 
 #include "desktop.hh"
 #include "broker.hh"
+#include "rdesktop.hh"
 #include "util.hh"
+
+
+#define FRAMEWORK_LISTENER_NAME "FRAMEWORKCHANNEL"
 
 
 namespace cdk {
@@ -58,10 +63,10 @@ namespace cdk {
 Desktop::Desktop(BrokerXml &xml,                  // IN
                  BrokerXml::Desktop &desktopInfo) // IN
    : mXml(xml),
-     mDesktopInfo(desktopInfo),
      mConnectionState(STATE_DISCONNECTED),
-     mRDesktop(NULL)
+     mDlg(NULL)
 {
+   SetInfo(desktopInfo);
 }
 
 
@@ -83,8 +88,70 @@ Desktop::Desktop(BrokerXml &xml,                  // IN
 
 Desktop::~Desktop()
 {
+   changed.disconnect_all_slots();
    if (mConnectionState == STATE_CONNECTED) {
       Disconnect();
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::SetInfo --
+ *
+ *      Sets mDesktopInfo and resets mConnectionState if appropriate.
+ *      This will NOT emit the changed() signal.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Desktop::SetInfo(BrokerXml::Desktop &desktopInfo)
+{
+   mDesktopInfo = desktopInfo;
+   if (mConnectionState == STATE_ROLLING_BACK ||
+       mConnectionState == STATE_RESETTING ||
+       mConnectionState == STATE_KILLING_SESSION) {
+      // Don't use SetConnectionState to avoid emitting changed(); see below.
+      mConnectionState = STATE_DISCONNECTED;
+   }
+   /*
+    * Don't explicitly emit changed() here. So far the only use of SetInfo is
+    * in Broker::OnGetDesktopsRefresh, which will call UpdateDesktops() once
+    * after all desktops have been refreshed.
+    */
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::SetConnectionState --
+ *
+ *      Sets mConnectionState and emits changed() if appropriate.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Desktop::SetConnectionState(ConnectionState state) // IN
+{
+   if (mConnectionState != state) {
+      mConnectionState = state;
+      changed();
    }
 }
 
@@ -107,16 +174,18 @@ Desktop::~Desktop()
  */
 
 void
-Desktop::Connect(Util::AbortSlot onAbort, // IN
-                 Util::DoneSlot onDone)   // IN
+Desktop::Connect(Util::AbortSlot onAbort,   // IN
+                 Util::DoneSlot onDone,     // IN
+                 Util::ClientInfoMap &info) // IN
 {
    ASSERT(mConnectionState == STATE_DISCONNECTED);
    ASSERT(!GetID().empty());
 
-   mConnectionState = STATE_CONNECTING;
+   SetConnectionState(STATE_CONNECTING);
    mXml.GetDesktopConnection(GetID(),
       boost::bind(&Desktop::OnGetDesktopConnectionAbort, this, _1, _2, onAbort),
-      boost::bind(&Desktop::OnGetDesktopConnectionDone, this, _1, _2, onDone));
+      boost::bind(&Desktop::OnGetDesktopConnectionDone, this, _1, _2, onDone),
+      info);
 }
 
 
@@ -139,11 +208,13 @@ Desktop::Connect(Util::AbortSlot onAbort, // IN
 void
 Desktop::Disconnect()
 {
-   ASSERT(mConnectionState == STATE_CONNECTED);
-   mConnectionState = STATE_DISCONNECTED;
-   if (mRDesktop) {
-      mRDesktop->Kill();
-      mRDesktop = NULL;
+   SetConnectionState(STATE_DISCONNECTED);
+   if (mDlg) {
+      ProcHelper *ph = dynamic_cast<ProcHelper*>(mDlg);
+      if (ph) {
+         ph->Kill();
+      }
+      mDlg = NULL;
    }
 }
 
@@ -172,7 +243,7 @@ Desktop::OnGetDesktopConnectionDone(BrokerXml::Result &result,          // IN
 {
    ASSERT(mConnectionState == STATE_CONNECTING);
 
-   mConnectionState = STATE_CONNECTED;
+   SetConnectionState(STATE_CONNECTED);
    mDesktopConn = conn;
 
    onDone();
@@ -202,44 +273,13 @@ Desktop::OnGetDesktopConnectionAbort(bool cancelled,          // IN
                                      Util::AbortSlot onAbort) // IN
 {
    ASSERT(mConnectionState == STATE_CONNECTING);
-   mConnectionState = STATE_DISCONNECTED;
+
+   SetConnectionState(STATE_DISCONNECTED);
    Util::exception myErr(
-      Util::Format("Unable to connect to desktop \"%s\": %s",
+      Util::Format(_("Unable to connect to desktop \"%s\": %s"),
                    GetName().c_str(), err.what()),
       err.code());
    onAbort(cancelled, myErr);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Desktop::GetDesktopType --
- *
- *      Get the Desktop type as a DesktopType enum value.
- *
- * Results:
- *      DesktopType in the desktop info.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-Desktop::DesktopType
-Desktop::GetDesktopType()
-   const
-{
-   if (mDesktopInfo.type == "free") {
-      return TYPE_FREE;
-   } else if (mDesktopInfo.type == "sticky") {
-      return TYPE_STICKY;
-   } else if (mDesktopInfo.type == "auto") {
-      return TYPE_AUTO;
-   } else {
-      NOT_REACHED();
-   }
 }
 
 
@@ -278,65 +318,6 @@ Desktop::GetAutoConnect()
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Desktop::GetRDesktop --
- *
- *      Returns the connected and running RDesktop object.
- *
- * Results:
- *      RDesktop member if desktop is connected, or NULL.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-RDesktop*
-Desktop::GetRDesktop()
-{
-   if (!mRDesktop) {
-      mRDesktop = new RDesktop();
-      mRDesktop->onExit.connect(boost::bind(&Desktop::Disconnect, this));
-   }
-   return mRDesktop;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Desktop::StartRDesktop --
- *
- *      Calls Start on mRDesktop.
- *
- * Results:
- *      RDesktop member if desktop is connected, or NULL.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-bool
-Desktop::StartRDesktop(const GdkRectangle *geometry, // IN
-                       const std::vector<Util::string> &devRedirectArgs) // IN
-{
-   if (mConnectionState == STATE_CONNECTED && mRDesktop) {
-      Warning("Connecting rdesktop to %s:%d.\n", mDesktopConn.address.c_str(),
-              mDesktopConn.port);
-      mRDesktop->Start(mDesktopConn.address, mDesktopConn.username,
-                       mDesktopConn.domainName, mDesktopConn.password,
-                       geometry, mDesktopConn.port, devRedirectArgs);
-      return true;
-   }
-   return false;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
  * cdk::Desktop::ResetDesktop --
  *
  *      Proxy for BrokerXml::ResetDesktop (restart VM).
@@ -354,6 +335,10 @@ void
 Desktop::ResetDesktop(Util::AbortSlot onAbort, // IN
                       Util::DoneSlot onDone)   // IN
 {
+   ASSERT(mConnectionState == STATE_DISCONNECTED ||
+          mConnectionState == STATE_CONNECTED);
+
+   SetConnectionState(STATE_RESETTING);
    mXml.ResetDesktop(GetID(),
                      boost::bind(&Desktop::OnResetDesktopAbort, this, _1, _2, onAbort),
                      boost::bind(onDone));
@@ -381,10 +366,10 @@ Desktop::OnResetDesktopAbort(bool cancelled,
                              Util::exception err,
                              Util::AbortSlot onAbort)
 {
+   SetConnectionState(STATE_DISCONNECTED);
    Util::exception myErr(
-      Util::Format(CDK_MSG(errorResetAbort, 
-                            "Unable to restart desktop \"%s\": %s").c_str(),
-                   GetName().c_str(), err.what()),
+      Util::Format(_("Unable to reset desktop \"%s\": %s"), GetName().c_str(),
+                   err.what()),
       err.code());
    onAbort(cancelled, myErr);
 }
@@ -393,9 +378,36 @@ Desktop::OnResetDesktopAbort(bool cancelled,
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Desktop::CanConnect --
+ *
+ *      Returns whether or not we can connect to this desktop given offline
+ *      state and in-flight operations.
+ *
+ * Results:
+ *      true if the desktop is disconnected and is not checked in somewhere.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Desktop::CanConnect()
+   const
+{
+   return mConnectionState == STATE_DISCONNECTED &&
+     (GetOfflineState() == BrokerXml::OFFLINE_NONE ||
+      GetOfflineState() == BrokerXml::OFFLINE_CHECKED_IN);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Desktop::KillSession --
  *
- *      Proxy for BrokerXml::KillSession (log off).
+ *      Proxy for BrokerXml::KillSession (log out).
  *
  * Results:
  *      None
@@ -410,6 +422,10 @@ void
 Desktop::KillSession(Util::AbortSlot onAbort, // IN
                      Util::DoneSlot onDone)   // IN
 {
+   ASSERT(mConnectionState == STATE_DISCONNECTED);
+   ASSERT(!GetSessionID().empty());
+
+   SetConnectionState(STATE_KILLING_SESSION);
    mXml.KillSession(GetSessionID(),
                     boost::bind(&Desktop::OnKillSessionAbort, this, _1, _2, onAbort),
                     boost::bind(onDone));
@@ -437,12 +453,184 @@ Desktop::OnKillSessionAbort(bool cancelled,          // IN
                             Util::exception err,     // IN
                             Util::AbortSlot onAbort) // IN
 {
+   SetConnectionState(STATE_DISCONNECTED);
    Util::exception myErr(
-      Util::Format(CDK_MSG(errorKillSessionAbort,
-                            "Unable to log out of \"%s\": %s").c_str(),
-                   GetName().c_str(), err.what()),
+      Util::Format(_("Unable to log out of \"%s\": %s"), GetName().c_str(),
+                   err.what()),
       err.code());
    onAbort(cancelled, myErr);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::Rollback --
+ *
+ *      Proxy for BrokerXml::Rollback.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Desktop::Rollback(Util::AbortSlot onAbort, // IN
+                  Util::DoneSlot onDone)   // IN
+{
+   ASSERT(mConnectionState == STATE_DISCONNECTED);
+   ASSERT(GetOfflineState() == BrokerXml::OFFLINE_CHECKED_OUT);
+
+   SetConnectionState(STATE_ROLLING_BACK);
+   mXml.Rollback(GetID(),
+                 boost::bind(&Desktop::OnRollbackAbort, this, _1, _2, onAbort),
+                 boost::bind(onDone));
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::OnRollbackAbort --
+ *
+ *      Error handler for Rollback RPC.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Desktop::OnRollbackAbort(bool cancelled,          // IN
+                         Util::exception err,     // IN
+                         Util::AbortSlot onAbort) // IN
+{
+   SetConnectionState(STATE_DISCONNECTED);
+   Util::exception myErr(
+      Util::Format(_("Unable to rollback \"%s\": %s"), GetName().c_str(),
+                   err.what()),
+      err.code());
+   onAbort(cancelled, myErr);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::GetDlg --
+ *
+ *      Returns the RDesktop desktop UI object.
+ *
+ * Results:
+ *      The UI Dlg.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Dlg*
+Desktop::GetUIDlg()
+{
+   if (!mDlg) {
+      if (mDesktopConn.protocol == "RDP") {
+         RDesktop *ui = new RDesktop();
+         ui->onExit.connect(boost::bind(&Desktop::Disconnect, this));
+         mDlg = ui;
+      } else {
+         NOT_REACHED();
+      }
+   }
+   return mDlg;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::StartUI --
+ *
+ *      Calls Start on mDlg. Passes geometry on to rdesktop to allow
+ *      multi-monitor screen sizes.
+ *
+ * Results:
+ *      true if a desktop connection exists and the UI has been started, false
+ *      otherwise.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Desktop::StartUI(GdkRectangle *geometry,                           // IN
+                 const std::vector<Util::string> &devRedirectArgs, // IN/OPT
+                 const std::vector<Util::string> &usbRedirectArgs) // IN/OPT
+{
+   if (mConnectionState == STATE_CONNECTED && mDlg) {
+      RDesktop *rdesktop = dynamic_cast<RDesktop*>(mDlg);
+
+      // Start the vmware-view-usb app if USB is enabled.
+      if (mDesktopConn.enableUSB) {
+         StartUsb(usbRedirectArgs);
+      }
+
+      if (rdesktop) {
+         Warning("Connecting rdesktop to %s:%d.\n",
+                 mDesktopConn.address.c_str(), mDesktopConn.port);
+         rdesktop->Start(mDesktopConn.address, mDesktopConn.username,
+                         mDesktopConn.domainName, mDesktopConn.password,
+                         geometry, mDesktopConn.port, devRedirectArgs);
+      } else {
+         NOT_REACHED();
+      }
+      return true;
+   }
+   return false;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::StartUsb --
+ *
+ *      Starts the vmware-view-usb application.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Desktop::StartUsb(const std::vector<Util::string> &usbRedirectArgs)  // IN
+{
+   // First we must locate the framework listener.
+   BrokerXml::ListenerMap::iterator it =
+      mDesktopConn.listeners.find(FRAMEWORK_LISTENER_NAME);
+   if (it != mDesktopConn.listeners.end()) {
+      // Start the vmware-view-usb redirection app.
+      Warning("Starting usb redirection to '%s:%d' with ticket '%s'.\n",
+              it->second.address.c_str(),
+              it->second.port,
+              mDesktopConn.channelTicket.c_str());
+      mUsb.Start(it->second.address, it->second.port,
+                 mDesktopConn.channelTicket, usbRedirectArgs);
+   }
 }
 
 

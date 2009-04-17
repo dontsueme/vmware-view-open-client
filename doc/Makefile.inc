@@ -19,7 +19,6 @@
 ################################################################################
 
 dist_pdf_DATA += doc/View_Client_Admin_Guide.pdf
-dist_pdf_DATA += doc/View_Client_Help.pdf
 
 dist_doc_DATA += doc/EULA_English-View_GA.rtf
 dist_doc_DATA += doc/open_source_licenses.txt
@@ -28,3 +27,7 @@ dist_man_MANS += doc/vmware-view.1
 dist_man_MANS += doc/vmware-view-tunnel.1
 
 dist_noinst_DATA += doc/copyright.Debian
+
+dist_help_DATA += doc/help/integrated_help-en.txt
+dist_help_DATA += doc/help/integrated_help-de.txt
+dist_help_DATA += doc/help/integrated_help-ja.txt

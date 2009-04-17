@@ -18,6 +18,10 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
+# If this changes, we need to rebuild the list of wrapped functions
+# (which is done at configure time).
+CONFIG_STATUS_DEPENDENCIES += lib/bora/include/sslFunctionList.h
+
 dist_noinst_HEADERS += lib/bora/include/asyncsocket.h
 dist_noinst_HEADERS += lib/bora/include/basicHttp.h
 dist_noinst_HEADERS += lib/bora/include/crypto.h

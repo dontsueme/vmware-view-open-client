@@ -35,6 +35,7 @@
 
 
 #include "dlg.hh"
+#include "helpDlg.hh"
 
 
 namespace cdk {
@@ -61,6 +62,7 @@ Dlg::Dlg()
      mFocusWidget(NULL),
      mCancel(NULL),
      mForwardButton(NULL),
+     mHelp(NULL),
      mSensitive(true)
 {
 }
@@ -242,6 +244,39 @@ Dlg::AddRequiredEntry(GtkEntry *entry) // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Dlg::IsValid --
+ *
+ *      Is this dialog's content valid?  If yes, the continue button
+ *      should be enabled.
+ *
+ *      This implementation simply goes through all the required text
+ *      fields, and if any are empty, returns false.
+ *
+ * Results:
+ *      true if the continue button should be enabled.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Dlg::IsValid()
+{
+   for (std::list<GtkEntry *>::iterator i = mRequiredEntries.begin();
+        i != mRequiredEntries.end(); i++) {
+      if (!(*gtk_entry_get_text(*i))) {
+         return false;
+      }
+   }
+   return true;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Dlg::UpdateForwardButton --
  *
  *      Callback for changes to any text entry. Updates the sensitivity of
@@ -261,19 +296,10 @@ Dlg::UpdateForwardButton(Dlg *that) // IN
 {
    ASSERT(that);
 
-   if (!that->mForwardButton) {
-      return;
+   if (that->mForwardButton) {
+      gtk_widget_set_sensitive(GTK_WIDGET(that->mForwardButton),
+                               that->IsSensitive() && that->IsValid());
    }
-   bool emptyEntry = false;
-   for (std::list<GtkEntry *>::iterator i = that->mRequiredEntries.begin();
-        i != that->mRequiredEntries.end(); i++) {
-      if (!(*gtk_entry_get_text(*i))) {
-         emptyEntry = true;
-         break;
-      }
-   }
-   gtk_widget_set_sensitive(GTK_WIDGET(that->mForwardButton),
-      that->IsSensitive() && !emptyEntry);
 }
 
 
@@ -427,6 +453,59 @@ Dlg::Cancel()
    if (mCancel) {
       gtk_widget_activate(GTK_WIDGET(mCancel));
    }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Dlg::OnHelp --
+ *
+ *      Callback for Help button click.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Help dialog created.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Dlg::OnHelp(GtkButton *button, // IN
+            gpointer userData) // IN/UNUSED
+{
+   HelpDlg::ShowHelp(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))));
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Dlg::GetHelpButton --
+ *
+ *      Create a help button that is connected to our help signal.
+ *
+ * Results:
+ *      GtkButton with stock Help image.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GtkButton *
+Dlg::GetHelpButton()
+{
+   if (!mHelp) {
+      mHelp = Util::CreateButton(GTK_STOCK_HELP);
+      gtk_widget_show(GTK_WIDGET(mHelp));
+      g_signal_connect(mHelp, "clicked", G_CALLBACK(&Dlg::OnHelp), NULL);
+      g_object_add_weak_pointer(G_OBJECT(mHelp), (gpointer *)&mHelp);
+   }
+   return mHelp;
 }
 
 

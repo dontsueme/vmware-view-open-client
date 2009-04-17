@@ -30,19 +30,10 @@
 
 
 #include <boost/bind.hpp>
-
-#if defined(__APPLE__)
-#include <mach-o/dyld.h>
-#endif
+#include <glib/gi18n.h>
 
 #include "tunnel.hh"
 #include "app.hh"
-
-extern "C" {
-#include "file.h"
-#include "posix.h"
-#include "util.h" /* For DIRSEPS */
-}
 
 
 #define VMWARE_VIEW_TUNNEL "vmware-view-tunnel"
@@ -158,30 +149,13 @@ Tunnel::Connect(const BrokerXml::Tunnel &tunnelInfo) // IN
       return;
    }
 
-   char *self;
-
-#if defined(__APPLE__)
-   uint32_t pathSize = FILE_MAXPATH;
-   self = (char *)malloc(pathSize);
-   ASSERT(self);
-   if (_NSGetExecutablePath(self, &pathSize)) {
-      Warning("1%s: _NSGetExecutablePath failed.\n", __FUNCTION__);
-      ASSERT(false);
+   Util::string tunnelPath =
+      Util::GetUsefulPath(BINDIR G_DIR_SEPARATOR_S VMWARE_VIEW_TUNNEL,
+                          VMWARE_VIEW_TUNNEL);
+   if (tunnelPath.empty()) {
+      Util::UserWarning(_("Could not find secure tunnel executable.\n"));
+      return;
    }
-#else
-   self = Posix_ReadLink("/proc/self/exe");
-   ASSERT(self);
-#endif
-
-   char *dirname = NULL;
-   File_GetPathName(self, &dirname, NULL);
-#if defined(__APPLE__)
-   free(self);
-#endif
-   ASSERT(dirname);
-
-   Util::string tunnelPath(dirname);
-   tunnelPath += DIRSEPS VMWARE_VIEW_TUNNEL;
    Log("Executing secure HTTP tunnel: %s\n", tunnelPath.c_str());
 
    std::vector<Util::string> args;
@@ -249,14 +223,12 @@ Tunnel::OnErr(Util::string line) // IN: this
                         strlen(TUNNEL_SYSTEM_MESSAGE)) == 0) {
       Util::string msg = Util::string(line, strlen(TUNNEL_SYSTEM_MESSAGE));
       Log("Tunnel system message: %s\n", msg.c_str());
-      App::ShowDialog(GTK_MESSAGE_INFO,
-                      CDK_MSG(systemMessage, "Message from View Server: %s"),
+      App::ShowDialog(GTK_MESSAGE_INFO, _("Message from View Server: %s"),
                       msg.c_str());
    } else if (line.find(TUNNEL_ERROR, 0, strlen(TUNNEL_ERROR)) == 0) {
       Util::string err = Util::string(line, strlen(TUNNEL_ERROR));
       Log("Tunnel error message: %s\n", err.c_str());
-      App::ShowDialog(GTK_MESSAGE_ERROR,
-                      CDK_MSG(errorMessage, "Error from View Server: %s"),
+      App::ShowDialog(GTK_MESSAGE_ERROR, _("Error from View Server: %s"),
                       err.c_str());
    }
 }

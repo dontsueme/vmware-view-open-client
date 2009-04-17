@@ -2,8 +2,8 @@ Source: vmware-view-open-client
 Section: contrib/x11
 Priority: optional
 Maintainer: Daniel Baumann <daniel@debian.org>
-Build-Depends: debhelper (>= 7), quilt, autotools-dev, libboost-dev, libboost-signals-dev, libcurl4-openssl-dev, libgtk2.0-dev, libssl-dev, libxml2-dev
-Standards-Version: 3.8.0
+Build-Depends: debhelper (>= 7), quilt, autotools-dev, intltool, libboost-dev, libboost-signals-dev, libcurl4-openssl-dev, libgtk2.0-dev, libicu-dev, libssl-dev, libxml2-dev
+Standards-Version: 3.8.1
 Homepage: http://code.google.com/p/vmware-view-open-client
 Vcs-Browser: http://git.debian.net/?p=debian/vmware-view-open-client.git
 Vcs-Git: git://git.debian.net/git/debian/vmware-view-open-client.git

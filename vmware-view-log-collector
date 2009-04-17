@@ -1,0 +1,106 @@
+#!/bin/bash
+
+DEFAULT_TARGET='view-log.tar.gz'
+
+function printError()
+{
+   echo >&2 "${0##*/}: $1"
+}
+
+function Usage()
+{
+   cat <<EOF
+Usage: ${0##*/} [FILE]
+
+This scripts locates the latest log file generated from the
+VMware View Client.  The log file will be packaged into a new
+file in the current directory.
+
+OPTIONS:
+   --help:                      Shows this help message.
+   -u|--user <username>         Selects the username to collect files for.
+
+EOF
+}
+
+target="$DEFAULT_TARGET"
+username="$USER"
+
+while [ $# -ne 0 ]; do
+   arg=$1
+   shift
+   case $arg in
+   --help)
+      Usage
+      exit
+      ;;
+   -u|--user)
+      username="$1"
+      shift
+      ;;
+   --)
+      target="$@"
+      shift $#
+      ;;
+   *)
+      if [ ${arg:0:1} == '-' ] ; then
+         printError "Unknown argument: $arg."
+         exit 1
+      else
+         target="$arg"
+      fi
+      ;;
+   esac
+done
+
+logDirectory="/tmp/vmware-$username"
+
+# Find the directory that logs are stored.
+if [ ! -d "/tmp/vmware-$username/" ] ; then
+   printError "The log directory $logDirectory does not exist."
+   exit 1
+fi
+
+# Ensure at least one log file exits.
+if [ ! ls "/tmp/vmware-$username"/vmware-view-[0-9]*.log &>/dev/null ] ; then
+   printError "No log found in $logDirectory."
+   exit 1
+fi
+
+# Find the most 'recent' log and zip it.
+targetDirectory="${target%.tar.gz}"
+
+# Create a temporary directory in which to work.
+if ! tmpdir=$(mktemp -d) ; then
+   printError "Failed to create temporary directory."
+   exit 1
+fi
+if ! mkdir "$tmpdir/$targetDirectory" ; then
+   printError "Failed to create $tmpdir/$targetDirectory."
+   exit 1
+fi
+
+fileToCp=$(ls -t "$logDirectory"/vmware-view-[0-9]*.log | head -n 1)
+if [ -z "$fileToCp" ] ; then
+   printError "Unable to locate log file in $logDirectory."
+   exit 1
+fi
+if ! cp "$fileToCp" "$tmpdir/$targetDirectory" ; then
+   printError "Unable to copy log file $fileToCp to $tmpdir/$targetDirectory."
+   exit 1
+fi
+
+# Move into the temp directory to prevent tar from prepending the
+# temp directory on the target directory.
+pushd "$tmpdir" >/dev/null
+tar czf "$target" "$targetDirectory"
+tarResult="$?"
+popd >/dev/null
+if [ "$tarResult" -eq 0 ] ; then
+   mv "$tmpdir/$target" .
+else
+   printError "Unable to make $target."
+fi
+
+rm -rf "$tmpdir"
+exit 0

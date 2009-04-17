@@ -57,7 +57,7 @@ public:
               const Util::string username,
               const Util::string domain,
               const Util::string password,
-              const GdkRectangle *geometry,
+              GdkRectangle *geometry,
               unsigned int port = 3389,
               const std::vector<Util::string> &devRedirectArgs =
                  std::vector<Util::string>());
@@ -66,8 +66,11 @@ public:
    bool GetHasConnected() const { return mHasConnected; }
 
    boost::signal0<void> onConnect;
+   boost::signal0<bool> onCtrlAltDel;
 
 private:
+   void SendCtrlAltDel();
+
    static void OnPlugAdded(GtkSocket *s, gpointer userData);
    static gboolean OnPlugRemoved(GtkSocket *s, gpointer userData);
    static gboolean KeyboardGrab(gpointer userData);
@@ -79,6 +82,8 @@ private:
    static void SetMetacityKeybindingsEnabled(bool enabled);
    static void OnMetacityMessageExit(ProcHelper *helper);
    static bool GetDisableMetacityKeybindings();
+
+   static guint LookupKeyval(guint keyval);
 
    GtkSocket *mSocket;
    guint mGrabTimeoutId;

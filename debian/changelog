@@ -1,3 +1,13 @@
+vmware-view-open-client (3.1.0-160969+dfsg-1) unstable; urgency=low
+
+  * Merging upstream version 3.1.0-160969+dfsg.
+  * Upgrading package to standards 3.8.1.
+  * Adding build-depends to intltool.
+  * Adding build-depends to libicu.
+  * Rediffing doc-pdf.patch.
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 17 Apr 2009 20:43:00 +0200
+
 vmware-view-open-client (2.1.1-153227+dfsg-2) unstable; urgency=low
 
   * Limiting architectures to amd64 and i386 only (Closes: #520865).

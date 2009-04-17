@@ -33,11 +33,7 @@
 
 
 #include <boost/signal.hpp>
-
-extern "C" {
 #include <gtk/gtk.h>
-#include <libxml/uri.h>
-}
 
 
 #include "dlg.hh"
@@ -58,6 +54,8 @@ public:
    short unsigned int GetPort() const { return mPort; }
    bool GetSecure() const { return mSecure; }
    virtual void SetSensitive(bool sensitive);
+   // overrides Dlg::IsValid()
+   virtual bool IsValid();
 
    // overrides Dlg::Cancel()
    void Cancel();
@@ -65,19 +63,37 @@ public:
    boost::signal0<void> connect;
 
 private:
+   enum FreezeState {
+      FREEZE_NOTHING,
+      FREEZE_BROKER,
+      FREEZE_PORT,
+      FREEZE_SECURE
+   };
+
    static void OnConnect(GtkButton *button, gpointer userData);
-   static void OnChanged(GtkComboBox *combo, gpointer userData);
+   static void OnBrokerChanged(GtkComboBox *combo, gpointer userData);
+   static void OnPortChanged(GtkSpinButton *spin, gpointer userData);
+   static void OnSecureChanged(GtkToggleButton *toggle, gpointer userData);
+   static void OnOptionsExpanded(GObject *object, GParamSpec *paramSpec,
+                                 gpointer userData);
 
    void ParseBroker();
+   void UpdateUI(FreezeState freezeState);
 
    GtkTable *mTable;
    GtkComboBoxEntry *mBroker;
+   GtkLabel *mPortLabel;
+   GtkSpinButton *mPortEntry;
+   GtkCheckButton *mSecureToggle;
+   GtkCheckButton *mAutoConnect;
    GtkButton *mConnect;
    GtkButton *mQuit;
 
    Util::string mServer;
    short unsigned int mPort;
    bool mSecure;
+
+   FreezeState mFreezeState;
 };
 
 

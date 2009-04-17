@@ -488,7 +488,13 @@ TunnelSocketErrorCb(int error,          // IN
                     AsyncSocket *asock, // IN
                     void *userData)     // IN: not used
 {
-   TunnelDisconnectCb(gTunnelProxy, NULL, AsyncSocket_Err2String(error), NULL);
+   const char *msg;
+   if (error == ASOCKERR_GENERIC) {
+      msg = Err_Errno2String(AsyncSocket_GetGenericErrno(asock));
+   } else {
+      msg = AsyncSocket_Err2String(error);
+   }
+   TunnelDisconnectCb(gTunnelProxy, NULL, msg, NULL);
 }
 
 

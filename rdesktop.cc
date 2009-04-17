@@ -30,12 +30,16 @@
 
 
 #include <boost/bind.hpp>
-#include <gtk/gtkmain.h>
 #include <gdk/gdkkeysyms.h>
+#include <gtk/gtkmain.h>
 #include <stdlib.h>
 
 
 #include "rdesktop.hh"
+
+
+// Here to avoid conflict with vm_basic_types.h
+#include <gdk/gdkx.h>
 
 
 #define GRAB_RETRY_TIMEOUT_MS 250
@@ -131,7 +135,7 @@ RDesktop::Start(const Util::string hostname,                       // IN
                 const Util::string username,                       // IN
                 const Util::string domain,                         // IN
                 const Util::string password,                       // IN
-                const GdkRectangle *geometry,                      // IN
+                GdkRectangle *geometry,                            // IN
                 unsigned int port,                                 // IN/OPT
                 const  std::vector<Util::string>& devRedirectArgs) // IN/OPT
 {
@@ -148,8 +152,8 @@ RDesktop::Start(const Util::string hostname,                       // IN
    Util::string xidArg = Util::Format("%d", gtk_socket_get_id(mSocket));
    Util::string hostPortArg = Util::Format("%s:%d", hostname.c_str(), port);
 
-   Util::string geomArg =
-      Util::Format("%dx%d", geometry->width, geometry->height);
+   Util::string geomArg = Util::Format("%dx%d", geometry->width,
+                                       geometry->height);
 
    Util::string depthArg;
    int depth = gdk_visual_get_best_depth();
@@ -177,6 +181,7 @@ RDesktop::Start(const Util::string hostname,                       // IN
     */
    std::vector<Util::string> args;
    args.push_back("-z");                                   // compress
+   args.push_back("-K");                                   // Don't grab the keyboard
    args.push_back("-g"); args.push_back(geomArg.c_str());  // WxH geometry
    args.push_back("-X"); args.push_back(xidArg.c_str());   // XWin to use
    args.push_back("-u"); args.push_back(username.c_str()); // Username
@@ -189,10 +194,17 @@ RDesktop::Start(const Util::string hostname,                       // IN
 
    args.push_back(hostPortArg.c_str());                    // hostname:port
 
+   bool soundSet = false;
    // Append device redirect at the end, in case of some hinky shell args
    for (std::vector<Util::string>::const_iterator i = devRedirectArgs.begin();
         i != devRedirectArgs.end(); i++) {
       args.push_back("-r"); args.push_back(*i); // device redirect
+      if (i->compare(0, 6, "sound:") == 0) {
+         soundSet = true;
+      }
+   }
+   if (!soundSet) {
+      args.push_back("-r"); args.push_back("sound:local");
    }
 
    ProcHelper::Start("rdesktop", "rdesktop", args, password + "\n");
@@ -251,10 +263,7 @@ RDesktop::OnPlugAdded(GtkSocket *s,      // IN
       g_source_remove(that->mGrabTimeoutId);
       that->mGrabTimeoutId = 0;
    }
-   if (that->KeyboardGrab(that)) {
-      that->mGrabTimeoutId =
-         g_timeout_add(GRAB_RETRY_TIMEOUT_MS, &RDesktop::KeyboardGrab, that);
-   }
+   KeyboardGrab(that);
 }
 
 
@@ -276,7 +285,7 @@ RDesktop::OnPlugAdded(GtkSocket *s,      // IN
  */
 
 gboolean
-RDesktop::OnPlugRemoved(GtkSocket *s,      // IN/UNUSED
+RDesktop::OnPlugRemoved(GtkSocket *s,      // IN
                         gpointer userData) // IN: this
 {
    RDesktop *that = reinterpret_cast<RDesktop*>(userData);
@@ -312,20 +321,24 @@ RDesktop::KeyboardGrab(gpointer userData) // IN: this
    RDesktop *that = reinterpret_cast<RDesktop*>(userData);
    ASSERT(that);
    GdkGrabStatus res = gdk_keyboard_grab(GTK_WIDGET(that->mSocket)->window,
-                                         false, gtk_get_current_event_time());
-   switch (res) {
-   case GDK_GRAB_SUCCESS:
-      that->mGrabTimeoutId = 0;
+                                         false, GDK_CURRENT_TIME);
+   if (res == GDK_GRAB_SUCCESS) {
+      if (that->mGrabTimeoutId != 0) {
+         Log("Keyboard grab retry success.\n");
+         that->mGrabTimeoutId = 0;
+      }
       if (GetDisableMetacityKeybindings()) {
          SetMetacityKeybindingsEnabled(false);
       }
       return false; // success
-   case GDK_GRAB_ALREADY_GRABBED:
-      Log("Keyboard grab failed (already grabbed). Retrying after timeout.\n");
-      return true; // retry
-   default:
-      NOT_IMPLEMENTED();
    }
+   if (that->mGrabTimeoutId == 0) {
+      Log("Keyboard grab failed, reason %#x; will retry every %u ms.\n",
+          res, GRAB_RETRY_TIMEOUT_MS);
+      that->mGrabTimeoutId =
+         g_timeout_add(GRAB_RETRY_TIMEOUT_MS, &RDesktop::KeyboardGrab, that);
+   }
+   return true; // retry
 }
 
 
@@ -366,6 +379,112 @@ RDesktop::KeyboardUngrab(gpointer userData) // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::RDesktop::SendCtrlAltDel --
+ *
+ *      Send a Control-Alt-Delete key sequence to the rdesktop window
+ *      using XSendEvent.
+ *
+ * Results:
+ *      Nonde
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+RDesktop::SendCtrlAltDel()
+{
+   // Based on gtksocket-x11.c:_gtk_socket_windowing_send_key_event().
+   GdkScreen *screen = gdk_drawable_get_screen(mSocket->plug_window);
+   XKeyEvent xkey;
+
+   memset(&xkey, 0, sizeof(xkey));
+   xkey.window = GDK_WINDOW_XWINDOW(mSocket->plug_window);
+   xkey.root = GDK_WINDOW_XWINDOW(gdk_screen_get_root_window(screen));
+   xkey.subwindow = None;
+   xkey.time = 0;
+   xkey.x = 0;
+   xkey.y = 0;
+   xkey.x_root = 0;
+   xkey.y_root = 0;
+   xkey.same_screen = True;/* FIXME ? */
+
+   // rdesktop doesn't send this to Windows, so it doesn't matter.
+   xkey.state = 0;
+
+#define SEND(t, k)                                              \
+   xkey.type = t;                                               \
+   xkey.keycode = k;                                            \
+   XSendEvent(GDK_WINDOW_XDISPLAY(mSocket->plug_window),        \
+              GDK_WINDOW_XWINDOW(mSocket->plug_window),         \
+              False,                                            \
+              KeyPressMask,                                     \
+              (XEvent *)&xkey);
+
+#define PRESS(k) SEND(KeyPress, k)
+#define RELEASE(k) SEND(KeyRelease, k)
+
+   // X needs keycodes, Gdk only provides keyvals.
+   guint control = LookupKeyval(GDK_Control_L);
+   guint alt = LookupKeyval(GDK_Alt_L);
+   guint del = LookupKeyval(GDK_Delete);
+
+   Log("Synthesizing Ctrl-Alt-Del keypresses.\n");
+   gdk_error_trap_push();
+
+   PRESS(control);
+   PRESS(alt);
+   PRESS(del);
+
+   RELEASE(del);
+   RELEASE(alt);
+   RELEASE(control);
+
+#undef PRESS
+#undef RELEASE
+#undef SEND
+
+   gdk_display_sync(gdk_screen_get_display(screen));
+   gdk_error_trap_pop();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::RDesktop::LookupKeyval --
+ *
+ *      Lookup the keycode for a given Gdk keyval.
+ *
+ * Results:
+ *      Keycode corresponding to keyval.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+guint
+RDesktop::LookupKeyval(guint keyval) // IN
+{
+   GdkKeymapKey *keys;
+   int n_keys;
+   if (!gdk_keymap_get_entries_for_keyval(NULL, keyval, &keys, &n_keys)) {
+      NOT_IMPLEMENTED();
+   }
+   ASSERT(n_keys > 0);
+   guint ret = keys[0].keycode;
+   g_free(keys);
+   return ret;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::RDesktop::OnKeyPress --
  *
  *      Handle keypress events on the GtkSocket window.  Passes through all
@@ -382,20 +501,42 @@ RDesktop::KeyboardUngrab(gpointer userData) // IN
  */
 
 gboolean
-RDesktop::OnKeyPress(GtkWidget *widget, // IN/UNUSED
+RDesktop::OnKeyPress(GtkWidget *widget, // IN
                      GdkEventKey *evt,  // IN
                      gpointer userData) // IN
 {
-   /*
-    * NOTE: rdesktop checks for Ctrl_L/R and Alt_L/R non-exclusively, so we
-    * match this behavior here. Unfortunately, this means we'll inhibit more
-    * events than we would prefer.
-    */
-   if (GDK_Return == evt->keyval &&
-       (evt->state & CTRL_ALT_MASK) == CTRL_ALT_MASK) {
-      Util::UserWarning("Inhibiting Ctrl-Alt-Enter keypress, to avoid "
-                        "rdesktop exit.\n");
-      return true;
+   RDesktop *that = reinterpret_cast<RDesktop*>(userData);
+   ASSERT(that);
+
+   switch (evt->keyval) {
+   case GDK_Return:
+      /*
+       * NOTE: rdesktop checks for Ctrl_L/R and Alt_L/R non-exclusively, so we
+       * match this behavior here. Unfortunately, this means we'll inhibit more
+       * events than we would prefer.
+       */
+      if ((evt->state & CTRL_ALT_MASK) == CTRL_ALT_MASK) {
+         Util::UserWarning(_("Inhibiting Ctrl-Alt-Enter keypress, to avoid "
+                             "rdesktop exit.\n"));
+         return true;
+      }
+      break;
+   case GDK_Delete:
+      if ((evt->state & CTRL_ALT_MASK) == CTRL_ALT_MASK) {
+         bool handled = that->onCtrlAltDel();
+         // If the dialog disconneceted, mSocket will be NULL.
+         if (that->mSocket) {
+            // Make sure we re-grab the keyboard.
+            KeyboardGrab(that);
+         }
+         if (handled) {
+            Log("Ctrl-Alt-Delete was handled externally; inhibiting.\n");
+         } else {
+            that->SendCtrlAltDel();
+         }
+         return true;
+      }
+      break;
    }
    return false;
 }
@@ -564,8 +705,8 @@ RDesktop::GetDisableMetacityKeybindings()
             ret = rel >= SLED_10_SP2_PATCHLEVEL;
          }
          if (ret) {
-            Util::UserWarning("Metacity keybings will be temporarily disabled "
-                              "on SLED 10 SP2.\n");
+            Util::UserWarning(_("Metacity keybindings will be temporarily "
+                                "disabled on SLED 10 SP2.\n"));
          }
       }
       g_free(contents);
