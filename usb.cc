@@ -36,6 +36,10 @@
 #include <unistd.h>
 #include <vector>
 
+extern "C" {
+#include "file.h"
+}
+
 
 #define USB_ADDRESS_ARG "-a"
 #define USB_PORT_ARG "-p"
@@ -86,13 +90,22 @@ Usb::Start(const Util::string &address,                        // IN
       args.push_back("-o");  args.push_back(*i);
    }
 
-   Util::string usbPath =
-      Util::GetUsefulPath(BINDIR G_DIR_SEPARATOR_S VMWARE_VIEW_USB,
-                          VMWARE_VIEW_USB);
+   Util::string defaultPath = BINDIR G_DIR_SEPARATOR_S VMWARE_VIEW_USB;
+   Util::string usbPath = Util::GetUsefulPath(defaultPath, VMWARE_VIEW_USB);
    if (usbPath.empty()) {
-      Util::UserWarning(_("%s was not found; disabling USB redirection."),
-                        BINDIR G_DIR_SEPARATOR_S VMWARE_VIEW_USB);
-      return false;
+      /*
+       * So, the real binary path on SLETC is in
+       * /read-write/mnt/addons/VMware-view-client-lite/usr/bin, which
+       * we're unable to install the usb binary in (since it's a
+       * squash rpm), and we may as well default back to
+       * /usr/bin/vmware-view-usb if it exists.
+       */
+      if (File_Exists(defaultPath.c_str())) {
+         usbPath = defaultPath;
+      } else {
+         Util::UserWarning(_("%s was not found; disabling USB redirection."),
+                           defaultPath.c_str());
+      }
    }
 
    ProcHelper::Start(VMWARE_VIEW_USB, usbPath, args);

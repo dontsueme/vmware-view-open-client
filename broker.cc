@@ -349,7 +349,7 @@ Broker::AcceptDisclaimer()
       mCertState = CERT_SHOULD_RESPOND;
    }
    mXml->AcceptDisclaimer(
-      boost::bind(&Broker::OnAbort, this, _1, _2),
+      boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
       boost::bind(&Broker::OnAuthResult, this, _1, _2));
 }
 

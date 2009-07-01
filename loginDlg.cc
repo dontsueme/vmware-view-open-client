@@ -93,6 +93,8 @@ LoginDlg::LoginDlg()
    gtk_widget_show(GTK_WIDGET(mPasswd));
    gtk_table_attach_defaults(mTable, GTK_WIDGET(mPasswd), 1, 2, 1, 2);
    gtk_entry_set_visibility(mPasswd, false);
+   // See http://technet.microsoft.com/en-us/library/cc512606.aspx
+   gtk_entry_set_max_length(mPasswd, 127);
    AddSensitiveWidget(GTK_WIDGET(mPasswd));
    gtk_entry_set_activates_default(mPasswd, true);
    AddRequiredEntry(mPasswd);

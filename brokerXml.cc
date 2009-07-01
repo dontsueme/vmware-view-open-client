@@ -93,7 +93,7 @@ BrokerXml::BrokerXml(Util::string hostname, // IN
 
 BrokerXml::~BrokerXml()
 {
-   CancelRequests();
+   ResetConnections();
    BasicHttp_FreeCookieJar(mCookieJar);
 }
 
@@ -825,6 +825,7 @@ BrokerXml::DesktopConnection::Parse(xmlNode *parentNode,     // IN
    password = GetChildContent(parentNode, "password");
    domainName = GetChildContent(parentNode, "domain-name");
    enableUSB = GetChildContentBool(parentNode, "enable-usb");
+   enableMMR = GetChildContentBool(parentNode, "enable-mmr");
 
    // Parse additional listeners, if available.
    xmlNode *listenersNode = GetChild(parentNode, "additional-listeners");
@@ -2126,7 +2127,8 @@ BrokerXml::Desktop::Desktop()
 
 BrokerXml::DesktopConnection::DesktopConnection()
    : port(-1),
-     enableUSB(false)
+     enableUSB(false),
+     enableMMR(false)
 {
 }
 

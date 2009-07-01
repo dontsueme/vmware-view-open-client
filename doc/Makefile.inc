@@ -18,13 +18,20 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
-dist_pdf_DATA += doc/View_Client_Admin_Guide.pdf
+dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
+dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
+dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
 
-dist_doc_DATA += doc/EULA_English-View_GA.rtf
+if VIEW_EULAS
+doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
+doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt
+doc_DATA += doc/$(PACKAGING_NAME)-EULA-ja.txt
+endif
+
 dist_doc_DATA += doc/open_source_licenses.txt
 
-dist_man_MANS += doc/vmware-view.1
-dist_man_MANS += doc/vmware-view-tunnel.1
+man_MANS += doc/vmware-view.1
+man_MANS += doc/vmware-view-tunnel.1
 
 dist_noinst_DATA += doc/copyright.Debian
 

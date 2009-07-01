@@ -645,10 +645,9 @@ TESTS =
 bin_PROGRAMS = vmware-view$(EXEEXT) vmware-view-tunnel$(EXEEXT)
 noinst_PROGRAMS =
 DIST_COMMON = $(am__configure_deps) $(dist_bin_SCRIPTS) \
-	$(dist_doc_DATA) $(dist_help_DATA) $(dist_man_MANS) \
-	$(dist_noinst_DATA) $(dist_noinst_HEADERS) $(dist_pdf_DATA) \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(srcdir)/Makefile.inc \
+	$(dist_doc_DATA) $(dist_help_DATA) $(dist_noinst_DATA) \
+	$(dist_noinst_HEADERS) $(dist_pdf_DATA) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in $(srcdir)/Makefile.inc \
 	$(srcdir)/VMware-view-open-client.control.in \
 	$(srcdir)/VMware-view-open-client.spec.in \
 	$(srcdir)/buildNumber.h.in $(srcdir)/doc/Makefile.inc \
@@ -683,11 +682,16 @@ DIST_COMMON = $(am__configure_deps) $(dist_bin_SCRIPTS) \
 	$(srcdir)/lib/open-vm-tools/user/Makefile.inc \
 	$(srcdir)/tunnel/Makefile.inc \
 	$(srcdir)/vmware-view.desktop.in.in $(top_srcdir)/configure \
-	$(top_srcdir)/doc/changelog.Debian.in COPYING INSTALL \
+	$(top_srcdir)/doc/changelog.Debian.in \
+	$(top_srcdir)/doc/vmware-view-tunnel.1.in \
+	$(top_srcdir)/doc/vmware-view.1.in COPYING INSTALL \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing \
 	config/mkinstalldirs
 @STATIC_ICU_TRUE@am__append_1 = $(ICUDATA_ENTRY_POINT)l_dat.s
+@VIEW_EULAS_TRUE@am__append_2 = doc/$(PACKAGING_NAME)-EULA-en.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-de.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-ja.txt
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/boost.m4 \
@@ -701,7 +705,8 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_CLEAN_FILES = VMware-view-open-client.control \
 	VMware-view-open-client.spec buildNumber.h \
-	doc/changelog.Debian intltool-update intltool-merge \
+	doc/changelog.Debian doc/vmware-view.1 \
+	doc/vmware-view-tunnel.1 intltool-update intltool-merge \
 	intltool-extract vmware-view.desktop.in
 LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
@@ -851,7 +856,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)" \
 	"$(DESTDIR)$(applicationdir)" "$(DESTDIR)$(docdir)" \
 	"$(DESTDIR)$(helpdir)" "$(DESTDIR)$(pdfdir)" \
-	"$(DESTDIR)$(pixmapsdir)"
+	"$(DESTDIR)$(docdir)" "$(DESTDIR)$(pixmapsdir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_vmware_view_OBJECTS = vmware_view-app.$(OBJEXT) \
@@ -942,7 +947,7 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	ps-recursive uninstall-recursive
 man1dir = $(mandir)/man1
 NROFF = nroff
-MANS = $(dist_man_MANS)
+MANS = $(man_MANS)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -953,9 +958,11 @@ applicationDATA_INSTALL = $(INSTALL_DATA)
 dist_docDATA_INSTALL = $(INSTALL_DATA)
 dist_helpDATA_INSTALL = $(INSTALL_DATA)
 dist_pdfDATA_INSTALL = $(INSTALL_DATA)
+docDATA_INSTALL = $(INSTALL_DATA)
 pixmapsDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(application_DATA) $(dist_doc_DATA) $(dist_help_DATA) \
-	$(dist_noinst_DATA) $(dist_pdf_DATA) $(pixmaps_DATA)
+	$(dist_noinst_DATA) $(dist_pdf_DATA) $(doc_DATA) \
+	$(pixmaps_DATA)
 HEADERS = $(dist_noinst_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
@@ -1109,6 +1116,7 @@ SSL_LIBS = @SSL_LIBS@
 STRIP = @STRIP@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+VIEW_RPM_LICENSE = @VIEW_RPM_LICENSE@
 VIEW_VERSION = @VIEW_VERSION@
 VIEW_VERSION_NUM = @VIEW_VERSION_NUM@
 XGETTEXT = @XGETTEXT@
@@ -1187,12 +1195,12 @@ application_DATA = $(desktop_in_files:.desktop.in=.desktop)
 bin_SCRIPTS := 
 desktop_in_files := vmware-view.desktop.in
 dist_bin_SCRIPTS := vmware-view-log-collector
-dist_doc_DATA := README.txt doc/EULA_English-View_GA.rtf \
-	doc/open_source_licenses.txt
+doc_DATA := $(am__append_2)
+dist_doc_DATA := README.txt doc/open_source_licenses.txt
 dist_help_DATA := doc/help/integrated_help-en.txt \
 	doc/help/integrated_help-de.txt \
 	doc/help/integrated_help-ja.txt
-dist_man_MANS := doc/vmware-view.1 doc/vmware-view-tunnel.1
+man_MANS := doc/vmware-view.1 doc/vmware-view-tunnel.1
 dist_noinst_DATA := lib/bora/user/dictType.c lib/libp11/COPYING \
 	lib/gtm/COPYING icudata/NamePrepProfile.txt \
 	icudata/NormalizationCorrections.txt icudata/README \
@@ -1290,7 +1298,9 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/bora/include/vmlocale.h lib/bora/include/vthread.h \
 	lib/bora/include/vthreadBase.h lib/libp11/include/pkcs11.h \
 	extraTranslations.hh
-dist_pdf_DATA := doc/View_Client_Admin_Guide.pdf
+dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf \
+	doc/View_Client_Admin_Guide-de.pdf \
+	doc/View_Client_Admin_Guide-ja.pdf
 noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
 	libPanicDefault.a libString.a libStubs.a libUnicode.a \
 	libUser.a libAsyncSocket.a libBasicHttp.a libLog.a \
@@ -1468,6 +1478,10 @@ VMware-view-open-client.spec: $(top_builddir)/config.status $(srcdir)/VMware-vie
 buildNumber.h: $(top_builddir)/config.status $(srcdir)/buildNumber.h.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 doc/changelog.Debian: $(top_builddir)/config.status $(top_srcdir)/doc/changelog.Debian.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+doc/vmware-view.1: $(top_builddir)/config.status $(top_srcdir)/doc/vmware-view.1.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+doc/vmware-view-tunnel.1: $(top_builddir)/config.status $(top_srcdir)/doc/vmware-view-tunnel.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 intltool-update: $(top_builddir)/config.status $(srcdir)/intltool-update.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
@@ -3285,6 +3299,23 @@ uninstall-dist_pdfDATA:
 	  echo " rm -f '$(DESTDIR)$(pdfdir)/$$f'"; \
 	  rm -f "$(DESTDIR)$(pdfdir)/$$f"; \
 	done
+install-docDATA: $(doc_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(docdir)" || $(MKDIR_P) "$(DESTDIR)$(docdir)"
+	@list='$(doc_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(docDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(docdir)/$$f'"; \
+	  $(docDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(docdir)/$$f"; \
+	done
+
+uninstall-docDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(doc_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(docdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(docdir)/$$f"; \
+	done
 install-pixmapsDATA: $(pixmaps_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(pixmapsdir)" || $(MKDIR_P) "$(DESTDIR)$(pixmapsdir)"
@@ -3657,7 +3688,7 @@ all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA) \
 		$(HEADERS)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(applicationdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(helpdir)" "$(DESTDIR)$(pdfdir)" "$(DESTDIR)$(pixmapsdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(applicationdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(helpdir)" "$(DESTDIR)$(pdfdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(pixmapsdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -3760,8 +3791,8 @@ info: info-recursive
 info-am:
 
 install-data-am: install-applicationDATA install-dist_docDATA \
-	install-dist_helpDATA install-dist_pdfDATA install-man \
-	install-pixmapsDATA
+	install-dist_helpDATA install-dist_pdfDATA install-docDATA \
+	install-man install-pixmapsDATA
 
 install-dvi: install-dvi-recursive
 
@@ -3802,7 +3833,8 @@ ps-am:
 uninstall-am: uninstall-applicationDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-dist_binSCRIPTS \
 	uninstall-dist_docDATA uninstall-dist_helpDATA \
-	uninstall-dist_pdfDATA uninstall-man uninstall-pixmapsDATA
+	uninstall-dist_pdfDATA uninstall-docDATA uninstall-man \
+	uninstall-pixmapsDATA
 
 uninstall-man: uninstall-man1
 
@@ -3820,18 +3852,19 @@ uninstall-man: uninstall-man1
 	install-applicationDATA install-binPROGRAMS install-binSCRIPTS \
 	install-data install-data-am install-dist_binSCRIPTS \
 	install-dist_docDATA install-dist_helpDATA \
-	install-dist_pdfDATA install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-man1 install-pdf \
-	install-pdf-am install-pixmapsDATA install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-compile mostlyclean-generic pdf pdf-am \
-	ps ps-am tags tags-recursive uninstall uninstall-am \
-	uninstall-applicationDATA uninstall-binPROGRAMS \
-	uninstall-binSCRIPTS uninstall-dist_binSCRIPTS \
-	uninstall-dist_docDATA uninstall-dist_helpDATA \
-	uninstall-dist_pdfDATA uninstall-man uninstall-man1 \
+	install-dist_pdfDATA install-docDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-man1 install-pdf install-pdf-am install-pixmapsDATA \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs installdirs-am maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic pdf pdf-am ps ps-am tags tags-recursive \
+	uninstall uninstall-am uninstall-applicationDATA \
+	uninstall-binPROGRAMS uninstall-binSCRIPTS \
+	uninstall-dist_binSCRIPTS uninstall-dist_docDATA \
+	uninstall-dist_helpDATA uninstall-dist_pdfDATA \
+	uninstall-docDATA uninstall-man uninstall-man1 \
 	uninstall-pixmapsDATA
 
 
@@ -3924,10 +3957,12 @@ bindist: all-am
 	$(INSTALL_DATA) README.txt $(TAR_STAGE_DIR)
 	$(INSTALL_DATA) doc/open_source_licenses.txt \
 		$(TAR_STAGE_DIR)/doc
-	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide.pdf \
+	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-*.pdf \
 		$(TAR_STAGE_DIR)/doc
-	$(INSTALL_DATA) $(srcdir)/doc/EULA_English-View_GA.rtf \
-		$(TAR_STAGE_DIR)/doc
+@VIEW_EULAS_TRUE@	$(INSTALL_DATA) $(srcdir)/doc/$(PACKAGING_NAME)-EULA-*.txt \
+@VIEW_EULAS_TRUE@		$(TAR_STAGE_DIR)/doc || \
+@VIEW_EULAS_TRUE@	$(INSTALL_DATA) $(builddir)/doc/$(PACKAGING_NAME)-EULA-*.txt \
+@VIEW_EULAS_TRUE@		$(TAR_STAGE_DIR)/doc
 	$(INSTALL_SCRIPT) $(srcdir)/vmware-view-log-collector \
 		$(TAR_STAGE_DIR)/bin
 	$(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-*.txt \

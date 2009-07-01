@@ -104,6 +104,8 @@ BrokerDlg::BrokerDlg(Util::string initialBroker) // IN/OPT
    GtkEntry *entry = GTK_ENTRY(gtk_bin_get_child(GTK_BIN(mBroker)));
    ASSERT(entry);
    gtk_entry_set_activates_default(entry, true);
+   // http(s) 5 + :// 3 + hostname (255) + : 1 + port 5 = 269
+   gtk_entry_set_max_length(entry, 269);
    SetFocusWidget(GTK_WIDGET(mBroker));
    AddSensitiveWidget(GTK_WIDGET(mBroker));
 

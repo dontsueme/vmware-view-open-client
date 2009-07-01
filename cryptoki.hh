@@ -113,6 +113,7 @@ private:
       void Release();
 
       CK_RV Open(CK_SLOT_ID slot);
+      CK_RV Logout();
       void GetCertificates(std::list<X509 *> &certs, STACK_OF(X509_NAME) *CAs);
       EVP_PKEY *GetPrivateKey(const X509 *cert);
 

@@ -82,6 +82,7 @@ private:
    static void SetMetacityKeybindingsEnabled(bool enabled);
    static void OnMetacityMessageExit(ProcHelper *helper);
    static bool GetDisableMetacityKeybindings();
+   static void OnError(Util::string errorString);
 
    static guint LookupKeyval(guint keyval);
 

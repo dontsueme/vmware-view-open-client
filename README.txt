@@ -1,5 +1,5 @@
 VMware View Open Client 3.1.0
-Build 160969, 2009-04-15
+Build 169073, 2009-05-29
 
 VMware is a registered trademark or trademark (the "Marks") of VMware, Inc.
 in the United States and/or other jurisdictions and is not licensed to you
@@ -61,7 +61,8 @@ of which are available in the installation package.
 STATUS
 ------
 
-This is the beta release of VMware View Open Client 3.1.0.
+This is the RTM release of VMware View Open Client 3.1.0.
+
 This release also introduces USB and Multimedia Redirection (MMR) support.
 Please carefully review the Known Issues for these components as certain
 functions are limited.
@@ -106,9 +107,9 @@ libxml 2.6.x        libxml2.so.2
 zlib 1.2.3          libz.so.1
 
 In addition, rdesktop is required. VMware View Open Client has been
-tested against rdesktop versions 1.4.1, 1.5.0, and 1.6.0.
-rdesktop version 1.5.0 or higher is required to connect to a Windows Vista
-desktop.
+tested against rdesktop versions 1.4.1, 1.5.0, and 1.6.0.  rdesktop
+version 1.5.0 or higher is required to connect to a Windows Vista or
+Windows Server 2008 Terminal Services desktop.
 
 To use multiple monitors when connecting to desktops, the Xinerama
 extension to the X Window System must be enabled with more than one
@@ -130,12 +131,12 @@ VMware View Open Client is distributed in the following forms:
 
 To use the binary tar gzip, simply unpack the tarball:
 
-$ tar zxf VMware-view-open-client-3.1.0-160969.tar.gz
+$ tar zxf VMware-view-open-client-3.1.0-169073.tar.gz
 
 To run, navigate to the 'bin' subdirectory and run directly from the
 command line:
 
-$ cd VMware-view-open-client-3.1.0-160969/bin
+$ cd VMware-view-open-client-3.1.0-169073/bin
 $ ./vmware-view
 
 You can also copy files from the tarball into system directories:
@@ -208,15 +209,31 @@ ISSUES RESOLVED IN THIS RELEASE
 "gc" denotes issues reported on code.google.com.
 "bz" denotes bugs filed in VMware's bugzilla.
 
+Version 3.1.0 build 169073:
+
+*) Get "Gtk: gtk_main_quit: assertion `main_loops != NULL' failed" while
+   using smart card authentication (bz 393737)
+*) When entering a negative port value in the address bar of the broker
+   screen the connect button is not disabled.  This also causes the "use
+   secure connection" option to be enabled. (bz 367370)
+*) Client will not build on Mac (bz 395525)
+*) RDesktop does not launch on Mac (gc 23)
+*) Terminates with NOT_IMPLEMENTED assertion on SLETC/SLED after
+   running for a while, or when the tunnel address cannot be resolved
+   (bz 409297)
+*) /usr/share/doc/VMware-view-client/help directory will not be deleted
+   when uninstalling from RPM (bz 365618)
+
+ISSUES RESOLVED IN PREVIOUS RELEASES
+------------------------------------
+
+Version 3.1.0 build 160969:
+
 *) No sound with Linux client (bz 351637)
 *) The desktop list cannot be refreshed (bz 291918)
 *) No log collection script (bz 315390)
 *) Debian package not available (bz 333101)
 *) A useless error is shown if the tunnel is unreachable (bz 308760)
-
-
-ISSUES RESOLVED IN PREVIOUS RELEASES
-------------------------------------
 
 Version 2.1.1 build 153227:
 
@@ -253,17 +270,14 @@ KNOWN ISSUES IN THIS RELEASE
    administrative UI (bz 330941)
 *) The client may not time out when attempting to reach an unreachable
    broker (bz 322204, bz 325803)
-*) /usr/share/doc/VMware-view-client/help directory will not be deleted
-   when uninstalling from RPM (bz 365618)
-*) Get "Gtk: gtk_main_quit: assertion `main_loops != NULL' failed" while
-   using smart card authentication (bz 393737)
-*) When entering a negative port value in the address bar of the broker
-   screen the connect button is not disabled.  This also causes the "use
-   secure connection" option to be enabled. (bz 367370)
-*) Unusual Time format for German users on the Smart Card Cert screen
-   (bz 390241)
-*) Client will not build on Mac (bz 395525)
-
+*) Unusual Time format for German and Japanese users on the Smart Card
+   Cert screen (bz 390241)
+*) When authenticating with smart cards, users will need to enter
+   their PIN/password when connecting to the Windows desktop
+*) The client may exit with SEGV (signal 11) after resetting a desktop
+   (bz 407225)
+*) When using smart cards, the view client may hang when quitting
+   (bz 407231)
 
 TROUBLESHOOTING
 ---------------

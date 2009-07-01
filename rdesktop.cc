@@ -35,6 +35,7 @@
 #include <stdlib.h>
 
 
+#include "app.hh"
 #include "rdesktop.hh"
 
 
@@ -48,8 +49,15 @@
 #define PATCHLEVEL_LEN strlen(PATCHLEVEL_STR)
 #define CTRL_ALT_MASK (GDK_CONTROL_MASK | GDK_MOD1_MASK)
 
+#define MMR_ERROR_STR "MMR ERROR:"
+
 
 namespace cdk {
+
+
+enum MMRError {
+   MMR_ERROR_GSTREAMER = 3,
+};
 
 
 /*
@@ -104,6 +112,8 @@ RDesktop::RDesktop()
    if (GetDisableMetacityKeybindings()) {
       onExit.connect(boost::bind(SetMetacityKeybindingsEnabled, true));
    }
+
+   onErr.connect(boost::bind(OnError, _1));
 }
 
 
@@ -179,7 +189,7 @@ RDesktop::Start(const Util::string hostname,                       // IN
     * startup with NFS home directories and can cause considerable
     * disk space usage.
     */
-   std::vector<Util::string> args;
+   std::vector<Util::string> args(App::GetRDesktopOptions());
    args.push_back("-z");                                   // compress
    args.push_back("-K");                                   // Don't grab the keyboard
    args.push_back("-g"); args.push_back(geomArg.c_str());  // WxH geometry
@@ -192,8 +202,6 @@ RDesktop::Start(const Util::string hostname,                       // IN
       args.push_back("-a"); args.push_back(depthArg.c_str());
    }
 
-   args.push_back(hostPortArg.c_str());                    // hostname:port
-
    bool soundSet = false;
    // Append device redirect at the end, in case of some hinky shell args
    for (std::vector<Util::string>::const_iterator i = devRedirectArgs.begin();
@@ -201,11 +209,14 @@ RDesktop::Start(const Util::string hostname,                       // IN
       args.push_back("-r"); args.push_back(*i); // device redirect
       if (i->compare(0, 6, "sound:") == 0) {
          soundSet = true;
+         break;
       }
    }
    if (!soundSet) {
       args.push_back("-r"); args.push_back("sound:local");
    }
+
+   args.push_back(hostPortArg.c_str());                    // hostname:port
 
    ProcHelper::Start("rdesktop", "rdesktop", args, password + "\n");
 }
@@ -712,6 +723,48 @@ RDesktop::GetDisableMetacityKeybindings()
       g_free(contents);
    }
    return ret;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::RDesktop::OnError --
+ *
+ *      Callback for OnErr call in ProcHelper.  Reads the error string and
+ *      displays error to the user.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+RDesktop::OnError(Util::string errorString) // IN
+{
+   int length = strlen(MMR_ERROR_STR);
+   if (errorString.compare(0, length, MMR_ERROR_STR) == 0) {
+      size_t pos2 = errorString.find(":", length + 1);
+
+      int errNum = strtol(errorString.substr(length, pos2 - length).c_str(),
+                          NULL, 0);
+      errorString = errorString.substr(pos2 + 1);
+
+      switch (errNum) {
+      case MMR_ERROR_GSTREAMER:
+         App::ShowDialog(GTK_MESSAGE_WARNING, _("Required Gstreamer plugins "
+            "could not be found.  Please check that your path is set "
+            "properly."));
+         break;
+      default:
+         App::ShowDialog(GTK_MESSAGE_WARNING, "%s", errorString.c_str());
+         break;
+      }
+   }
 }
 
 
