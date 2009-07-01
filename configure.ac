@@ -53,6 +53,18 @@ AC_ARG_WITH([buildtype],
       [configures debugging and optimization flags])],
    [],[with_buildtype="obj"])
 
+AC_ARG_ENABLE([eulas],
+   [AS_HELP_STRING([--enable-eulas],
+      [include EULAs with binaries and source])],
+   [],[enable_eulas="no"])
+AM_CONDITIONAL(VIEW_EULAS, [test $enable_eulas != "no"])
+if test $enable_eulas != "no" ; then
+   VIEW_RPM_LICENSE="Commercial"
+else
+   VIEW_RPM_LICENSE="LGPLv2.1 only"
+fi
+AC_SUBST(VIEW_RPM_LICENSE)
+
 ssl_disable_loading="true"
 AC_ARG_ENABLE([static-ssl],
    [AS_HELP_STRING([--enable-static-ssl],
@@ -260,12 +272,17 @@ else
       [darwin*])
          # the -arch flags confuse automake at some point
          CURL_LIBS=`pkg-config --libs-only-l libcurl`
+         # Leopard still ships with 0.9.7.
+	 OPENSSL_MIN_VER="0.9.7"
+         ;;
+      [*])
+         OPENSSL_MIN_VER="0.9.8"
          ;;
    esac
-   PKG_CHECK_MODULES(SSL, [libssl >= 0.9.8 libcrypto >= 0.9.8])
+   PKG_CHECK_MODULES(SSL, [openssl >= $OPENSSL_MIN_VER])
 
    AC_DEFINE(BORA_LINK_SSL_DIRECTLY)
-   SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"`$PKG_CONFIG --variable libdir libssl`\\\""
+   SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"`$PKG_CONFIG --variable libdir openssl`\\\""
 fi
 
 case "$host_os" in
@@ -312,7 +329,7 @@ AM_GLIB_GNU_GETTEXT
 # These need to be after AC_PROG_SED
 if test -z "$TCROOT" ; then
    changequote(,)dnl
-   SSL_VERSION_NUM="`$PKG_CONFIG --modversion libssl | $SED -e 's/[a-zA-Z]*$//'`"
+   SSL_VERSION_NUM="`$PKG_CONFIG --modversion openssl | $SED -e 's/[a-zA-Z]*$//'`"
    changequote([,])dnl
 fi
 SSL_CFLAGS="$SSL_CFLAGS -DLIBCRYPTO_SO=libcrypto.$LIBEXT.$SSL_VERSION_NUM"
@@ -626,6 +643,8 @@ VMware-view-open-client.control
 VMware-view-open-client.spec
 buildNumber.h
 doc/changelog.Debian
+doc/vmware-view.1
+doc/vmware-view-tunnel.1
 intltool-update
 intltool-merge
 intltool-extract

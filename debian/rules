@@ -48,7 +48,6 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_prep
-	dh_installdirs
 
 	$(MAKE) DESTDIR=$(CURDIR)/debian/vmware-view-open-client install
 

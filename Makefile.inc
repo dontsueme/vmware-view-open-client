@@ -248,10 +248,14 @@ bindist: all-am
 	$(INSTALL_DATA) README.txt $(TAR_STAGE_DIR)
 	$(INSTALL_DATA) doc/open_source_licenses.txt \
 		$(TAR_STAGE_DIR)/doc
-	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide.pdf \
+	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-*.pdf \
 		$(TAR_STAGE_DIR)/doc
-	$(INSTALL_DATA) $(srcdir)/doc/EULA_English-View_GA.rtf \
+if VIEW_EULAS
+	$(INSTALL_DATA) $(srcdir)/doc/$(PACKAGING_NAME)-EULA-*.txt \
+		$(TAR_STAGE_DIR)/doc || \
+	$(INSTALL_DATA) $(builddir)/doc/$(PACKAGING_NAME)-EULA-*.txt \
 		$(TAR_STAGE_DIR)/doc
+endif
 	$(INSTALL_SCRIPT) $(srcdir)/vmware-view-log-collector \
 		$(TAR_STAGE_DIR)/bin
 	$(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-*.txt \

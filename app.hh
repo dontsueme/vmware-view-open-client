@@ -69,6 +69,8 @@ public:
    App(int argc, char **argv);
    ~App();
 
+   static const std::vector<Util::string> GetRDesktopOptions();
+
    static App *GetApp() { return sApp; }
    static void ShowDialog(GtkMessageType type,
                           const Util::string format, ...);
@@ -91,18 +93,20 @@ private:
    bool OnCtrlAltDel();
 
    static App *sApp;
-   static gchar *sOptBroker;
-   static gchar *sOptUser;
-   static gchar *sOptPassword;
-   static gchar *sOptDomain;
-   static gchar *sOptDesktop;
+   static char *sOptBroker;
+   static char *sOptUser;
+   static char *sOptPassword;
+   static char *sOptDomain;
+   static char *sOptDesktop;
    static gboolean sOptNonInteractive;
    static gboolean sOptFullscreen;
-   static gchar *sOptBackground;
-   static gchar *sOptFile;
-   static gchar **sOptRedirect;
+   static char *sOptBackground;
+   static char *sOptFile;
+   static char **sOptRedirect;
    static gboolean sOptVersion;
-   static gchar **sOptUsb;
+   static char **sOptUsb;
+   static char *sOptMMRPath;
+   static char *sOptRDesktop;
 
    static GOptionEntry sOptEntries[];
    static GOptionEntry sOptFileEntries[];
@@ -158,7 +162,8 @@ private:
    void DoDesktopAction(DesktopSelectDlg::Action action);
 
    void OnCancel();
-   void UpdateDisplayEnvironment();
+   void PushDesktopEnvironment();
+   void PopDesktopEnvironment();
    void OnDesktopUIExit(Dlg *dlg, int status);
    void OnDesktopUICancel(Dlg *dlg);
 
@@ -176,6 +181,8 @@ private:
    GdkRectangle mDesktopSize;
    bool mFullScreen;
 #endif
+   Util::string mOrigLDPath;
+   Util::string mOrigGSTPath;
 };
 
 

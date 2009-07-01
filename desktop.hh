@@ -88,6 +88,7 @@ public:
    bool InMaintenanceMode() const { return mDesktopInfo.inMaintenance; }
 
    bool GetIsUSBEnabled() const { return mDesktopConn.enableUSB; }
+   bool GetIsMMREnabled() const { return mDesktopConn.enableMMR; }
 
    bool GetAutoConnect() const;
 

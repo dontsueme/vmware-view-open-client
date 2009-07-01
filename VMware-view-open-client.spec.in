@@ -3,7 +3,7 @@ Version: @VIEW_VERSION@
 Release: @BUILD_NUMBER@
 Summary: @PRODUCT_VIEW_CLIENT_NAME@
 Group: Applications/Internet
-License: LGPL
+License: @VIEW_RPM_LICENSE@
 Autoreqprov: off
 Vendor: VMware, Inc.
 Requires: rdesktop
@@ -51,8 +51,9 @@ exit 0
 %dir "/usr/share/doc/@PACKAGING_NAME@"
 %doc "/usr/share/doc/@PACKAGING_NAME@/README.txt"
 %doc "/usr/share/doc/@PACKAGING_NAME@/open_source_licenses.txt"
-%doc "/usr/share/doc/@PACKAGING_NAME@/EULA_English-View_GA.rtf"
-%doc "/usr/share/doc/@PACKAGING_NAME@/View_Client_Admin_Guide.pdf"
+@VIEW_EULAS_TRUE@%doc "/usr/share/doc/@PACKAGING_NAME@/@PACKAGING_NAME@-EULA-*.txt"
+%doc "/usr/share/doc/@PACKAGING_NAME@/View_Client_Admin_Guide-*.pdf"
+%dir "/usr/share/doc/@PACKAGING_NAME@/help"
 %doc "/usr/share/doc/@PACKAGING_NAME@/help/integrated_help-*.txt"
 %doc "/usr/share/man/man1/vmware-view.1.gz"
 %doc "/usr/share/man/man1/vmware-view-tunnel.1.gz"

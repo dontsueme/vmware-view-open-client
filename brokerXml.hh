@@ -205,6 +205,7 @@ public:
       Util::string password;
       Util::string domainName;
       bool enableUSB;
+      bool enableMMR;
 
       DesktopConnection();
       bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);

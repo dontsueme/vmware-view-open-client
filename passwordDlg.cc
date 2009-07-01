@@ -103,6 +103,8 @@ PasswordDlg::PasswordDlg()
    gtk_widget_show(GTK_WIDGET(mPasswd));
    gtk_table_attach_defaults(mTable, GTK_WIDGET(mPasswd), 1, 2, 2, 3);
    gtk_entry_set_visibility(mPasswd, false);
+   // See http://technet.microsoft.com/en-us/library/cc512606.aspx
+   gtk_entry_set_max_length(mPasswd, 127);
    AddSensitiveWidget(GTK_WIDGET(mPasswd));
    gtk_entry_set_activates_default(mPasswd, true);
    AddRequiredEntry(mPasswd);
@@ -117,6 +119,8 @@ PasswordDlg::PasswordDlg()
    gtk_widget_show(GTK_WIDGET(mNew));
    gtk_table_attach_defaults(mTable, GTK_WIDGET(mNew), 1, 2, 3, 4);
    gtk_entry_set_visibility(mNew, false);
+   // See http://technet.microsoft.com/en-us/library/cc512606.aspx
+   gtk_entry_set_max_length(mNew, 127);
    AddSensitiveWidget(GTK_WIDGET(mNew));
    gtk_entry_set_activates_default(mNew, true);
    AddRequiredEntry(mNew);
@@ -131,6 +135,8 @@ PasswordDlg::PasswordDlg()
    gtk_widget_show(GTK_WIDGET(mConfirm));
    gtk_table_attach_defaults(mTable, GTK_WIDGET(mConfirm), 1, 2, 4, 5);
    gtk_entry_set_visibility(mConfirm, false);
+   // See http://technet.microsoft.com/en-us/library/cc512606.aspx
+   gtk_entry_set_max_length(mConfirm, 127);
    AddSensitiveWidget(GTK_WIDGET(mConfirm));
    gtk_entry_set_activates_default(mConfirm, true);
    AddRequiredEntry(mConfirm);

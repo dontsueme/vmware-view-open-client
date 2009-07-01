@@ -36,6 +36,13 @@
 #include "cryptoki.hh"
 
 
+#ifdef OPENSSL_097
+#define D2I_X509_CONST
+#else
+#define D2I_X509_CONST const
+#endif
+
+
 namespace cdk {
 
 
@@ -446,6 +453,7 @@ Cryptoki::Module::Module(Cryptoki *cryptoki) // IN
 Cryptoki::Module::~Module()
 {
    if (mModule) {
+      CloseAllSessions();
       mFuncs.C_Finalize(NULL);
       g_module_close(mModule);
    }
@@ -649,6 +657,11 @@ Cryptoki::Module::CloseAllSessions()
    CK_RV rv;
    for (std::list<CK_SLOT_ID>::iterator i = slots.begin();
         i != slots.end(); i++) {
+      Session *session = new Session(this);
+      if (CKR_OK == session->Open(*i)) {
+         session->Logout();
+      }
+      session->Release();
       rv = mFuncs.C_CloseAllSessions(*i);
       if (rv != CKR_OK) {
          Warning("C_CloseAllSessions for module [%s], slot %lu failed: %#lx\n",
@@ -707,6 +720,7 @@ cdk::Cryptoki::Module::GetSlots()
    }
    return slots;
 }
+
 
 /*
  *-----------------------------------------------------------------------------
@@ -916,6 +930,44 @@ Cryptoki::Session::Open(CK_SLOT_ID slot) // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Cryptoki::Session::Logout --
+ *
+ *      Logout from a cryptoki session.  This causes private objects
+ *      (such as private keys) to become invalid, requiring a new
+ *      login.
+ *
+ * Results:
+ *      Result of the PKCS11 C_Logout function.
+ *
+ * Side effects:
+ *      All sessions for this module are logged out.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+CK_RV
+Cryptoki::Session::Logout()
+{
+   ASSERT(mSession != CK_INVALID_HANDLE);
+   CK_RV rv = mModule->GetFunctions().C_Logout(mSession);
+   switch (rv) {
+   case CKR_OK:
+      Log("Logged out of a session for token [%s]\n", mLabel.c_str());
+      break;
+   case CKR_USER_NOT_LOGGED_IN:
+      // This is normal, no need to report it.
+      break;
+   default:
+      Warning("C_Logout failed: %#lx [%s]\n", rv, mLabel.c_str());
+      break;
+   }
+   return rv;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Cryptoki::Session::GetCertificates --
  *
  *      Add valid certificates on this slot to certs.
@@ -1003,7 +1055,7 @@ Cryptoki::Session::GetCertificates(std::list<X509 *> &certs, // IN/OUT
        * Basically, we need to remember the old cert value so we
        * can free it.
        */
-      const unsigned char *tmpCert = cert;
+      D2I_X509_CONST unsigned char *tmpCert = cert;
       X509 *x509 = d2i_X509(NULL, &tmpCert, attrs[0].ulValueLen);
       delete[] cert;
 

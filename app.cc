@@ -89,6 +89,8 @@ enum {
 #define PRODUCT_VIEW_NAME MAKE_NAME("View Manager")
 #define PRODUCT_VIEW_CLIENT_NAME_FOR_LICENSE PRODUCT_VIEW_CLIENT_NAME
 
+#define VIEW_DEFAULT_MMR_PATH "/usr/lib/mmr/"
+
 #define BUFFER_LEN 256
 
 
@@ -101,18 +103,20 @@ namespace cdk {
 
 App *App::sApp = NULL;
 
-gchar *App::sOptBroker = NULL;
-gchar *App::sOptUser = NULL;
-gchar *App::sOptPassword = NULL;
-gchar *App::sOptDomain = NULL;
-gchar *App::sOptDesktop = NULL;
+char *App::sOptBroker = NULL;
+char *App::sOptUser = NULL;
+char *App::sOptPassword = NULL;
+char *App::sOptDomain = NULL;
+char *App::sOptDesktop = NULL;
 gboolean App::sOptNonInteractive = false;
 gboolean App::sOptFullscreen = false;
-gchar *App::sOptBackground = NULL;
-gchar *App::sOptFile = NULL;
-gchar **App::sOptRedirect = NULL;
+char *App::sOptBackground = NULL;
+char *App::sOptFile = NULL;
+char **App::sOptRedirect = NULL;
 gboolean App::sOptVersion = false;
-gchar **App::sOptUsb = NULL;
+char **App::sOptUsb = NULL;
+char *App::sOptMMRPath = NULL;
+char *App::sOptRDesktop = NULL;
 
 
 GOptionEntry App::sOptEntries[] =
@@ -140,6 +144,11 @@ GOptionEntry App::sOptEntries[] =
      N_("Display version information and exit."), NULL },
    { "usb", '\0', 0, G_OPTION_ARG_STRING_ARRAY, &sOptUsb,
      N_("Options for USB forwarding."), N_("<usb options>") },
+   { "mmrPath", 'm', 0, G_OPTION_ARG_STRING, &sOptMMRPath,
+     N_("Directory location containing Wyse MMR libraries."), N_("<mmr directory>") },
+   { "rdesktopOptions", '\0', 0, G_OPTION_ARG_STRING, &sOptRDesktop,
+     N_("Command line options to forward to rdesktop."),
+     N_("<rdesktop options>") },
    { NULL }
 };
 
@@ -317,6 +326,10 @@ App::App(int argc,    // IN:
 
    if (sOptNonInteractive) {
       Log("Using non-interactive mode.\n");
+   }
+
+   if (!sOptMMRPath) {
+      sOptMMRPath = VIEW_DEFAULT_MMR_PATH;
    }
 
    gtk_widget_show(GTK_WIDGET(mToplevelBox));
@@ -1808,7 +1821,7 @@ App::RequestLaunchDesktop(Desktop *desktop) // IN
          boost::bind(&App::OnDesktopUIExit, this, dlg, _1));
    }
 
-   UpdateDisplayEnvironment();
+   PushDesktopEnvironment();
 
    // Collect all the -r options.
    std::vector<Util::string> devRedirects = GetSmartCardRedirects();
@@ -1839,6 +1852,8 @@ App::RequestLaunchDesktop(Desktop *desktop) // IN
    Log("Connecting to desktop with total geometry %dx%d.\n",
        geometry.width, geometry.height);
    desktop->StartUI(&geometry, devRedirects, usbRedirects);
+
+   PopDesktopEnvironment();
 }
 
 
@@ -2058,8 +2073,9 @@ App::ShowDialog(GtkMessageType type,       // IN
     * If we're trying to connect, or have already connected, show the
     * error using the transition page.
     */
-   if (dynamic_cast<TransitionDlg *>(sApp->mDlg) ||
-       dynamic_cast<RDesktop *>(sApp->mDlg)) {
+   if (type == GTK_MESSAGE_ERROR &&
+       (dynamic_cast<TransitionDlg *>(sApp->mDlg) ||
+        dynamic_cast<RDesktop *>(sApp->mDlg))) {
       /*
        * We may get a tunnel error/message while the Desktop::Connect RPC is
        * still in flight, which puts us here. If so, and the user clicks
@@ -2150,26 +2166,78 @@ App::OnCancel()
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::App::UpdateDisplayEnvironment --
+ * cdk::App::PushDesktopEnvironment --
  *
- *      Update the DISPLAY environment variable according to the
- *      GdkScreen mWindow is on.
+ *      Updates the DISPLAY environment variable according to the
+ *      GdkScreen mWindow is on and the LD_LIBRARY_PATH and GST_PLUGIN_PATH
+ *      variables to include the MMR path (if MMR is enabled).
  *
  * Results:
  *      None
  *
  * Side effects:
- *      DISPLAY is updated
+ *      DISPLAY is updated and LD_LIBRARY_PATH may be updated.
  *
  *-----------------------------------------------------------------------------
  */
 
 void
-App::UpdateDisplayEnvironment()
+App::PushDesktopEnvironment()
 {
    char *dpy = gdk_screen_make_display_name(gtk_window_get_screen(mWindow));
    setenv("DISPLAY", dpy, true);
    g_free(dpy);
+
+   if (GetDesktop()->GetIsMMREnabled() && strlen(sOptMMRPath) != 0) {
+      const char *ldpath = getenv("LD_LIBRARY_PATH");
+      mOrigLDPath = ldpath ? ldpath : "";
+
+      Util::string env = Util::Format("%s%s%s",
+                                      mOrigLDPath.c_str(),
+                                      mOrigLDPath.empty() ? "" : ":",
+                                      sOptMMRPath);
+      setenv("LD_LIBRARY_PATH", env.c_str(), true);
+
+      const char *gstpath = getenv("GST_PLUGIN_PATH");
+      mOrigGSTPath = gstpath ? gstpath : "";
+
+      char *newPath = g_build_filename(sOptMMRPath, "gstreamer", NULL);
+      env = Util::Format("%s%s%s",
+                         newPath,
+                         mOrigGSTPath.empty() ? "" : ":",
+                         mOrigGSTPath.c_str());
+      g_free(newPath);
+      setenv("GST_PLUGIN_PATH", env.c_str(), true);
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::App::PopDesktopEnvironment --
+ *
+ *      Unsets the DISPLAY environment variable and returns
+ *      LD_LIBRARY_PATH variable to it's setting prior to rdesktop
+ *      connection.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      DISPLAY is unset and LD_LIBRARY_PATH may be updated
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+App::PopDesktopEnvironment()
+{
+   setenv("LD_LIBRARY_PATH", mOrigLDPath.c_str(), true);
+   mOrigLDPath.clear();
+
+   setenv("GST_PLUGIN_PATH", mOrigGSTPath.c_str(), true);
+   mOrigGSTPath.clear();
 }
 
 
@@ -2385,6 +2453,49 @@ App::OnDesktopUICancel(Dlg *dlg) // IN
 {
    mDesktopUIExitCnx.disconnect();
    delete dlg;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::App::GetRDesktopOptions --
+ *
+ *      Returns a vector containing the command line arguments supplied by
+ *      the user to pass to rdesktop.
+ *
+ * Results:
+ *      A vector containing rdesktop options.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+const std::vector<Util::string>
+App::GetRDesktopOptions()
+{
+   std::vector<Util::string> ret;
+
+   if (!sOptRDesktop) {
+      return ret;
+   }
+
+   char **args = NULL;
+   GError *error = NULL;
+
+   if (g_shell_parse_argv(sOptRDesktop, NULL, &args, &error)) {
+      for (char **arg = args; *arg; arg++) {
+         ret.push_back(*arg);
+      }
+      g_strfreev(args);
+   } else {
+      Log("Error retrieving rdesktop options: %s", error->message);
+      g_error_free(error);
+   }
+
+   return ret;
 }
 
 

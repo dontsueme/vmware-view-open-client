@@ -180,8 +180,8 @@ ProcHelper::Start(Util::string procName,          // IN
          // Write and sync to child stdin
          write(inFds[1], stdIn.c_str(), stdIn.size());
          fsync(inFds[1]);
-         close(inFds[1]);
       }
+      close(inFds[1]);
 
       mProcName = procName;
       mPid = pid;

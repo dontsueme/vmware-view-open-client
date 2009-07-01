@@ -2,14 +2,29 @@ Author: Daniel Baumann <daniel@debian.org>
 Description: Removing pdf documents without source.
 
 diff -Naurp vmware-view-open-client.orig/Makefile.in vmware-view-open-client/Makefile.in
---- vmware-view-open-client.orig/Makefile.in	2009-04-16 04:03:24.000000000 +0000
-+++ vmware-view-open-client/Makefile.in	2009-04-17 18:34:21.000000000 +0000
-@@ -1290,7 +1290,7 @@ dist_noinst_HEADERS := lib/open-vm-tools
+--- vmware-view-open-client.orig/Makefile.in	2009-07-01 14:46:33.000000000 +0000
++++ vmware-view-open-client/Makefile.in	2009-07-06 23:21:01.000000000 +0000
+@@ -1298,9 +1298,6 @@ dist_noinst_HEADERS := lib/open-vm-tools
  	lib/bora/include/vmlocale.h lib/bora/include/vthread.h \
  	lib/bora/include/vthreadBase.h lib/libp11/include/pkcs11.h \
  	extraTranslations.hh
--dist_pdf_DATA := doc/View_Client_Admin_Guide.pdf
-+#dist_pdf_DATA := doc/View_Client_Admin_Guide.pdf
+-dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf \
+-	doc/View_Client_Admin_Guide-de.pdf \
+-	doc/View_Client_Admin_Guide-ja.pdf
  noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
  	libPanicDefault.a libString.a libStubs.a libUnicode.a \
  	libUser.a libAsyncSocket.a libBasicHttp.a libLog.a \
+diff -Naurp vmware-view-open-client.orig/doc/Makefile.inc vmware-view-open-client/doc/Makefile.inc
+--- vmware-view-open-client.orig/doc/Makefile.inc	2009-07-01 14:46:33.000000000 +0000
++++ vmware-view-open-client/doc/Makefile.inc	2009-07-06 23:21:09.000000000 +0000
+@@ -18,10 +18,6 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
+ ################################################################################
+ 
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
+-
+ if VIEW_EULAS
+ doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
+ doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt

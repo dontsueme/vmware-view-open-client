@@ -39,12 +39,15 @@
 #include <gtk/gtklabel.h>
 #include <gtk/gtkstock.h>
 #include <libxml/uri.h>
+#ifdef __linux__
 #include <linux/if_ether.h>
+#endif
+// Mac OS X requires sys/socket.h before net/if.h.
+#include <sys/socket.h>
 #include <net/if.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
@@ -596,7 +599,15 @@ ParseHostLabel(const string &label,  // IN
       parsed = xmlParseURI(text.c_str());
    }
 
-   if (parsed != NULL) {
+   /*
+    * For some invalid URLs, path will contain a bunch of stuff.
+    * Since the user shouldn't be specifying a path here, use that to
+    * catch a few strange parsing errors.
+    * See bugs 379938 & 367370.
+    */
+   if (parsed != NULL &&
+       (parsed->path == NULL || parsed->path[0] == '\0') &&
+       parsed->server && strlen(parsed->server) <= MAX_HOSTNAME_LENGTH) {
       bool tmpSecure = !parsed->scheme || !strcmp(parsed->scheme, "https");
       if (secure) {
 	 *secure = tmpSecure;
@@ -720,7 +731,11 @@ GetClientInfo(const string broker, // IN
    info["TimeOffset_GMT"] = Format("%.2d:%.2d", gmt_offset / 3600,
                                    abs(gmt_offset) % 3600 / 60);
 
+#ifdef __linux__
    info["Type"] = "Linux";
+#elif defined(__APPLE__)
+   info["Type"] = "Mac";
+#endif
 
    return info;
 }
@@ -794,6 +809,7 @@ GetNICInfo(const string broker, // IN
    }
    info["IP_Address"] = buffer;
 
+#ifdef __linux__
    struct ifreq ifr;
    int i = 0;
    while (++i) {
@@ -835,6 +851,7 @@ GetNICInfo(const string broker, // IN
          break;
       }
    }
+#endif
    close(sock);
    return info;
 }
