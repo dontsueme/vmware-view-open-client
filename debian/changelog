@@ -1,3 +1,11 @@
+vmware-view-open-client (3.1.0-169073+dfsg-3) unstable; urgency=low
+
+  * Updating package to standards version 3.8.3.
+  * Updating maintainer field.
+  * Updating vcs fields.
+
+ -- Daniel Baumann <daniel@debian.org>  Tue, 25 Aug 2009 10:55:03 +0200
+
 vmware-view-open-client (3.1.0-169073+dfsg-2) unstable; urgency=low
 
   * Building as release (Closes: #538958).
