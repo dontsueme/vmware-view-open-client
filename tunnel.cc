@@ -226,10 +226,13 @@ Tunnel::OnErr(Util::string line) // IN: this
       App::ShowDialog(GTK_MESSAGE_INFO, _("Message from View Server: %s"),
                       msg.c_str());
    } else if (line.find(TUNNEL_ERROR, 0, strlen(TUNNEL_ERROR)) == 0) {
-      Util::string err = Util::string(line, strlen(TUNNEL_ERROR));
-      Log("Tunnel error message: %s\n", err.c_str());
-      App::ShowDialog(GTK_MESSAGE_ERROR, _("Error from View Server: %s"),
-                      err.c_str());
+      /*
+       * Messages from the tunnel are not translated; the ones we know
+       * about are listed in extraTranslations.hh.
+       */
+      const char *err = _(Util::string(line, strlen(TUNNEL_ERROR)).c_str());
+      Log("Tunnel error message: %s\n", err);
+      App::ShowDialog(GTK_MESSAGE_ERROR, _("Error from View Server: %s"), err);
    }
 }
 

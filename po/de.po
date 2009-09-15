@@ -9,116 +9,133 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-03-31 11:07-0700\n"
+"POT-Creation-Date: 2009-07-24 10:28-0700\n"
 "PO-Revision-Date: 2009-03-31 11:07-0700\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../app.cc:121
+#: ../app.cc:125
 msgid "Specify connection broker."
 msgstr "Geben Sie einen Verbindungs-Broker an."
 
-#: ../app.cc:121
+#: ../app.cc:125
 msgid "<broker URL>"
 msgstr "<Broker-URL>"
 
-#: ../app.cc:123
+#: ../app.cc:127
 msgid "Specify user name for password authentication."
 msgstr "Geben Sie Ihren Benutzernamen für die Kennwortauthentifizierung an."
 
-#: ../app.cc:123
+#: ../app.cc:127
 msgid "<user name>"
 msgstr "<Benutzername>"
 
-#: ../app.cc:125
+#: ../app.cc:129
 msgid "Specify password for password authentication."
 msgstr "Geben Sie Ihr Kennwort für die Kennwortauthentifizierung an."
 
-#: ../app.cc:125
+#: ../app.cc:129
 msgid "<password>"
 msgstr "<Kennwort>"
 
-#: ../app.cc:127
+#: ../app.cc:131
 msgid "Specify domain for password authentication."
 msgstr "Geben Sie die Domäne für die Kennwortauthentifizierung an."
 
-#: ../app.cc:127
+#: ../app.cc:131
 msgid "<domain name>"
 msgstr "<Domänenname>"
 
-#: ../app.cc:129
+#: ../app.cc:133
 msgid "Specify desktop by name."
 msgstr "Geben Sie den Namen des Desktops an."
 
-#: ../app.cc:129
+#: ../app.cc:133
 msgid "<desktop name>"
 msgstr "<Desktop-Name>"
 
-#: ../app.cc:131
+#: ../app.cc:135
 msgid "Connect automatically if enough values are given on the command line."
-msgstr ""
-"Automatische Verbindung herstellen, wenn über die Befehlszeile genügend "
-"Werte eingegeben werden."
+msgstr "Automatische Verbindung herstellen, wenn über die Befehlszeile genügend Werte eingegeben werden."
 
-#: ../app.cc:134
+#: ../app.cc:138
 msgid "Enable fullscreen mode."
 msgstr "Aktiviert den Vollbildmodus."
 
-#: ../app.cc:136
+#: ../app.cc:140
 msgid "Image file to use as background in fullscreen mode."
 msgstr "Bilddatei, die im Vollbildmodus als Hintergrund verwendet wird."
 
-#: ../app.cc:136
+#: ../app.cc:140
 msgid "<image>"
 msgstr "<Bild>"
 
-#: ../app.cc:138
+#: ../app.cc:142
 msgid "Forward device redirection to rdesktop"
 msgstr "Geräteumleitung an rdesktop"
 
-#: ../app.cc:138
+#: ../app.cc:142
 msgid "<device info>"
 msgstr "<Geräteinfo>"
 
-#: ../app.cc:140
+#: ../app.cc:144
 msgid "Display version information and exit."
 msgstr "Versionsinformationen anzeigen und beenden."
 
-#: ../app.cc:142
+#: ../app.cc:146
 msgid "Options for USB forwarding."
 msgstr "Optionen für die USB-Umleitung"
 
-#: ../app.cc:142
+#: ../app.cc:146
 msgid "<usb options>"
 msgstr "<USB-Optionen>"
 
+#: ../app.cc:148
+msgid "Directory location containing Wyse MMR libraries."
+msgstr "Speicherort des Verzeichnisses mit Wyse MMR-Bibliotheken."
+
+#: ../app.cc:148
+msgid "<mmr directory>"
+msgstr "<MMR-Verzeichnis>"
+
 #: ../app.cc:150
+#, fuzzy
+msgid "Command line options to forward to rdesktop."
+msgstr "Befehlszeilenoptionen für Weiterleitung an rdesktop."
+
+#: ../app.cc:151
+#, fuzzy
+msgid "<rdesktop options>"
+msgstr "<rdesktop-Optionen>"
+
+#: ../app.cc:159
 msgid "File containing additional command line arguments."
 msgstr "Datei mit zusätzlichen Befehlszeilenargumenten."
 
-#: ../app.cc:151
+#: ../app.cc:160
 msgid "<file path>"
 msgstr "<Dateipfad>"
 
-#: ../app.cc:208
+#: ../app.cc:217
 #, c-format
 msgid "Using log file %s\n"
 msgstr "Verwendete Protokolldatei: %s\n"
 
-#: ../app.cc:231 ../app.cc:417
+#: ../app.cc:240
+#: ../app.cc:430
 msgid "- connect to VMware View desktops"
 msgstr "- Verbindungsherstellung mit VMware View-Desktops"
 
-#: ../app.cc:250 ../app.cc:276
+#: ../app.cc:259
+#: ../app.cc:285
 #, c-format
 msgid "Error parsing command line: %s\n"
-msgstr "Fehler beim Parsen von Befehlszeile: %s\n"
+msgstr "Fehler beim Parsen der Befehlszeile: %s\n"
 
-#: ../app.cc:287
+#: ../app.cc:296
 #, c-format
-msgid ""
-"%s\n"
+msgid "%s\n"
 "\n"
 "VMware is a registered trademark or trademark (the \"Marks\") of VMware, "
 "Inc.\n"
@@ -143,35 +160,22 @@ msgid ""
 "VMware software products are protected by one or more patents listed at\n"
 "%s\n"
 "\n"
-msgstr ""
-"%s\n"
+msgstr "%s\n"
 "\n"
 "VMware ist eine eingetragene Marke oder Marke (die \"Marken\") der\n"
-"VMware, Inc. in den USA und/oder anderen Ländern und wird nicht im Rahmen "
-"von\n"
+"VMware, Inc. in den USA und/oder anderen Ländern und wird nicht im Rahmen von\n"
 "LGPL Version 2.1 lizenziert. Wenn Sie den VMware View Open Client nicht\n"
-"modifiziert, entweder im Binär- oder im Quellformat, oder die "
-"Begleitdokumentation\n"
-"nicht modifiziert verteilen, sind Sie nicht berechtigt, die oben genannten "
-"Marken\n"
-"zu entfernen oder in irgendeiner Weise zu verändern. Wenn Sie minimale "
-"Modifikationen\n"
-"am VMware View Open Client oder der Begleitdokumentation vornehmen, dürfen "
-"Sie die\n"
-"unveränderten Marken mit Ihren Distributionen im Binär- oder Quellformat "
-"verteilen, sind\n"
-"aber nicht dazu verpflichtet. Im Falle größerer funktioneller Änderungen am "
-"VMware View\n"
-"Open Client oder der Begleitdokumentation ist es Ihnen nicht erlaubt, die "
-"oben genannten\n"
-"Marken mit Ihrer Binär- oder Quelldistribution zu verteilen, und Sie müssen "
-"alle in Ihrer\n"
-"Distribution enthaltenen Verweise auf die Marken entfernen. Jede andere "
-"Verwendung\n"
-"oder Distribution der Marken bedarf einer vorherigen schriftlichen "
-"Zustimmung durch VMware.\n"
-"Alle weiteren hier genannten Marken und Namen  sind möglicherweise "
-"Markenzeichen\n"
+"modifiziert, entweder im Binär- oder im Quellformat, oder die Begleitdokumentation\n"
+"nicht modifiziert verteilen, sind Sie nicht berechtigt, die oben genannten Marken\n"
+"zu entfernen oder in irgendeiner Weise zu verändern. Wenn Sie minimale Modifikationen\n"
+"am VMware View Open Client oder der Begleitdokumentation vornehmen, dürfen Sie die\n"
+"unveränderten Marken mit Ihren Distributionen im Binär- oder Quellformat verteilen, sind\n"
+"aber nicht dazu verpflichtet. Im Falle größerer funktioneller Änderungen am VMware View\n"
+"Open Client oder der Begleitdokumentation ist es Ihnen nicht erlaubt, die oben genannten\n"
+"Marken mit Ihrer Binär- oder Quelldistribution zu verteilen, und Sie müssen alle in Ihrer\n"
+"Distribution enthaltenen Verweise auf die Marken entfernen. Jede andere Verwendung\n"
+"oder Distribution der Marken bedarf einer vorherigen schriftlichen Zustimmung durch VMware.\n"
+"Alle weiteren hier genannten Marken und Namen  sind möglicherweise Markenzeichen\n"
 "der jeweiligen Unternehmen.\n"
 "\n"
 "Copyright © 1998-2009 VMware, Inc. Alle Rechte vorbehalten.\n"
@@ -182,161 +186,158 @@ msgstr ""
 "\n"
 
 #. TRANSLATORS: Ignore this; we will localize with appropriate URL.
-#: ../app.cc:310
+#: ../app.cc:319
 msgid "http://www.vmware.com/go/patents"
 msgstr "http://www.vmware.com/go/patents-de"
 
-#: ../app.cc:315
+#: ../app.cc:324
 msgid "Password: "
 msgstr "Kennwort: "
 
-#: ../app.cc:431
+#: ../app.cc:444
 #, c-format
 msgid "Error parsing %s: %s\n"
 msgstr "Fehler beim Parsen von %s: %s\n"
 
-#: ../app.cc:432 ../app.cc:1730
+#: ../app.cc:445
+#: ../app.cc:1743
 msgid "Unknown error"
 msgstr "Unbekannter Fehler"
 
-#: ../app.cc:1036
+#: ../app.cc:1049
 #, c-format
-msgid ""
-"Command-line option domain \"%s\" is not in the list returned by the "
+msgid "Command-line option domain \"%s\" is not in the list returned by the "
 "server.\n"
-msgstr ""
-"Befehlszeilenoption domain \"%s\" ist nicht in der vom Server "
-"zurückgegebenen Liste enthalten.\n"
+msgstr "Befehlszeilenoption domain \"%s\" ist nicht in der vom Server zurückgegebenen Liste enthalten.\n"
 
-#: ../app.cc:1121
+#: ../app.cc:1134
 #, c-format
-msgid ""
-"Command-line option desktop \"%s\" is not in the list returned by the "
+msgid "Command-line option desktop \"%s\" is not in the list returned by the "
 "server.\n"
-msgstr ""
-"Befehlszeilenoption desktop \"%s\" ist nicht in der vom Server "
-"zurückgegebenen Liste enthalten.\n"
+msgstr "Befehlszeilenoption desktop \"%s\" ist nicht in der vom Server zurückgegebenen Liste enthalten.\n"
 
-#: ../app.cc:1399
+#: ../app.cc:1412
 msgid "The PINs do not match."
 msgstr "Die PINs stimmen nicht überein."
 
-#: ../app.cc:1463
+#: ../app.cc:1476
 msgid "The passwords do not match."
 msgstr "Die Kennwörter stimmen nicht überein."
 
-#: ../app.cc:1546
+#: ../app.cc:1559
 msgid "The secure connection to the View Server has unexpectedly disconnected."
 msgstr "Die sichere Verbindung mit dem View Server wurde unerwartet getrennt."
 
-#: ../app.cc:1549
+#: ../app.cc:1562
 #, c-format
-msgid ""
-"\n"
+msgid "\n"
 "\n"
 "Reason: %s."
-msgstr ""
-"\n"
+msgstr "\n"
 "\n"
 "Ursache: %s."
 
-#: ../app.cc:1728
+#: ../app.cc:1741
 #, c-format
 msgid "Unable to load background image '%s': %s\n"
 msgstr "Hintergrundbild '%s' kann nicht geladen werden: %s\n"
 
-#: ../app.cc:1784 ../broker.cc:519
+#: ../app.cc:1797
+#: ../broker.cc:523
 msgid "Connecting to the desktop..."
 msgstr "Verbindung mit dem Desktop wird hergestellt..."
 
-#: ../app.cc:2251
+#: ../app.cc:2319
 #, c-format
-msgid ""
-"You are connected to %s.\n"
+msgid "You are connected to %s.\n"
 "\n"
 "If this desktop is unresponsive, click Disconnect."
-msgstr ""
-"Sie sind mit %s verbunden.\n"
+msgstr "Sie sind mit %s verbunden.\n"
 "\n"
 "Wenn dieser Desktop nicht reagiert, klicken Sie auf 'Trennen'."
 
-#: ../app.cc:2264
+#: ../app.cc:2332
 msgid "Send C_trl-Alt-Del"
 msgstr "_Strg-Alt-Entf senden"
 
-#: ../app.cc:2265
+#: ../app.cc:2333
 msgid "_Disconnect"
 msgstr "_Trennen"
 
-#: ../app.cc:2267 ../desktopSelectDlg.cc:601 ../desktopSelectDlg.cc:795
+#: ../app.cc:2335
+#: ../desktopSelectDlg.cc:601
+#: ../desktopSelectDlg.cc:795
 msgid "_Reset"
 msgstr "_Zurücksetzen"
 
-#: ../app.cc:2361
+#: ../app.cc:2429
 msgid "The desktop has unexpectedly disconnected."
 msgstr "Der Desktop wurde unerwartet getrennt."
 
-#: ../broker.cc:219
+#: ../broker.cc:223
 msgid "Setting client locale..."
 msgstr "Gebietsschema für Client wird festgelegt..."
 
-#: ../broker.cc:250 ../broker.cc:280 ../broker.cc:309 ../broker.cc:373
-#: ../broker.cc:401 ../broker.cc:429 ../broker.cc:458
+#: ../broker.cc:254
+#: ../broker.cc:284
+#: ../broker.cc:313
+#: ../broker.cc:377
+#: ../broker.cc:405
+#: ../broker.cc:433
+#: ../broker.cc:462
 msgid "Logging in..."
 msgstr "Anmelden..."
 
-#: ../broker.cc:335
+#: ../broker.cc:339
 msgid "Accepting disclaimer..."
 msgstr "Haftungsausschluss wird akzeptiert..."
 
-#: ../broker.cc:489
+#: ../broker.cc:493
 msgid "Changing password..."
 msgstr "Kennwort wird geändert..."
 
-#: ../broker.cc:753
+#: ../broker.cc:758
 msgid "Logging out..."
 msgstr "Abmelden..."
 
-#: ../broker.cc:778
+#: ../broker.cc:783
 msgid "Getting server configuration..."
 msgstr "Serverkonfiguration wird abgerufen..."
 
-#: ../broker.cc:867 ../broker.cc:1332
+#: ../broker.cc:872
+#: ../broker.cc:1337
 #, c-format
 msgid "Error authenticating: %s"
 msgstr "Fehler bei der Authentifizierung: %s"
 
-#: ../broker.cc:907
-msgid ""
-"Your new RSA SecurID PIN has been set.\n"
+#: ../broker.cc:912
+msgid "Your new RSA SecurID PIN has been set.\n"
 "\n"
 "Please wait for the next tokencode to appear on your RSA SecurID token, then "
 "continue."
-msgstr ""
-"Ihre neue RSA SecurID-PIN wurde festgelegt.\n"
+msgstr "Ihre neue RSA SecurID-PIN wurde festgelegt.\n"
 "\n"
-"Warten Sie, bis der nächste Token-Code auf Ihrem RSA SecurID erscheint, und "
-"fahren Sie dann fort."
+"Warten Sie, bis der nächste Token-Code auf Ihrem RSA SecurID erscheint, und fahren Sie dann fort."
 
-#: ../broker.cc:930
+#: ../broker.cc:935
 #, c-format
 msgid "Unknown authentication method requested: %s"
 msgstr "Unbekannte Authentifizierungsmethode angefordert: %s"
 
-#: ../broker.cc:936
+#: ../broker.cc:941
 #, c-format
 msgid "Unknown result returned: %s"
 msgstr "Unbekanntes Ergebnis zurückgegeben: %s"
 
-#: ../broker.cc:985
+#: ../broker.cc:990
 msgid "Invalid PIN Change response sent by server."
 msgstr "Ungültige PIN-Änderungsantwort von Server gesendet."
 
-#: ../broker.cc:1023
+#: ../broker.cc:1028
 msgid "Getting desktop list..."
 msgstr "Desktop-Liste wird abgerufen..."
 
-#: ../broker.cc:1337
+#: ../broker.cc:1342
 msgid "The View Server has logged you out."
 msgstr "Sie wurden vom View Server abgemeldet."
 
@@ -364,7 +365,7 @@ msgstr "Geben Sie Hostnamen oder IP-Adresse Ihres View Connection Servers ein."
 msgid "A_ddress:"
 msgstr "A_dresse:"
 
-#: ../brokerDlg.cc:111
+#: ../brokerDlg.cc:113
 msgid "_Options"
 msgstr "_Optionen"
 
@@ -398,37 +399,33 @@ msgstr "Ungültige Antwort von Broker: \"screen\" in XML ungültig."
 msgid "Invalid response from broker: Invalid \"name\" in XML."
 msgstr "Ungültige Antwort von Broker: \"name\" in XML ungültig."
 
-#: ../brokerXml.cc:879
+#: ../brokerXml.cc:880
 msgid "Invalid response from broker: Listener with invalid host name."
 msgstr "Ungültige Antwort von Broker: Listener mit ungültigem Hostnamen."
 
-#: ../brokerXml.cc:1089
+#: ../brokerXml.cc:1090
 msgid "Could not connect to broker."
 msgstr "Verbindung mit Broker konnte nicht hergestellt werden."
 
-#: ../brokerXml.cc:1117
+#: ../brokerXml.cc:1118
 msgid "Invalid response from broker: General error."
 msgstr "Ungültige Antwort von Broker: Allgemeiner Fehler."
 
-#: ../brokerXml.cc:1180
+#: ../brokerXml.cc:1181
 #, c-format
 msgid "Invalid response from broker: Unknown response \"%s\"."
 msgstr "Ungültige Antwort von Broker: Unbekannte Antwort \"%s\"."
 
-#: ../brokerXml.cc:1190
+#: ../brokerXml.cc:1191
 #, c-format
-msgid ""
-"The server \"%s\" may not be a compatible View Connection Server. Check the "
-"server address and try again."
-msgstr ""
-"Der Server \"%s\" ist möglicherweise kein kompatibler View Connection Server."
-"Überprüfen Sie die Serveradresse und versuchen Sie es erneut."
+msgid "The server \"%s\" may not be a compatible View Connection Server. Check the server address and try again."
+msgstr "Der Server \"%s\" ist möglicherweise kein kompatibler View Connection Server. Überprüfen Sie die Serveradresse und versuchen Sie es erneut."
 
-#: ../brokerXml.cc:1968
+#: ../brokerXml.cc:1969
 msgid "Invalid response from broker."
 msgstr "Ungültige Antwort von Broker."
 
-#: ../brokerXml.cc:2006
+#: ../brokerXml.cc:2007
 msgid "Request cancelled by user."
 msgstr "Anforderung durch Benutzer abgebrochen."
 
@@ -457,7 +454,8 @@ msgstr "Rollback von \"%s\" nicht möglich: %s"
 #. NAME_COLUMN
 #. DESKTOP_COLUMN
 #. BUTTON_COLUMN
-#: ../desktopSelectDlg.cc:95 ../desktopSelectDlg.cc:770
+#: ../desktopSelectDlg.cc:95
+#: ../desktopSelectDlg.cc:770
 msgid "C_onnect"
 msgstr "V_erbinden"
 
@@ -503,42 +501,36 @@ msgstr "Verfügbar"
 
 #: ../desktopSelectDlg.cc:599
 #, c-format
-msgid ""
-"Are you sure you want to reset %s?\n"
+msgid "Are you sure you want to reset %s?\n"
 "\n"
 "Any unsaved data may be lost."
-msgstr ""
-"Möchten Sie '%s' tatsächlich zurücksetzen?\n"
+msgstr "Möchten Sie '%s' tatsächlich zurücksetzen?\n"
 "\n"
 "Alle nicht gespeicherten Daten gehen möglicherweise verloren."
 
 #: ../desktopSelectDlg.cc:604
 #, c-format
-msgid ""
-"Are you sure you want to end your current session with %s?\n"
+msgid "Are you sure you want to end your current session with %s?\n"
 "\n"
 "Any unsaved data may be lost."
-msgstr ""
-"Möchten Sie die aktuelle Sitzung mit '%s' tatsächlich beenden?\n"
+msgstr "Möchten Sie die aktuelle Sitzung mit '%s' tatsächlich beenden?\n"
 "\n"
 "Alle nicht gespeicherten Daten gehen möglicherweise verloren."
 
-#: ../desktopSelectDlg.cc:606 ../desktopSelectDlg.cc:784
+#: ../desktopSelectDlg.cc:606
+#: ../desktopSelectDlg.cc:784
 msgid "_Log Off"
 msgstr "Ab_melden"
 
 #: ../desktopSelectDlg.cc:609
 #, c-format
-msgid ""
-"Are you sure you want to rollback %s?\n"
+msgid "Are you sure you want to rollback %s?\n"
 "\n"
 "Any changes made to the checked-out desktop on another machine since your "
 "last backup will be discarded."
-msgstr ""
-"Möchten Sie tatsächlich ein Rollback für '%s' durchführen?\n"
+msgstr "Möchten Sie tatsächlich ein Rollback für '%s' durchführen?\n"
 "\n"
-"Alle Änderungen, die seit der letzten Sicherung am ausgecheckten Desktop auf "
-"einer anderen Maschine vorgenommen wurden, werden verworfen."
+"Alle Änderungen, die seit der letzten Sicherung am ausgecheckten Desktop auf einer anderen Maschine vorgenommen wurden, werden verworfen."
 
 #: ../desktopSelectDlg.cc:612
 msgid "_Rollback"
@@ -600,11 +592,44 @@ msgstr "VMware View Client"
 msgid "VMware View Open Client"
 msgstr "VMware View Open Client"
 
-#: ../loginDlg.cc:65 ../scPinDlg.cc:89
+#.
+#. * Message from the tunnel server are not translated; the ones we know
+#. * about are actually translated in cdk::Tunnel::OnErr().
+#.
+#: ../extraTranslations.hh:43
+#, fuzzy
+msgid "Secure connection timed out"
+msgstr "Zeitüberschreitung für sichere Verbindung"
+
+#: ../extraTranslations.hh:44
+msgid "The session has timed out, please re-authenticate"
+msgstr "Es ist eine Zeitüberschreitung für die Sitzung aufgetreten, bitte authentifizieren Sie sich erneut."
+
+#: ../extraTranslations.hh:45
+msgid "Session timed out"
+msgstr "Zeitüberschreitung für Sitzung"
+
+#: ../extraTranslations.hh:46
+msgid "Logout request by system"
+msgstr "System hat Abmeldung angefordert"
+
+#: ../helpDlg.cc:138
+#, fuzzy, c-format
+msgid "User help directory not found; falling back to %s.\n"
+msgstr "Benutzerhilfeverzeichnis wurde nicht gefunden, stattdessen wird '%s' verwendet.\n"
+
+#: ../helpDlg.cc:195
+#, c-format
+msgid "An error occurred while reading the help file: %s.\n"
+msgstr "Fehler beim Lesen der Hilfedatei: %s.\n"
+
+#: ../loginDlg.cc:65
+#: ../scPinDlg.cc:89
 msgid "_Login"
 msgstr "A_nmelden"
 
-#: ../loginDlg.cc:74 ../securIDDlg.cc:153
+#: ../loginDlg.cc:74
+#: ../securIDDlg.cc:153
 msgid "_Username:"
 msgstr "_Benutzername:"
 
@@ -612,16 +637,14 @@ msgstr "_Benutzername:"
 msgid "_Password:"
 msgstr "_Kennwort:"
 
-#: ../loginDlg.cc:100
+#: ../loginDlg.cc:102
 msgid "_Domain:"
 msgstr "_Domäne:"
 
 #: ../main.cc:75
 #, c-format
 msgid "Could not find locale directory; falling back to %s\n"
-msgstr ""
-"Gebietsschemaverzeichnis wurde nicht gefunden, stattdessen wird '%s' "
-"verwendet\n"
+msgstr "Lokales Verzeichnis wurde nicht gefunden, stattdessen wird '%s' verwendet\n"
 
 #: ../passwordDlg.cc:64
 msgid "Ch_ange"
@@ -639,11 +662,11 @@ msgstr "Domäne:"
 msgid "Old _Password:"
 msgstr "Altes _Kennwort:"
 
-#: ../passwordDlg.cc:110
+#: ../passwordDlg.cc:112
 msgid "_New Password:"
 msgstr "N_eues Kennwort:"
 
-#: ../passwordDlg.cc:124
+#: ../passwordDlg.cc:128
 msgid "Con_firm:"
 msgstr "Bes_tätigen:"
 
@@ -652,23 +675,22 @@ msgstr "Bes_tätigen:"
 msgid "Creating ~/.vmware failed: %s\n"
 msgstr "Erstellen von ~/.vmware fehlgeschlagen: %s\n"
 
-#: ../rdesktop.cc:519
+#: ../rdesktop.cc:531
 msgid "Inhibiting Ctrl-Alt-Enter keypress, to avoid rdesktop exit.\n"
-msgstr ""
-"Tastenkombination Strg-Alt-Eingabe sperren, um rdesktop-Beendigung zu "
-"vermeiden.\n"
+msgstr "Tastenkombination Strg-Alt-Eingabe sperren, um rdesktop-Beendigung zu vermeiden.\n"
 
-#: ../rdesktop.cc:708
+#: ../rdesktop.cc:724
 msgid "Metacity keybindings will be temporarily disabled on SLED 10 SP2.\n"
-msgstr ""
-"Metacity-Tastenkombinationen werden für SLED 10 SP2 vorübergehend "
-"deaktiviert.\n"
+msgstr "Metacity-Tastenkombinationen werden für SLED 10 SP2 vorübergehend deaktiviert.\n"
+
+#: ../rdesktop.cc:764
+msgid "Required GStreamer plugins could not be found.  Please check that your path "
+"is set properly."
+msgstr "Erforderliche GStreamer-Plug-Ins wurden nicht gefunden. Stellen Sie sicher, dass der Pfad korrekt angegeben ist."
 
 #: ../scCertDetailsDlg.cc:99
 msgid "<b>This certificate has been verified for the following uses:</b>"
-msgstr ""
-"<b>Dieses Zertifikat wurde für die folgenden Verwendungszwecke verifiziert:</"
-"b>"
+msgstr "<b>Dieses Zertifikat wurde für die folgenden Verwendungszwecke verifiziert:</b>"
 
 #: ../scCertDetailsDlg.cc:102
 msgid "SSL Client Certificate"
@@ -771,7 +793,8 @@ msgstr "Domänenkomponente"
 msgid "Ch_oose a certificate:"
 msgstr "Z_ertifikat auswählen:"
 
-#: ../scCertDlg.cc:111 ../scPinDlg.cc:61
+#: ../scCertDlg.cc:111
+#: ../scPinDlg.cc:61
 msgid "_View Certificate"
 msgstr "_Zertifikat anzeigen"
 
@@ -781,11 +804,9 @@ msgstr "A_uswählen"
 
 #: ../scCertDlg.cc:161
 #, c-format
-msgid ""
-"<b>%s</b>\n"
+msgid "<b>%s</b>\n"
 "<span size=\"smaller\">Issued by %s</span>"
-msgstr ""
-"<b>%s</b>\n"
+msgstr "<b>%s</b>\n"
 "<span size=\"smaller\">Ausgestellt von %s</span>"
 
 #: ../scInsertPromptDlg.cc:66
@@ -800,15 +821,15 @@ msgstr "Es wurde eine Smartcard eingelegt."
 msgid "Insert a smart card to continue."
 msgstr "Legen Sie zum Fortfahren eine Smartcard ein."
 
-#: ../scPinDlg.cc:76 ../securIDDlg.cc:205
+#: ../scPinDlg.cc:76
+#: ../securIDDlg.cc:205
 msgid "_PIN:"
 msgstr "_PIN:"
 
 #: ../scPinDlg.cc:135
 #, c-format
 msgid "A PIN is required to log in using the token named %s."
-msgstr ""
-"Für die Anmeldung unter Verwendung von Token %s ist eine PIN erforderlich."
+msgstr "Für die Anmeldung unter Verwendung von Token %s ist eine PIN erforderlich."
 
 #: ../securIDDlg.cc:104
 msgid "_Authenticate"
@@ -823,12 +844,9 @@ msgid "_Passcode:"
 msgstr "_Passcode:"
 
 #: ../securIDDlg.cc:175
-msgid ""
-"Wait until the next tokencode appears on your RSA SecurID token, then enter "
+msgid "Wait until the next tokencode appears on your RSA SecurID token, then enter "
 "it."
-msgstr ""
-"Warten Sie, bis der nächste Token-Code auf Ihrem RSA SecurID erscheint, und "
-"fahren Sie dann fort."
+msgstr "Warten Sie, bis der nächste Token-Code auf Ihrem RSA SecurID erscheint, und fahren Sie dann fort."
 
 #: ../securIDDlg.cc:183
 msgid "_Tokencode:"
@@ -840,9 +858,7 @@ msgstr "Geben Sie eine neue RSA SecurID-PIN ein."
 
 #: ../securIDDlg.cc:195
 msgid "Enter a new RSA SecurID PIN or accept the system-generated PIN."
-msgstr ""
-"Geben Sie eine neue RSA SecurID-PIN ein oder akzeptieren Sie die vom System "
-"erzeugte RSA SecurID-PIN."
+msgstr "Geben Sie eine neue RSA SecurID-PIN ein oder akzeptieren Sie die vom System erzeugte RSA SecurID-PIN."
 
 #: ../securIDDlg.cc:198
 msgid "Accept the system-generated RSA SecurID PIN."
@@ -865,10 +881,15 @@ msgstr "Ausführbare Datei für sicheren Tunnel wurde nicht gefunden.\n"
 msgid "Message from View Server: %s"
 msgstr "Meldung von View Server: %s"
 
-#: ../tunnel.cc:231
+#: ../tunnel.cc:235
 #, c-format
 msgid "Error from View Server: %s"
 msgstr "Fehler von View Server: %s"
+
+#: ../usb.cc:106
+#, c-format
+msgid "%s was not found; disabling USB redirection."
+msgstr "%s wurde nicht gefunden. USB-Umleitung wird deaktiviert."
 
 #. namespace Util
 #. namespace cdk

@@ -8,6 +8,7 @@ desktopSelectDlg.cc
 disclaimerDlg.cc
 dlg.cc
 extraTranslations.hh
+helpDlg.cc
 loginDlg.cc
 main.cc
 passwordDlg.cc
@@ -26,5 +27,6 @@ tunnel.cc
 tunnel/stubs.c
 tunnel/tunnelMain.c
 tunnel/tunnelProxy.c
+usb.cc
 util.cc
 vmware-view.desktop.in.in

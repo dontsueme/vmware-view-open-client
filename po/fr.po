@@ -2,7 +2,7 @@
 # Copyright (C) 2009 VMware, Inc.
 # This file is distributed under the same license as the
 # VMware-view-open-client package.
-# Grant Patterson <grantp@vmware.com>, 2009.
+# VMware View Open Client <http://code.google.com/p/vmware-view-open-client/>
 #
 #, fuzzy
 msgid ""
@@ -10,128 +10,128 @@ msgstr ""
 "Project-Id-Version: 3.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2009-07-24 10:28-0700\n"
-"PO-Revision-Date: 2009-03-31 11:07-0700\n"
+"PO-Revision-Date: 2009-02-25 16:29-0800\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: ../app.cc:125
 msgid "Specify connection broker."
-msgstr "コネクション ブローカーを指定してください。"
+msgstr "Spécifiez un service Broker pour les connexions."
 
 #: ../app.cc:125
 msgid "<broker URL>"
-msgstr "<ブローカー URL>"
+msgstr "<URL du service Broker>"
 
 #: ../app.cc:127
 msgid "Specify user name for password authentication."
-msgstr "パスワード認証のためのユーザー名を指定してください。"
+msgstr "Spécifiez un nom d'utilisateur pour l'authentification du mot de passe."
 
 #: ../app.cc:127
 msgid "<user name>"
-msgstr "<ユーザー名>"
+msgstr "<nom d'utilisateur>"
 
 #: ../app.cc:129
 msgid "Specify password for password authentication."
-msgstr "パスワード認証のためのパスワードを指定してください。"
+msgstr "Spécifiez un mot de passe pour l'authentification du mot de passe."
 
 #: ../app.cc:129
 msgid "<password>"
-msgstr "<パスワード>"
+msgstr "<mot de passe>"
 
 #: ../app.cc:131
 msgid "Specify domain for password authentication."
-msgstr "パスワード認証のためのドメインを指定してください。"
+msgstr "Spécifiez un domaine pour l'authentification du mot de passe."
 
 #: ../app.cc:131
 msgid "<domain name>"
-msgstr "<ドメイン名>"
+msgstr "<nom du domaine>"
 
 #: ../app.cc:133
 msgid "Specify desktop by name."
-msgstr "デスクトップを名前で指定してください。"
+msgstr "Spécifiez le poste de travail par nom."
 
 #: ../app.cc:133
 msgid "<desktop name>"
-msgstr "<デスクトップ名>"
+msgstr "<nom du poste de travail>"
 
 #: ../app.cc:135
 msgid "Connect automatically if enough values are given on the command line."
-msgstr "コマンド ラインに適切な値が指定されている場合は、自動的に接続します。"
+msgstr "Connexion automatique si des valeurs suffisantes sont fournies sur la ligne de commande."
 
 #: ../app.cc:138
 msgid "Enable fullscreen mode."
-msgstr "フル スクリーン モードを有効化します。"
+msgstr "Activez le mode plein écran."
 
 #: ../app.cc:140
 msgid "Image file to use as background in fullscreen mode."
-msgstr "フル スクリーン モードで背景として使用するイメージ ファイルです。"
+msgstr "Fichier image à utiliser en arrière-plan en mode plein écran."
 
 #: ../app.cc:140
 msgid "<image>"
-msgstr "<イメージ>"
+msgstr "<image>"
 
 #: ../app.cc:142
 msgid "Forward device redirection to rdesktop"
-msgstr "rdesktop へのデバイス リダイレクトの転送"
+msgstr "Transférer la redirection du périphérique vers rdesktop"
 
 #: ../app.cc:142
 msgid "<device info>"
-msgstr "<デバイス情報>"
+msgstr "<informations sur le périphérique>"
 
 #: ../app.cc:144
 msgid "Display version information and exit."
-msgstr "バージョン情報を表示して終了します。"
+msgstr "Affichez les informations sur la version et quittez la fenêtre."
 
 #: ../app.cc:146
 msgid "Options for USB forwarding."
-msgstr "USB 転送のオプション"
+msgstr "Options de transfert USB."
 
 #: ../app.cc:146
 msgid "<usb options>"
-msgstr "<USB オプション>"
+msgstr "<options usb>"
 
 #: ../app.cc:148
 msgid "Directory location containing Wyse MMR libraries."
-msgstr "Wyse MMR ライブラリを含むディレクトリの場所です。"
+msgstr "Emplacement du répertoire contenant des bibliothèques Wyse MMR."
 
 #: ../app.cc:148
 msgid "<mmr directory>"
-msgstr "<mmr ディレクトリ>"
+msgstr "<répertoire mmr>"
 
 #: ../app.cc:150
 #, fuzzy
 msgid "Command line options to forward to rdesktop."
-msgstr "rdesktop に転送するためのコマンド ライン オプションです。"
+msgstr "Options de ligne de commande à transférer à rdesktop."
 
 #: ../app.cc:151
 #, fuzzy
 msgid "<rdesktop options>"
-msgstr "<rdesktop オプション>"
+msgstr "<options rdesktop>"
 
 #: ../app.cc:159
 msgid "File containing additional command line arguments."
-msgstr "その他のコマンド ライン引数を含むファイルです。"
+msgstr "Fichier contenant des arguments de ligne de commande supplémentaires."
 
 #: ../app.cc:160
 msgid "<file path>"
-msgstr "<ファイル パス>"
+msgstr "<chemin d'accès au fichier>"
 
 #: ../app.cc:217
 #, c-format
 msgid "Using log file %s\n"
-msgstr "ログ ファイル %s を使用しています \n"
+msgstr "Utilisation du fichier journal %s\n"
 
 #: ../app.cc:240
 #: ../app.cc:430
 msgid "- connect to VMware View desktops"
-msgstr "- VMware View デスクトップに接続する"
+msgstr "- connexion aux postes de travail VMware View"
 
 #: ../app.cc:259
 #: ../app.cc:285
 #, c-format
 msgid "Error parsing command line: %s\n"
-msgstr "コマンド ライン解析中のエラー: %s\n"
+msgstr "Erreur lors de l'analyse de la ligne de commande: %s\n"
 
 #: ../app.cc:296
 #, c-format
@@ -162,68 +162,74 @@ msgid "%s\n"
 "\n"
 msgstr "%s\n"
 "\n"
-"VMware は、VMware, Inc. の米国およびその他の国での登録商標 (\"Marks\")\n "
-"または商標で、LGPL バージョン 2.1 の状況ではお客様に対してライセンスが提供\n"
-"されません。VMware View Open Client を変更せずに、バイナリまたはソース形式\n"
-"のいずれかで配布するか、未変更の付属マニュアルを配布する場合、いかなる方法\n"
-"でも Marks を削除、変更、改変またはその他の行為を行うことは許可されていません。\n"
-"VMware View Open Client または付属のマニュアルをバイナリまたはソース配布では\n"
-"未変更の Marks を配布することができますが、必ずしも配布を継続する必要はありませ\n"
-"ん。VMware View Open Client の機能または付属マニュアルを大幅に変更する場合、\n"
-"バイナリまたはソース配布に Marks をつけて配布することはできず、配布に含まれる、\n"
-"Marks へのすべての参照を削除する必要があります。それ以外の Marks の使用または\n"
-"配布については、事前に書面で VMware から同意を得る必要があります。\n"
-"ここで言及するその他すべてのマークおよび名前は、各社の商標です。\n"
+"VMware est une marque déposée ou une marque commerciale (les \"Marques\") de VMware, "
+"Inc.\n"
+"aux États-Unis et/ou dans d'autres pays, et ne vous est pas octroyée sous licence\n"
+"conformément aux conditions de la licence LGPL version 2.1. Si vous distribuez la solution VMware View Open\n"
+"Client non modifiée au format binaire ou source ou la\n"
+"documentation afférente non modifiée, vous n'êtes pas autorisé à supprimer, modifier ni altérer\n"
+"les Marques de quelque manière que ce soit. Si vous apportez des modifications mineures à VMware\n"
+"View Open Client ou à la documentation afférente, vous pouvez, mais n'êtes pas\n"
+"tenu de poursuivre la distribution des Marques inchangées avec votre distribution binaire ou\n"
+"source. Si vous apportez des modifications fonctionnelles majeures à VMware View\n"
+"Open Client ou à la documentation afférente, vous n'êtes pas autorisé à distribuer les\n"
+"Marques avec votre distribution binaire ou source, et vous devez supprimer toute\n"
+"référence à ces dernières dans votre distribution. Toute autre utilisation ou\n"
+"distribution des Marques devra être soumise à une autorisation écrite préalable de VMware.\n"
+"Toutes les autres marques et noms mentionnés sont des marques déposées par leurs\n"
+"propriétaires respectifs.\n"
 "\n"
-"Copyright (C) 1998-2009 VMware, Inc. All rights reserved.\n"
-"本製品は、米国その他の国の著作権に関する法律および知的財産法により\n"
-"保護されています。\n"
-"VMware ソフトウェア製品は、%s に一覧表示されている 1 つまたは複数の特許により\n"
-"保護されています。\n"
+"Copyright © 1998-2009 VMware, Inc. Tous droits réservés.\n"
+"Ce produit est protégé par les lois américaines et internationales sur le copyright et\n"
+"la propriété intellectuelle.\n"
+"Les produits logiciels VMware sont protégés par un ou plusieurs brevets, répertoriés à l'adresse\n"
+"%s\n"
 "\n"
 
 #. TRANSLATORS: Ignore this; we will localize with appropriate URL.
 #: ../app.cc:319
 msgid "http://www.vmware.com/go/patents"
-msgstr "http://www.vmware.com/go/patents-jp"
+msgstr "http://www.vmware.com/go/patents-fr"
 
 #: ../app.cc:324
 msgid "Password: "
-msgstr "パスワード: "
+msgstr "Mot de passe: "
 
 #: ../app.cc:444
 #, c-format
 msgid "Error parsing %s: %s\n"
-msgstr "%s の解析中のエラー: %s\n"
+msgstr "Erreur lors de l'analyse de %s: %s\n"
 
 #: ../app.cc:445
 #: ../app.cc:1743
 msgid "Unknown error"
-msgstr "不明なエラー"
+msgstr "Erreur inconnue"
 
 #: ../app.cc:1049
 #, c-format
 msgid "Command-line option domain \"%s\" is not in the list returned by the "
 "server.\n"
-msgstr "コマンドライン オプションド ドメイン \"%s\" はサーバから返されたリストにありません。\n"
+msgstr "Le domaine de l'option de ligne de commande \"%s\" ne figure pas dans la liste renvoyée par le "
+"serveur.\n"
 
 #: ../app.cc:1134
 #, c-format
 msgid "Command-line option desktop \"%s\" is not in the list returned by the "
 "server.\n"
-msgstr "コマンドライン オプションド デスクトップ \"%s\"はサーバから返されたリストにありません。\n"
+msgstr "Le poste de travail de l'option de ligne de commande \"%s\" ne figure pas dans la liste renvoyée par le "
+"serveur.\n"
 
 #: ../app.cc:1412
 msgid "The PINs do not match."
-msgstr "PIN が一致しません。"
+msgstr "Les codes PIN ne correspondent pas."
 
 #: ../app.cc:1476
 msgid "The passwords do not match."
-msgstr "パスワードが一致しません。"
+msgstr "Les mots de passe ne correspondent pas."
 
 #: ../app.cc:1559
 msgid "The secure connection to the View Server has unexpectedly disconnected."
-msgstr "View Server への安全な接続が突然切断されました。"
+msgstr "La connexion sécurisée à View Server a été interrompue de façon inopinée."
 
 #: ../app.cc:1562
 #, c-format
@@ -232,48 +238,48 @@ msgid "\n"
 "Reason: %s."
 msgstr "\n"
 "\n"
-"理由: %s。"
+"Raison: %s."
 
 #: ../app.cc:1741
 #, c-format
 msgid "Unable to load background image '%s': %s\n"
-msgstr "'%s' 背景イメージをロードできません: %s\n"
+msgstr "Impossible de charger l'image d'arrière-plan '%s': %s\n"
 
 #: ../app.cc:1797
 #: ../broker.cc:523
 msgid "Connecting to the desktop..."
-msgstr "デスクトップに接続しています..."
+msgstr "Connexion au poste de travail en cours..."
 
 #: ../app.cc:2319
 #, c-format
 msgid "You are connected to %s.\n"
 "\n"
 "If this desktop is unresponsive, click Disconnect."
-msgstr "%s に接続されました。\n"
+msgstr "Vous êtes connecté à %s.\n"
 "\n"
-"デスクトップが応答しない場合は、 「切断」をクリックしてください。"
+"Si ce poste de travail ne répond pas, cliquez sur Déconnecter."
 
 #: ../app.cc:2332
 msgid "Send C_trl-Alt-Del"
-msgstr "Ctrl-Alt-Del の送信 (_T)"
+msgstr "Envoyer C_trl-Alt-Suppr"
 
 #: ../app.cc:2333
 msgid "_Disconnect"
-msgstr "切断 (_D)"
+msgstr "_Déconnecter"
 
 #: ../app.cc:2335
 #: ../desktopSelectDlg.cc:601
 #: ../desktopSelectDlg.cc:795
 msgid "_Reset"
-msgstr "リセット (_R)"
+msgstr "_Réinitialiser"
 
 #: ../app.cc:2429
 msgid "The desktop has unexpectedly disconnected."
-msgstr "デスクトップは突然切断されました。"
+msgstr "Le poste de travail s'est déconnecté de façon inattendue."
 
 #: ../broker.cc:223
 msgid "Setting client locale..."
-msgstr "クライアント ロケールを設定しています..."
+msgstr "Définition des paramètres régionaux du client..."
 
 #: ../broker.cc:254
 #: ../broker.cc:284
@@ -283,169 +289,169 @@ msgstr "クライアント ロケールを設定しています..."
 #: ../broker.cc:433
 #: ../broker.cc:462
 msgid "Logging in..."
-msgstr "ログインしています..."
+msgstr "Connexion en cours..."
 
 #: ../broker.cc:339
 msgid "Accepting disclaimer..."
-msgstr "免責事項に同意しています..."
+msgstr "Acceptation de la clause de non responsabilité en cours..."
 
 #: ../broker.cc:493
 msgid "Changing password..."
-msgstr "パスワードを変更しています..."
+msgstr "Modification du mot de passe en cours..."
 
 #: ../broker.cc:758
 msgid "Logging out..."
-msgstr "ログアウトしています..."
+msgstr "Déconnexion en cours..."
 
 #: ../broker.cc:783
 msgid "Getting server configuration..."
-msgstr "サーバ構成を取得しています..."
+msgstr "Obtention de la configuration du serveur en cours..."
 
 #: ../broker.cc:872
 #: ../broker.cc:1337
 #, c-format
 msgid "Error authenticating: %s"
-msgstr "認証中のエラー: %s"
+msgstr "Erreur lors de l'authentification: %s"
 
 #: ../broker.cc:912
 msgid "Your new RSA SecurID PIN has been set.\n"
 "\n"
 "Please wait for the next tokencode to appear on your RSA SecurID token, then "
 "continue."
-msgstr "新しい RSA SecurID PIN が設定されました。\n"
+msgstr "Votre nouveau code PIN RSA SecurID a été défini.\n"
 "\n"
-"RSA SecurID トークンに次のトークンコードが表示されるのを待ってから、続行してください。"
+"Attendez que le code de jeton suivant apparaisse sur votre jeton RSA SecurID, puis continuez."
 
 #: ../broker.cc:935
 #, c-format
 msgid "Unknown authentication method requested: %s"
-msgstr "不明な認証方法が要求されました: %s"
+msgstr "Méthode d'authentification inconnue demandée: %s"
 
 #: ../broker.cc:941
 #, c-format
 msgid "Unknown result returned: %s"
-msgstr "不明な結果が返されました: %s"
+msgstr "Résultat inconnu renvoyé: %s"
 
 #: ../broker.cc:990
 msgid "Invalid PIN Change response sent by server."
-msgstr "サーバから送信された PIN 変更応答が無効です。"
+msgstr "Réponse non valide à la modification du code PIN envoyée par le serveur."
 
 #: ../broker.cc:1028
 msgid "Getting desktop list..."
-msgstr "デスクトップ リストを取得しています..."
+msgstr "Obtention de la liste de postes de travail en cours..."
 
 #: ../broker.cc:1342
 msgid "The View Server has logged you out."
-msgstr "View Server からログアウトしました。"
+msgstr "Vous avez été déconnecté par View Server."
 
 #: ../brokerDlg.cc:62
 msgid "_Port:"
-msgstr "ポート (_P)"
+msgstr "_Port:"
 
 #: ../brokerDlg.cc:65
 msgid "_Use secure connection (SSL)"
-msgstr "安全な接続（SSL）を使用 (_U)"
+msgstr "_Utiliser une connexion SSL"
 
 #: ../brokerDlg.cc:67
 msgid "_Always connect to this server at startup"
-msgstr "起動時に常にこのサーバに接続 (_A)"
+msgstr "_Toujours se connecter à ce serveur au démarrage"
 
 #: ../brokerDlg.cc:69
 msgid "_Connect"
-msgstr "接続 (_C)"
+msgstr "_Se connecter"
 
 #: ../brokerDlg.cc:83
 msgid "Enter the host name or IP address of the View Connection Server."
-msgstr "View Connection Server のホスト名または IP アドレスを入力してください。"
+msgstr "Entrez le nom d'hôte ou l'adresse IP du serveur View Connection Server."
 
 #: ../brokerDlg.cc:90
 msgid "A_ddress:"
-msgstr "アドレス (_D)："
+msgstr "A_dresse:"
 
 #: ../brokerDlg.cc:113
 msgid "_Options"
-msgstr "オプション (_O)"
+msgstr "_Options"
 
 #: ../brokerXml.cc:286
 msgid "Invalid response from broker: Invalid \"result\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"result\"が無効です。"
+msgstr "Réponse non valide du service Broker: \"résultat\" non valide dans XML."
 
 #: ../brokerXml.cc:305
 #, c-format
 msgid "Unknown error: %s"
-msgstr "不明なエラー: %s"
+msgstr "Erreur inconnue: %s"
 
 #: ../brokerXml.cc:340
 msgid "Invalid response from broker: Parameter with no name."
-msgstr "ブローカーからの応答が無効です: パラメータに名前がありません。"
+msgstr "Réponse non valide du service Broker: paramètre sans nom."
 
 #: ../brokerXml.cc:368
 #, c-format
 msgid "Invalid response from broker: Parameter \"%s\" has no value."
-msgstr "ブローカーからの応答が無効です: パラメータ  \"%s\" に値がありません。"
+msgstr "Réponse non valide du service Broker: le paramètre \"%s\" ne contient aucune valeur."
 
 #: ../brokerXml.cc:406
 msgid "Invalid response from broker: Invalid \"authentication\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"authentication\" が無効です。"
+msgstr "Réponse non valide du service Broker: \"authentification\" non valide dans XML."
 
 #: ../brokerXml.cc:413
 msgid "Invalid response from broker: Invalid \"screen\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"screen\" が無効です。"
+msgstr "Réponse non valide du service Broker: \"écran\" non valide dans XML."
 
 #: ../brokerXml.cc:421
 msgid "Invalid response from broker: Invalid \"name\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"name\" が無効です。"
+msgstr "Réponse non valide du service Broker: \"nom\" non valide dans XML."
 
 #: ../brokerXml.cc:880
 msgid "Invalid response from broker: Listener with invalid host name."
-msgstr "ブローカーからの応答が無効です： 無効なホスト名を持つリスナです。"
+msgstr "Réponse non valide du service Broker: port d'écoute doté d'un nom d'hôte non valide."
 
 #: ../brokerXml.cc:1090
 msgid "Could not connect to broker."
-msgstr "ブローカーに接続できませんでした。"
+msgstr "Impossible de se connecter au service Broker."
 
 #: ../brokerXml.cc:1118
 msgid "Invalid response from broker: General error."
-msgstr "ブローカーからの応答が無効です: 一般エラー。"
+msgstr "Réponse non valide du service Broker: erreur générale."
 
 #: ../brokerXml.cc:1181
 #, c-format
 msgid "Invalid response from broker: Unknown response \"%s\"."
-msgstr "ブローカーからの応答が無効です： 不明な応答 \"%s\"。"
+msgstr "Réponse non valide du service Broker: réponse inconnue \"%s\"."
 
 #: ../brokerXml.cc:1191
 #, c-format
 msgid "The server \"%s\" may not be a compatible View Connection Server. Check the "
 "server address and try again."
-msgstr "サーバ「%s」は、互換性のある View Connection Server ではない可能性があります。サーバ アドレスを確認して、再試行してください。"
+msgstr "Le serveur \"%s\" n'est peut-être pas un serveur View Connection Server compatible. Vérifiez l'adresse du serveur et réessayez."
 
 #: ../brokerXml.cc:1969
 msgid "Invalid response from broker."
-msgstr "ブローカーからの応答が無効です。"
+msgstr "Réponse non valide du service Broker."
 
 #: ../brokerXml.cc:2007
 msgid "Request cancelled by user."
-msgstr "ユーザーによって要求がキャンセルされました。"
+msgstr "Demande annulée par l'utilisateur."
 
 #: ../desktop.cc:279
 #, c-format
 msgid "Unable to connect to desktop \"%s\": %s"
-msgstr "デスクトップ \"%s\" に接続できません： %s"
+msgstr "Impossible de se connecter au poste de travail \"%s\": %s"
 
 #: ../desktop.cc:371
 #, c-format
 msgid "Unable to reset desktop \"%s\": %s"
-msgstr "\"%s\" をリセットできません： %s"
+msgstr "Impossible de réinitialiser le poste de travail \"%s\": %s"
 
 #: ../desktop.cc:458
 #, c-format
 msgid "Unable to log out of \"%s\": %s"
-msgstr "\"%s\" からログアウトできません: %s"
+msgstr "Impossible de se déconnecter de \"%s\": %s"
 
 #: ../desktop.cc:518
 #, c-format
 msgid "Unable to rollback \"%s\": %s"
-msgstr "\"%s\" をロールバックできません： %s"
+msgstr "Impossible de restaurer \"%s\": %s"
 
 #. ICON_COLUMN
 #. LABEL_COLUMN
@@ -455,70 +461,70 @@ msgstr "\"%s\" をロールバックできません： %s"
 #: ../desktopSelectDlg.cc:95
 #: ../desktopSelectDlg.cc:770
 msgid "C_onnect"
-msgstr "接続 (_O)"
+msgstr "Se c_onnecter"
 
 #: ../desktopSelectDlg.cc:112
 msgid "_Available Desktops:"
-msgstr "利用できるデスクトップ (_A):"
+msgstr "_Postes de travail disponibles:"
 
 #: ../desktopSelectDlg.cc:222
 msgid "_Display:"
-msgstr "ディスプレイ (_D):"
+msgstr "_Afficher:"
 
 #: ../desktopSelectDlg.cc:230
 msgid "_Use all monitors"
-msgstr "すべてのモニタを使用 (_U)"
+msgstr "_Utiliser tous les moniteurs"
 
 #: ../desktopSelectDlg.cc:392
 msgid "Resetting desktop"
-msgstr "デスクトップをリセットしています"
+msgstr "Réinitialisation du poste de travail"
 
 #: ../desktopSelectDlg.cc:395
 msgid "Logging off"
-msgstr "ログオフしています"
+msgstr "Déconnection"
 
 #: ../desktopSelectDlg.cc:398
 msgid "Rolling back checkout"
-msgstr "チェックアウトをロールバックしています"
+msgstr "Restauration de l'extraction"
 
 #: ../desktopSelectDlg.cc:403
 msgid "Checked out to another machine"
-msgstr "別のマシンにチェックアウトされています"
+msgstr "Extrait vers une autre machine"
 
 #: ../desktopSelectDlg.cc:405
 msgid "Maintenance - may not be available"
-msgstr "保守 - 使用できません"
+msgstr "Maintenance - Peut être indisponible"
 
 #: ../desktopSelectDlg.cc:407
 msgid "Logged on"
-msgstr "ログオンしています"
+msgstr "Connecté"
 
 #: ../desktopSelectDlg.cc:409
 msgid "Available"
-msgstr "使用可能"
+msgstr "Disponible"
 
 #: ../desktopSelectDlg.cc:599
 #, c-format
 msgid "Are you sure you want to reset %s?\n"
 "\n"
 "Any unsaved data may be lost."
-msgstr "%s をリセットしますか。\n"
+msgstr "Voulez-vous vraiment réinitialiser %s ?\n"
 "\n"
-"保存していないデータは失われる可能性があります。"
+"Toutes les données non enregistrées seront perdues."
 
 #: ../desktopSelectDlg.cc:604
 #, c-format
 msgid "Are you sure you want to end your current session with %s?\n"
 "\n"
 "Any unsaved data may be lost."
-msgstr "%s を持つ現在のセッションを終了しますか。\n"
+msgstr "Voulez-vous vraiment mettre fin à la session actuelle avec %s ?\n"
 "\n"
-"保存していないデータは失われる可能性があります。"
+"Toutes les données non enregistrées seront perdues."
 
 #: ../desktopSelectDlg.cc:606
 #: ../desktopSelectDlg.cc:784
 msgid "_Log Off"
-msgstr "ログオフ (_L)"
+msgstr "_Se déconnecter"
 
 #: ../desktopSelectDlg.cc:609
 #, c-format
@@ -526,25 +532,25 @@ msgid "Are you sure you want to rollback %s?\n"
 "\n"
 "Any changes made to the checked-out desktop on another machine since your "
 "last backup will be discarded."
-msgstr "%s をロールバックしますか。\n"
+msgstr "Voulez-vous restaurer %s ?\n"
 "\n"
-"最後のバックアップ以降に別のマシンにあるチェックアウトされたデスクトップで行われた変更は、すべて破棄されます。"
+"Toutes les modifications apportées au poste de travail extrait sur une autre machine depuis votre dernière sauvegarde seront ignorées."
 
 #: ../desktopSelectDlg.cc:612
 msgid "_Rollback"
-msgstr "ロールバック (_R)"
+msgstr "_Restaurer"
 
 #: ../desktopSelectDlg.cc:809
 msgid "Roll_back"
-msgstr "ロールバック (_B)"
+msgstr "Res_taurer"
 
 #: ../desktopSelectDlg.cc:1438
 msgid "All Monitors"
-msgstr "すべてのモニタ"
+msgstr "Tous les moniteurs"
 
 #: ../desktopSelectDlg.cc:1440
 msgid "Full Screen"
-msgstr "フル スクリーン"
+msgstr "Plein écran"
 
 #: ../desktopSelectDlg.cc:1442
 msgid "640 x 480"
@@ -597,146 +603,146 @@ msgstr "VMware View Open Client"
 #: ../extraTranslations.hh:43
 #, fuzzy
 msgid "Secure connection timed out"
-msgstr "安全な接続がタイムアウトになりました"
+msgstr "La connexion sécurisée a expiré"
 
 #: ../extraTranslations.hh:44
 msgid "The session has timed out, please re-authenticate"
-msgstr "セッションがタイムアウトになりました。再度認証してください"
+msgstr "La session a expiré, authentifiez-vous de nouveau."
 
 #: ../extraTranslations.hh:45
 msgid "Session timed out"
-msgstr "セッションがタイムアウトになりました"
+msgstr "Expiration de la session"
 
 #: ../extraTranslations.hh:46
 msgid "Logout request by system"
-msgstr "システムによるログアウト要求"
+msgstr "Fermeture de session demandée par le système"
 
 #: ../helpDlg.cc:138
 #, fuzzy, c-format
 msgid "User help directory not found; falling back to %s.\n"
-msgstr "ユーザー ヘルプ ディレクトリを検出できませんでした。 %s に戻ります。\n"
+msgstr "Répertoire de l'aide utilisateurs introuvable ; rétablissement de %s\n"
 
 #: ../helpDlg.cc:195
 #, c-format
 msgid "An error occurred while reading the help file: %s.\n"
-msgstr "ヘルプ ファイルの読み込み中にエラーが発生しました: %s。\n"
+msgstr "Une erreur s'est produite lors de la lecture du fichier d'aide: %s.\n"
 
 #: ../loginDlg.cc:65
 #: ../scPinDlg.cc:89
 msgid "_Login"
-msgstr "ログイン (_L)"
+msgstr "_Connexion"
 
 #: ../loginDlg.cc:74
 #: ../securIDDlg.cc:153
 msgid "_Username:"
-msgstr "ユーザー名 (_U):"
+msgstr "Nom d'_utilisateur:"
 
 #: ../loginDlg.cc:86
 msgid "_Password:"
-msgstr "パスワード (_P):"
+msgstr "_Mot de passe:"
 
 #: ../loginDlg.cc:102
 msgid "_Domain:"
-msgstr "ドメイン (_D):"
+msgstr "_Domaine:"
 
 #: ../main.cc:75
 #, c-format
 msgid "Could not find locale directory; falling back to %s\n"
-msgstr "ロケール ディレクトリを検出できませんでした。%s に戻ります\n"
+msgstr "Répertoire de paramètres régionaux introuvable ; rétablissement de %s\n"
 
 #: ../passwordDlg.cc:64
 msgid "Ch_ange"
-msgstr "変更 (_A)"
+msgstr "Mo_difier"
 
 #: ../passwordDlg.cc:76
 msgid "Username:"
-msgstr "ユーザー名:"
+msgstr "Nom d'utilisateur:"
 
 #: ../passwordDlg.cc:86
 msgid "Domain:"
-msgstr "ドメイン:"
+msgstr "Domaine:"
 
 #: ../passwordDlg.cc:96
 msgid "Old _Password:"
-msgstr "古いパスワード (_P):"
+msgstr "Ancien _mot de passe:"
 
 #: ../passwordDlg.cc:112
 msgid "_New Password:"
-msgstr "新しいパスワード (_N):"
+msgstr "_Nouveau mot de passe:"
 
 #: ../passwordDlg.cc:128
 msgid "Con_firm:"
-msgstr "確認 (_F):"
+msgstr "Con_firmer:"
 
 #: ../prefs.cc:84
 #, c-format
 msgid "Creating ~/.vmware failed: %s\n"
-msgstr "~/.vmware の作成に失敗しました: %s\n"
+msgstr "Échec de création de ~/.vmware: %s\n"
 
 #: ../rdesktop.cc:531
 msgid "Inhibiting Ctrl-Alt-Enter keypress, to avoid rdesktop exit.\n"
-msgstr "rdesktop が終了しないように、Ctrl + Alt + Enter キーを押さないでください。\n"
+msgstr "Inhibition de la sélection de touches Ctrl-Alt-Entrée pour éviter la fermeture de rdesktop.\n"
 
 #: ../rdesktop.cc:724
 msgid "Metacity keybindings will be temporarily disabled on SLED 10 SP2.\n"
-msgstr "Metacity のキーバインディングは SLED 10 SP2 上で一時的に無効になります。\n"
+msgstr "Les associations de touches Metacity seront temporairement désactivées sur SLED 10 SP2.\n"
 
 #: ../rdesktop.cc:764
 msgid "Required GStreamer plugins could not be found.  Please check that your path "
 "is set properly."
-msgstr "必要な GStreamer プラグインが見つかりませんでした。パスが正しく設定されていることを確認してください。"
+msgstr "Plug-ins GStreamer nécessaires introuvables. Vérifiez que le chemin d'accès est correctement paramétré."
 
 #: ../scCertDetailsDlg.cc:99
 msgid "<b>This certificate has been verified for the following uses:</b>"
-msgstr "<b>次のユーザーは、この証明書によって検証されています:</b>"
+msgstr "<b>Ce certificat a été vérifié pour les utilisations suivantes:</b>"
 
 #: ../scCertDetailsDlg.cc:102
 msgid "SSL Client Certificate"
-msgstr "SSL クライアント証明書"
+msgstr "Certificat de client SSL"
 
 #: ../scCertDetailsDlg.cc:103
 msgid "SSL Server Certificate"
-msgstr "SSL サーバ証明書"
+msgstr "Certificat de serveur SSL"
 
 #: ../scCertDetailsDlg.cc:104
 msgid "Status Responder Certificate"
-msgstr "状態応答者証明書"
+msgstr "Certificat du répondeur d'état"
 
 #: ../scCertDetailsDlg.cc:114
 msgid "<b>Issued To</b>"
-msgstr "<b>発行先</b>"
+msgstr "<b>Délivré à</b>"
 
 #: ../scCertDetailsDlg.cc:125
 msgid "Serial Number:"
-msgstr "シリアル番号:"
+msgstr "Numéro de série:"
 
 #: ../scCertDetailsDlg.cc:128
 msgid "<b>Issued By</b>"
-msgstr "<b>発行者</b>"
+msgstr "<b>Délivré par</b>"
 
 #: ../scCertDetailsDlg.cc:133
 msgid "<b>Validity</b>"
-msgstr "<b>有効期間</b>"
+msgstr "<b>Validité</b>"
 
 #: ../scCertDetailsDlg.cc:139
 msgid "Not Valid Before:"
-msgstr "有効期間開始日:"
+msgstr "Non valide avant:"
 
 #: ../scCertDetailsDlg.cc:146
 msgid "Not Valid After:"
-msgstr "有効期間終了日:"
+msgstr "Non valide après:"
 
 #: ../scCertDetailsDlg.cc:148
 msgid "<b>Fingerprints</b>"
-msgstr "<b>フィンガプリント</b>"
+msgstr "<b>Empreintes digitales</b>"
 
 #: ../scCertDetailsDlg.cc:157
 msgid "SHA1 Fingerprint:"
-msgstr "SHA1 フィンガプリント:"
+msgstr "Empreinte digitale SHA1:"
 
 #: ../scCertDetailsDlg.cc:164
 msgid "MD5 Fingerprint:"
-msgstr "MD5 フィンガプリント:"
+msgstr "Empreinte digitale MD5:"
 
 #.
 #. * Translators: this is just the format of a label's text; the
@@ -749,145 +755,145 @@ msgstr "%s:"
 
 #: ../scCertDetailsDlg.cc:392
 msgid "Common Name"
-msgstr "共通名"
+msgstr "Nom commun"
 
 #: ../scCertDetailsDlg.cc:394
 msgid "Country"
-msgstr "国名"
+msgstr "Pays"
 
 #: ../scCertDetailsDlg.cc:396
 msgid "Locality"
-msgstr "市区町村名"
+msgstr "Ville"
 
 #: ../scCertDetailsDlg.cc:398
 msgid "State or Province"
-msgstr "都道府県名"
+msgstr "Département ou région"
 
 #: ../scCertDetailsDlg.cc:400
 msgid "Organization"
-msgstr "組織"
+msgstr "Organisation"
 
 #: ../scCertDetailsDlg.cc:402
 msgid "Organizational Unit"
-msgstr "組織単位"
+msgstr "Unité d'organisation"
 
 #: ../scCertDetailsDlg.cc:404
 msgid "Email Address"
-msgstr "電子メールアドレス"
+msgstr "Adresse électronique"
 
 #: ../scCertDetailsDlg.cc:406
 msgid "Given Name"
-msgstr "名"
+msgstr "Nom donné"
 
 #: ../scCertDetailsDlg.cc:408
 msgid "Surname"
-msgstr "姓"
+msgstr "Nom"
 
 #: ../scCertDetailsDlg.cc:410
 msgid "Domain Component"
-msgstr "ドメイン コンポーネント"
+msgstr "Composant de domaine"
 
 #: ../scCertDlg.cc:66
 msgid "Ch_oose a certificate:"
-msgstr "証明書を選択 (_O):"
+msgstr "Ch_oisir un certificat:"
 
 #: ../scCertDlg.cc:111
 #: ../scPinDlg.cc:61
 msgid "_View Certificate"
-msgstr "証明書を表示 (_V)"
+msgstr "_Afficher le certificat"
 
 #: ../scCertDlg.cc:116
 msgid "_Select"
-msgstr "選択 (_S)"
+msgstr "_Sélectionner"
 
 #: ../scCertDlg.cc:161
 #, c-format
 msgid "<b>%s</b>\n"
 "<span size=\"smaller\">Issued by %s</span>"
 msgstr "<b>%s</b>\n"
-"<span size=\"smaller\">発行者 %s</span>"
+"<span size=\"smaller\">Délivré par %s</span>"
 
 #: ../scInsertPromptDlg.cc:66
 msgid "_Next"
-msgstr "次へ (_N)"
+msgstr "_Suivant"
 
 #: ../scInsertPromptDlg.cc:157
 msgid "A smart card has been inserted."
-msgstr "スマート カードが挿入されました。"
+msgstr "Une carte intelligente a été insérée."
 
 #: ../scInsertPromptDlg.cc:158
 msgid "Insert a smart card to continue."
-msgstr "スマート カードを挿入して、続行してください。"
+msgstr "Insérez une carte intelligente pour continuer."
 
 #: ../scPinDlg.cc:76
 #: ../securIDDlg.cc:205
 msgid "_PIN:"
-msgstr "PIN (_P):"
+msgstr "_Code PIN:"
 
 #: ../scPinDlg.cc:135
 #, c-format
 msgid "A PIN is required to log in using the token named %s."
-msgstr "%s という名前のトークンを使用してログインするときは PIN が必要です。"
+msgstr "Un code PIN est nécessaire pour se connecter avec le jeton nommé %s."
 
 #: ../securIDDlg.cc:104
 msgid "_Authenticate"
-msgstr "認証 (_A)"
+msgstr "_Authentifier"
 
 #: ../securIDDlg.cc:159
 msgid "Enter your RSA SecurID user name and passcode."
-msgstr "RSA SecurID のユーザー名とパスコードを入力してください。"
+msgstr "Entrez votre nom d'utilisateur et votre mot de passe RSA SecurID."
 
 #: ../securIDDlg.cc:166
 msgid "_Passcode:"
-msgstr "パスコード (_P):"
+msgstr "C_ode secret:"
 
 #: ../securIDDlg.cc:175
 msgid "Wait until the next tokencode appears on your RSA SecurID token, then enter "
 "it."
-msgstr "RSA SecurID トークンに次のトークンコードが表示されるまで待ってから、そのコードを入力してください。"
+msgstr "Patientez jusqu'à l'affichage du code de jeton suivant sur votre jeton RSA SecurID, puis entrez-le."
 
 #: ../securIDDlg.cc:183
 msgid "_Tokencode:"
-msgstr "トークンコード (_T):"
+msgstr "Co_de de jeton:"
 
 #: ../securIDDlg.cc:193
 msgid "Enter a new RSA SecurID PIN."
-msgstr "新しい RSA SecurID PIN を入力してください。"
+msgstr "Entrez un nouveau code PIN RSA SecurID."
 
 #: ../securIDDlg.cc:195
 msgid "Enter a new RSA SecurID PIN or accept the system-generated PIN."
-msgstr "新しい RSA SecurID PIN を入力するか、システム生成の PIN を受け入れてください。"
+msgstr "Entrez un nouveau code PIN RSA SecurID ou acceptez le code PIN généré par le système."
 
 #: ../securIDDlg.cc:198
 msgid "Accept the system-generated RSA SecurID PIN."
-msgstr "システム生成の RSA SecurID PIN を受け入れてください。"
+msgstr "Acceptez le code PIN RSA SecurID généré par le système."
 
 #: ../securIDDlg.cc:210
 msgid "Con_firm PIN:"
-msgstr "PIN の確認 (_F):"
+msgstr "Con_firmer le code PIN:"
 
 #: ../transitionDlg.cc:89
 msgid "_Retry"
-msgstr "再試行 (_R)"
+msgstr "_Réessayer"
 
 #: ../tunnel.cc:156
 msgid "Could not find secure tunnel executable.\n"
-msgstr "安全なトンネル実行ファイルを検出できませんでした。\n"
+msgstr "Sécurisation de l'exécutable tunnel impossible.\n"
 
 #: ../tunnel.cc:226
 #, c-format
 msgid "Message from View Server: %s"
-msgstr "View Server からのメッセージ: %s"
+msgstr "Message de View Server: %s"
 
 #: ../tunnel.cc:235
 #, c-format
 msgid "Error from View Server: %s"
-msgstr "View Server からのエラー: %s"
+msgstr "Erreur de View Server: %s"
 
 #: ../usb.cc:106
 #, c-format
 msgid "%s was not found; disabling USB redirection."
-msgstr "%s が見つかりませんでした。USB リダイレクトが無効になります。"
+msgstr "%s introuvable ; désactivation de la redirection USB."
 
 #. namespace Util
 #. namespace cdk
@@ -895,3 +901,10 @@ msgstr "%s が見つかりませんでした。USB リダイレクトが無効�
 #: ../vmware-view.desktop.in.in.h:2
 msgid "@PRODUCT_VIEW_CLIENT_NAME@"
 msgstr "@PRODUCT_VIEW_CLIENT_NAME@"
+
+#~ msgid "Invalid response from broker: Malformed XML."
+#~ msgstr "Réponse non valide du service Broker: XML incorrectement formé."
+
+#~ msgid "Invalid response from broker: No \"%s\" element in XML."
+#~ msgstr ""
+#~ "Réponse non valide du service Broker: aucun élément \"%s\" dans XML."

@@ -105,6 +105,7 @@ Usb::Start(const Util::string &address,                        // IN
       } else {
          Util::UserWarning(_("%s was not found; disabling USB redirection."),
                            defaultPath.c_str());
+         return false;
       }
    }
 

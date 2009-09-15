@@ -1559,7 +1559,7 @@ App::TunnelDisconnected(Util::string disconnectReason) // IN
    Util::string message = _("The secure connection to the View Server has"
                             " unexpectedly disconnected.");
    if (!disconnectReason.empty()) {
-      message += Util::Format(_("\n\nReason: %s."), disconnectReason.c_str());
+      message += Util::Format(_("\n\nReason: %s."), _(disconnectReason.c_str()));
    }
 
    ShowDialog(GTK_MESSAGE_ERROR, "%s", message.c_str());
