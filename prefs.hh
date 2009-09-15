@@ -83,6 +83,8 @@ public:
    bool GetDefaultShowBrokerOptions() const;
    void SetDefaultShowBrokerOptions(bool val);
 
+   bool GetDisableMetacityKeybindingWorkaround() const;
+
 private:
    static Prefs *sPrefs;
 

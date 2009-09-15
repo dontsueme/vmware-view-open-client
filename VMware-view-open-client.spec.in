@@ -16,6 +16,8 @@ Conflicts: @RPM_CONFLICTS@
 Allows users to connect to desktops on a View Connection Server.
 %description -l de
 Ermöglicht Benutzern die Verbindungsherstellung mit Desktops auf einem View Connection Server.
+%description -l fr
+Permet aux utilisateurs de se connecter à des postes de travail sur un View Connection Server.
 %description -l ja
 ユーザーは、View Connection Server 上のデスクトップに接続できます。
 
@@ -31,6 +33,8 @@ Conflicts: @RPM_CONFLICTS_LITE@
 Allows users to connect to desktops on a View Connection Server.
 %description -l de -n @PACKAGING_NAME@-lite
 Ermöglicht Benutzern die Verbindungsherstellung mit Desktops auf einem View Connection Server.
+%description -l fr -n @PACKAGING_NAME@-lite
+Permet aux utilisateurs de se connecter à des postes de travail sur un View Connection Server.
 %description -l ja -n @PACKAGING_NAME@-lite
 ユーザーは、View Connection Server 上のデスクトップに接続できます。
 

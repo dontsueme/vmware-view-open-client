@@ -1,3 +1,16 @@
+vmware-view-open-client (3.1.2-188088+dfsg-1) unstable; urgency=low
+
+  * Adding maintainer homepage field in control.
+  * Adding README.source.
+  * Updating, sorting and wrapping depends.
+  * Removing unused build-depends on autotools-dev.
+  * Merging upstream version 3.1.2-188088+dfsg.
+  * Rediffing doc-pdf.patch.
+  * Moving maintainer homepage field from control to copyright.
+  * Updating README.source.
+
+ -- Daniel Baumann <daniel@debian.org>  Tue, 15 Sep 2009 18:46:24 +0200
+
 vmware-view-open-client (3.1.0-169073+dfsg-3) unstable; urgency=low
 
   * Updating package to standards version 3.8.3.

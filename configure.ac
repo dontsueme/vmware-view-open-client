@@ -322,7 +322,7 @@ AC_PROG_INTLTOOL([0.21])
 GETTEXT_PACKAGE="vmware-view"
 AC_SUBST(GETTEXT_PACKAGE)
 # Change this when [language].po files are added to cdk/po/.
-ALL_LINGUAS="ja de"
+ALL_LINGUAS="ja de fr"
 AC_SUBST(ALL_LINGUAS)
 AM_GLIB_GNU_GETTEXT
 

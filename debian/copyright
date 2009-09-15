@@ -1,5 +1,7 @@
-Author: VMware, Inc. <http://www.vmware.com/>
-Download: http://code.google.com/p/vmware-view-open-client/downloads/list
+Upstream-Contact: Jacob Berkman <jberkman@vmware.com>
+Upstream-Homepage: http://code.google.com/p/vmware-view-open-client
+Maintainer-Contact: Debian VMware Maintainers <vmware@lists.debian-maintainers.org>
+Maintainer-Homepage: http://vmware.debian-maintainers.org/
 
 Files: *
 Copyright: (C) 1998-2009 VMware, Inc. <http://www.vmware.com/>

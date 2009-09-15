@@ -3,7 +3,9 @@ Section: contrib/x11
 Priority: optional
 Maintainer: Debian VMware Maintainers <vmware@lists.debian-maintainers.org>
 Uploaders: Daniel Baumann <daniel@debian.org>
-Build-Depends: debhelper (>= 7), quilt, autotools-dev, intltool, libboost-dev, libboost-signals-dev, libcurl4-openssl-dev, libgtk2.0-dev, libicu-dev, libssl-dev, libxml2-dev
+Build-Depends:
+ debhelper (>= 7.0.50~), intltool, libboost-dev, libboost-signals-dev,
+ libcurl4-openssl-dev, libgtk2.0-dev, libicu-dev, libssl-dev, libxml2-dev, quilt
 Standards-Version: 3.8.3
 Homepage: http://code.google.com/p/vmware-view-open-client
 Vcs-Browser: http://git.debian-maintainers.org/?p=vmware/vmware-view-open-client.git
@@ -11,7 +13,7 @@ Vcs-Git: git://git.debian-maintainers.org/git/vmware/vmware-view-open-client.git
 
 Package: vmware-view-open-client
 Architecture: amd64 i386
-Depends: ${shlibs:Depends}, ${misc:Depends}, rdesktop
+Depends: ${misc:Depends}, ${shlibs:Depends}, rdesktop
 Description: VMware View Open Client
  VMware View Open Client allows users to connect to desktops on a VMware View
  Connection Server.

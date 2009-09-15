@@ -36,6 +36,7 @@
 
 
 #include "app.hh"
+#include "prefs.hh"
 #include "rdesktop.hh"
 
 
@@ -706,6 +707,10 @@ RDesktop::GetDisableMetacityKeybindings()
    static bool ret = false;
    if (!checked) {
       checked = true;
+      if (Prefs::GetPrefs()->GetDisableMetacityKeybindingWorkaround()) {
+         ret = false;
+         return ret;
+      }
       char *contents = NULL;
       if (g_file_get_contents("/etc/SuSE-release", &contents, NULL, NULL) &&
           strstr(contents, "SUSE Linux Enterprise Desktop 10")) {
@@ -713,7 +718,7 @@ RDesktop::GetDisableMetacityKeybindings()
          char *relStr = strstr(contents, PATCHLEVEL_STR);
          if (relStr) {
             uint32 rel = strtoul(relStr + PATCHLEVEL_LEN, NULL, 10);
-            ret = rel >= SLED_10_SP2_PATCHLEVEL;
+            ret = rel == SLED_10_SP2_PATCHLEVEL;
          }
          if (ret) {
             Util::UserWarning(_("Metacity keybindings will be temporarily "
@@ -756,7 +761,7 @@ RDesktop::OnError(Util::string errorString) // IN
 
       switch (errNum) {
       case MMR_ERROR_GSTREAMER:
-         App::ShowDialog(GTK_MESSAGE_WARNING, _("Required Gstreamer plugins "
+         App::ShowDialog(GTK_MESSAGE_WARNING, _("Required GStreamer plugins "
             "could not be found.  Please check that your path is set "
             "properly."));
          break;

@@ -33,6 +33,7 @@
 #include <arpa/inet.h>  /* For inet_ntoa */
 #include <sys/types.h>  /* For getsockname */
 #include <sys/socket.h> /* For getsockname */
+#include <locale.h>     /* For setlocale */
 #include <netdb.h>      /* For getnameinfo */
 #include <netinet/in.h> /* For getsockname */
 
@@ -819,6 +820,10 @@ int
 main(int argc,    // IN
      char **argv) // IN
 {
+   if (!setlocale(LC_ALL, "")) {
+      Warning("Locale not supported by C library.\n\tUsing the fallback 'C' "
+              "locale.\n");
+   }
    if (argc < 3) {
       TunnelPrintUsage(argv[0]);
    }

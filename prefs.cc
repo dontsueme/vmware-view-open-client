@@ -786,4 +786,32 @@ Prefs::SetDefaultShowBrokerOptions(bool val)
 }
 
 
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::GetDisableMetacityKeybindingWorkaround --
+ *
+ *      Gets whether we should always avoid our metacity keybinding
+ *      workaround.
+ *
+ * Results:
+ *      If true, don't disable Metacity keybindings.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Prefs::GetDisableMetacityKeybindingWorkaround()
+   const
+{
+   if (GetBool("view.allowDisableMetacityKeybindingWorkaround", true)) {
+      return GetBool("view.disableMetacityKeybindingWorkaround", false);
+   }
+   return false;
+}
+
+
 } // namespace cdk

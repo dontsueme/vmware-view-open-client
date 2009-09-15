@@ -20,11 +20,13 @@
 
 dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
 dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
+dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
 dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
 
 if VIEW_EULAS
 doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
 doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt
+doc_DATA += doc/$(PACKAGING_NAME)-EULA-fr.txt
 doc_DATA += doc/$(PACKAGING_NAME)-EULA-ja.txt
 endif
 
@@ -37,4 +39,5 @@ dist_noinst_DATA += doc/copyright.Debian
 
 dist_help_DATA += doc/help/integrated_help-en.txt
 dist_help_DATA += doc/help/integrated_help-de.txt
+dist_help_DATA += doc/help/integrated_help-fr.txt
 dist_help_DATA += doc/help/integrated_help-ja.txt

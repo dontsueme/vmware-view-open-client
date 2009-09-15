@@ -691,6 +691,7 @@ DIST_COMMON = $(am__configure_deps) $(dist_bin_SCRIPTS) \
 @STATIC_ICU_TRUE@am__append_1 = $(ICUDATA_ENTRY_POINT)l_dat.s
 @VIEW_EULAS_TRUE@am__append_2 = doc/$(PACKAGING_NAME)-EULA-en.txt \
 @VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-de.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-fr.txt \
 @VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-ja.txt
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -1199,6 +1200,7 @@ doc_DATA := $(am__append_2)
 dist_doc_DATA := README.txt doc/open_source_licenses.txt
 dist_help_DATA := doc/help/integrated_help-en.txt \
 	doc/help/integrated_help-de.txt \
+	doc/help/integrated_help-fr.txt \
 	doc/help/integrated_help-ja.txt
 man_MANS := doc/vmware-view.1 doc/vmware-view-tunnel.1
 dist_noinst_DATA := lib/bora/user/dictType.c lib/libp11/COPYING \
@@ -1300,6 +1302,7 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	extraTranslations.hh
 dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf \
 	doc/View_Client_Admin_Guide-de.pdf \
+	doc/View_Client_Admin_Guide-fr.pdf \
 	doc/View_Client_Admin_Guide-ja.pdf
 noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
 	libPanicDefault.a libString.a libStubs.a libUnicode.a \

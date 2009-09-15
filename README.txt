@@ -1,5 +1,5 @@
-VMware View Open Client 3.1.0
-Build 169073, 2009-05-29
+VMware View Open Client 3.1.2
+Build 188088, 2009-08-26
 
 VMware is a registered trademark or trademark (the "Marks") of VMware, Inc.
 in the United States and/or other jurisdictions and is not licensed to you
@@ -34,7 +34,7 @@ VMware software products are protected by one or more U.S. Patent Numbers
 WELCOME
 -------
 
-Welcome to the release of VMware View Open Client 3.1.0.
+Welcome to the release of VMware View Open Client 3.1.2.
 
 VMware View Open Client was formerly known as VMware VDM Client for
 Linux.
@@ -61,7 +61,7 @@ of which are available in the installation package.
 STATUS
 ------
 
-This is the RTM release of VMware View Open Client 3.1.0.
+This is the RTM release of VMware View Open Client 3.1.2.
 
 This release also introduces USB and Multimedia Redirection (MMR) support.
 Please carefully review the Known Issues for these components as certain
@@ -131,12 +131,12 @@ VMware View Open Client is distributed in the following forms:
 
 To use the binary tar gzip, simply unpack the tarball:
 
-$ tar zxf VMware-view-open-client-3.1.0-169073.tar.gz
+$ tar zxf VMware-view-open-client-3.1.2-188088.tar.gz
 
 To run, navigate to the 'bin' subdirectory and run directly from the
 command line:
 
-$ cd VMware-view-open-client-3.1.0-169073/bin
+$ cd VMware-view-open-client-3.1.2-188088/bin
 $ ./vmware-view
 
 You can also copy files from the tarball into system directories:
@@ -209,7 +209,7 @@ ISSUES RESOLVED IN THIS RELEASE
 "gc" denotes issues reported on code.google.com.
 "bz" denotes bugs filed in VMware's bugzilla.
 
-Version 3.1.0 build 169073:
+Version 3.1.2 build 188088:
 
 *) Get "Gtk: gtk_main_quit: assertion `main_loops != NULL' failed" while
    using smart card authentication (bz 393737)

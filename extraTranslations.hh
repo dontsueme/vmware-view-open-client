@@ -35,3 +35,12 @@
 
 N_("VMware View Client");
 N_("VMware View Open Client");
+
+/*
+ * Message from the tunnel server are not translated; the ones we know
+ * about are actually translated in cdk::Tunnel::OnErr().
+ */
+N_("Secure connection timed out");
+N_("The session has timed out, please re-authenticate");
+N_("Session timed out");
+N_("Logout request by system");
