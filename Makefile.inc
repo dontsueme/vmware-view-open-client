@@ -18,64 +18,49 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
+if VIEW_GTK
 bin_PROGRAMS += vmware-view
-
 dist_bin_SCRIPTS += vmware-view-log-collector
+endif
+if VIEW_COCOA
+noinst_PROGRAMS += vmware-view
+endif
 
 nodist_vmware_view_SOURCES :=
 vmware_view_SOURCES :=
-vmware_view_SOURCES += app.cc
-vmware_view_SOURCES += app.hh
+# Files that are in all versions
+vmware_view_SOURCES += baseApp.cc
+vmware_view_SOURCES += baseApp.hh
+vmware_view_SOURCES += baseXml.cc
+vmware_view_SOURCES += baseXml.hh
 vmware_view_SOURCES += broker.cc
 vmware_view_SOURCES += broker.hh
-vmware_view_SOURCES += brokerDlg.cc
-vmware_view_SOURCES += brokerDlg.hh
 vmware_view_SOURCES += brokerXml.cc
 vmware_view_SOURCES += brokerXml.hh
-vmware_view_SOURCES += cryptoki.cc
-vmware_view_SOURCES += cryptoki.hh
 vmware_view_SOURCES += desktop.cc
 vmware_view_SOURCES += desktop.hh
-vmware_view_SOURCES += desktopSelectDlg.cc
-vmware_view_SOURCES += desktopSelectDlg.hh
-vmware_view_SOURCES += disclaimerDlg.cc
-vmware_view_SOURCES += disclaimerDlg.hh
-vmware_view_SOURCES += dlg.cc
-vmware_view_SOURCES += dlg.hh
-vmware_view_SOURCES += helpDlg.cc
-vmware_view_SOURCES += helpDlg.hh
-vmware_view_SOURCES += loginDlg.cc
-vmware_view_SOURCES += loginDlg.hh
-vmware_view_SOURCES += main.cc
-vmware_view_SOURCES += passwordDlg.cc
-vmware_view_SOURCES += passwordDlg.hh
-vmware_view_SOURCES += prefs.cc
-vmware_view_SOURCES += prefs.hh
 vmware_view_SOURCES += procHelper.cc
 vmware_view_SOURCES += procHelper.hh
-vmware_view_SOURCES += rdesktop.cc
-vmware_view_SOURCES += rdesktop.hh
+vmware_view_SOURCES += protocols.cc
+vmware_view_SOURCES += protocols.hh
 vmware_view_SOURCES += restartMonitor.cc
 vmware_view_SOURCES += restartMonitor.hh
-vmware_view_SOURCES += scCertDetailsDlg.cc
-vmware_view_SOURCES += scCertDetailsDlg.hh
-vmware_view_SOURCES += scCertDlg.cc
-vmware_view_SOURCES += scCertDlg.hh
-vmware_view_SOURCES += scInsertPromptDlg.cc
-vmware_view_SOURCES += scInsertPromptDlg.hh
-vmware_view_SOURCES += scPinDlg.cc
-vmware_view_SOURCES += scPinDlg.hh
-vmware_view_SOURCES += securIDDlg.cc
-vmware_view_SOURCES += securIDDlg.hh
 vmware_view_SOURCES += stubs.c
-vmware_view_SOURCES += transitionDlg.cc
-vmware_view_SOURCES += transitionDlg.hh
 vmware_view_SOURCES += tunnel.cc
 vmware_view_SOURCES += tunnel.hh
 vmware_view_SOURCES += usb.cc
 vmware_view_SOURCES += usb.hh
 vmware_view_SOURCES += util.cc
 vmware_view_SOURCES += util.hh
+
+noinst_LIBRARIES += libProxy.a
+libProxy_a_SOURCES :=
+libProxy_a_SOURCES += cdkProxy.h
+if VIEW_COCOA
+libProxy_a_SOURCES += cdkProxyDarwin.c
+else
+libProxy_a_SOURCES += cdkProxy.c
+endif
 
 dist_noinst_DATA += icudata/NamePrepProfile.txt
 dist_noinst_DATA += icudata/NormalizationCorrections.txt
@@ -97,21 +82,40 @@ $(ICUDATA_ENTRY_POINT)l.dat: uidna.spp
 	-rm -f tmp.lst
 
 $(ICUDATA_ENTRY_POINT)l_dat.s: $(ICUDATA_ENTRY_POINT)l.dat
-	$(GENCCODE) -a gcc -n $(ICUDATA_ENTRY_POINT)l -e $(ICUDATA_ENTRY_POINT) $<
+	$(GENCCODE) -a $(GENCCODE_ASM_TARGET) -n $(ICUDATA_ENTRY_POINT)l -e $(ICUDATA_ENTRY_POINT) $<
 
 uidna_spp.c: uidna.spp
 	$(GENCCODE) -n $(ICUDATA_ENTRY_POINT)l $<
-endif
+endif # STATIC_ICU
 
-vmware_view_SOURCES += icons/desktop_remote32x.h
-vmware_view_SOURCES += icons/spinner_anim.h
-vmware_view_SOURCES += icons/open/view_16x.h
-vmware_view_SOURCES += icons/open/view_32x.h
-vmware_view_SOURCES += icons/open/view_48x.h
-vmware_view_SOURCES += icons/open/view_client_banner.h
-vmware_view_SOURCES += icons/list_button_normal.h
-vmware_view_SOURCES += icons/list_button_hover.h
-vmware_view_SOURCES += icons/list_button_open.h
+dist_noinst_DATA += icons/desktop_remote32x.png
+dist_noinst_DATA += icons/list_button_hover.png
+dist_noinst_DATA += icons/list_button_normal.png
+dist_noinst_DATA += icons/list_button_open.png
+dist_noinst_DATA += icons/open/view_16x.png
+dist_noinst_DATA += icons/open/view_32x.png
+dist_noinst_DATA += icons/open/view_48x.png
+dist_noinst_DATA += icons/open/view_client_banner.png
+dist_noinst_DATA += icons/spinner_anim.png
+
+gtk/vmware_view-window.$(OBJEXT): icons/spinner_anim.h
+gtk/vmware_view-window.$(OBJEXT): icons/view_16x.h
+gtk/vmware_view-window.$(OBJEXT): icons/view_32x.h
+gtk/vmware_view-window.$(OBJEXT): icons/view_48x.h
+gtk/vmware_view-window.$(OBJEXT): icons/view_client_banner.h
+
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_remote32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/list_button_hover.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/list_button_normal.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/list_button_open.h
+
+vpath %.png $(ICONS_DIR):$(top_srcdir)/icons
+
+icons/%.h: %.png
+	-rm -f $@.tmp $@
+	-$(MKDIR_P) $(@D)
+	$(GDK_PIXBUF_CSOURCE) --name $(@F:.h=) $< > $@.tmp
+	mv $@.tmp $@
 
 vmware_view_CPPFLAGS =
 vmware_view_CPPFLAGS += $(AM_CPPFLAGS)
@@ -124,10 +128,22 @@ vmware_view_CPPFLAGS += -DDEBHELPDIR="\"$(datarootdir)/doc/$(DEB_PACKAGING_NAME)
 vmware_view_CPPFLAGS += -I$(top_srcdir)/lib/libp11/include
 vmware_view_CPPFLAGS += -I$(top_srcdir)/lib/gtm/include
 vmware_view_CPPFLAGS += $(BOOST_CPPFLAGS)
+if VIEW_COCOA
+vmware_view_CPPFLAGS += $(GLIB_CFLAGS)
+vmware_view_CPPFLAGS += -I$(srcdir)/cocoa
+endif
+if VIEW_GTK
 vmware_view_CPPFLAGS += $(GTK_CFLAGS)
+vmware_view_CPPFLAGS += -I$(srcdir)/gtk
+endif
 vmware_view_CPPFLAGS += $(ICU_CPPFLAGS)
 vmware_view_CPPFLAGS += $(SSL_CFLAGS)
 vmware_view_CPPFLAGS += $(XML_CFLAGS)
+
+vmware_view_OBJCFLAGS =
+# Automake does not support .mm files, so we need to turn
+# Objective-C++ on manually.
+vmware_view_OBJCFLAGS += -x objective-c++
 
 vmware_view_LDADD :=
 vmware_view_LDADD += libFile.a
@@ -141,8 +157,13 @@ vmware_view_LDADD += libBasicHttp.a
 vmware_view_LDADD += libNothread.a
 vmware_view_LDADD += libPoll.a
 vmware_view_LDADD += libPollDefault.a
+if VIEW_GTK
 vmware_view_LDADD += libPollGtk.a
 vmware_view_LDADD += libGtm.a
+endif
+if VIEW_COCOA
+vmware_view_LDADD += libDui.a
+endif
 vmware_view_LDADD += libProductState.a
 vmware_view_LDADD += libSig.a
 vmware_view_LDADD += libSsl.a
@@ -150,14 +171,19 @@ vmware_view_LDADD += libDict.a
 vmware_view_LDADD += libMisc.a
 vmware_view_LDADD += libErr.a
 vmware_view_LDADD += libUnicode.a
+vmware_view_LDADD += libProxy.a
+if VIEW_COCOA
+vmware_view_LDADD += $(GLIB_LIBS)
+endif
+if VIEW_GTK
 vmware_view_LDADD += $(GTK_LIBS)
+endif
 vmware_view_LDADD += $(XML_LIBS)
 vmware_view_LDADD += $(CURL_LIBS)
 vmware_view_LDADD += $(SSL_LIBS)
 vmware_view_LDADD += $(BOOST_LDFLAGS) $(BOOST_SIGNALS_LIB)
 vmware_view_LDADD += $(ICU_LIBS)
-
-dist_noinst_DATA += icons/open/view_48x.png
+vmware_view_LDADD += $(VIEW_FRAMEWORKS)
 
 dist_noinst_DATA += intltool-extract.in
 dist_noinst_DATA += intltool-merge.in
@@ -181,7 +207,7 @@ CLEANFILES += vmware-view.png
 installdirs-recursive: $(top_srcdir)/mkinstalldirs
 
 $(top_srcdir)/mkinstalldirs: $(top_srcdir)/config/mkinstalldirs
-	cp $^ $@
+	cp -f $^ $@
 
 dist_noinst_DATA += mkinstalldirs
 
@@ -248,36 +274,62 @@ bindist: all-am
 	$(INSTALL_DATA) README.txt $(TAR_STAGE_DIR)
 	$(INSTALL_DATA) doc/open_source_licenses.txt \
 		$(TAR_STAGE_DIR)/doc
-	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-*.pdf \
-		$(TAR_STAGE_DIR)/doc
 if VIEW_EULAS
-	$(INSTALL_DATA) $(srcdir)/doc/$(PACKAGING_NAME)-EULA-*.txt \
-		$(TAR_STAGE_DIR)/doc || \
-	$(INSTALL_DATA) $(builddir)/doc/$(PACKAGING_NAME)-EULA-*.txt \
-		$(TAR_STAGE_DIR)/doc
+	@for lang in en $(ALL_LINGUAS) ; do \
+		echo $(INSTALL_DATA) $(srcdir)/doc/$(PACKAGING_NAME)-EULA-$$lang.txt \
+			$(TAR_STAGE_DIR)/doc "||" \
+		$(INSTALL_DATA) $(builddir)/doc/$(PACKAGING_NAME)-EULA-$$lang.txt \
+			$(TAR_STAGE_DIR)/doc ; \
+		$(INSTALL_DATA) $(srcdir)/doc/$(PACKAGING_NAME)-EULA-$$lang.txt \
+			$(TAR_STAGE_DIR)/doc || \
+		$(INSTALL_DATA) $(builddir)/doc/$(PACKAGING_NAME)-EULA-$$lang.txt \
+			$(TAR_STAGE_DIR)/doc ; \
+	done
 endif
+	@for lang in en $(ALL_LINGUAS) ; do \
+		echo $(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-$$lang.pdf \
+			$(TAR_STAGE_DIR)/doc ; \
+		$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-$$lang.pdf \
+			$(TAR_STAGE_DIR)/doc ; \
+		echo $(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-$$lang.txt \
+			$(TAR_STAGE_DIR)/doc/help ; \
+		$(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-$$lang.txt \
+			$(TAR_STAGE_DIR)/doc/help ; \
+	done
 	$(INSTALL_SCRIPT) $(srcdir)/vmware-view-log-collector \
 		$(TAR_STAGE_DIR)/bin
-	$(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-*.txt \
-		$(TAR_STAGE_DIR)/doc/help
 	$(MAKE) -C po $(AM_MAKEFLAGS) install itlocaledir=../$(TAR_STAGE_DIR)/share/locale
 	tardir=$(TAR_STAGE_DIR) && $(am__tar) | GZIP=$(GZIP_ENV) $(GZIP) -c \
 		>$(TAR_STAGE_DIR).tar.gz
 	-rm -rf $(TAR_STAGE_DIR)
 
+DELIVERABLES :=
+
+if VIEW_GTK
+DELIVERABLES += bindist
+
 ifneq ($(RPMBUILD),)
-deliverables: rpms
+DELIVERABLES += rpms
 @ENDIF@
+
 ifneq ($(DPKG_DEB),)
-deliverables: debs
+DELIVERABLES += debs
 @ENDIF@
+
 ifeq ($(PACKAGING_NAME),VMware-view-open-client)
 # XXX: dist should be distcheck
-deliverables: dist
+DELIVERABLES += dist
 @ENDIF@
-deliverables: bindist
+endif # VIEW_GTK
+
+if VIEW_COCOA
+DELIVERABLES += dmg
+endif #VIEW_COCOA
+
+deliverables: $(DELIVERABLES)
 ifneq ($(PUBLISH_DIR),)
 	$(MKDIR_P) $(PUBLISH_DIR)
+if VIEW_GTK
 	$(INSTALL_DATA) $(TAR_STAGE_DIR).tar.gz $(PUBLISH_DIR)
 ifeq ($(PACKAGING_NAME),VMware-view-open-client)
 	$(INSTALL_DATA) $(distdir).tar.gz $(PUBLISH_DIR)
@@ -296,4 +348,10 @@ ifneq ($(DPKG_DEB),)
 	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(RPM_ARCH).deb \
 		$(PUBLISH_DIR)
 @ENDIF@ # DPKG_DEB
+endif # VIEW_GTK
+if VIEW_COCOA
+ifeq ($(build_os), darwin)
+	$(INSTALL_DATA) $(appdmg) $(PUBLISH_DIR)
+@ENDIF@ # HDIUTIL
+endif # VIEW_COCOA
 @ENDIF@ # PUBLISH_DIR

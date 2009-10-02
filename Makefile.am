@@ -46,10 +46,15 @@ AM_CPPFLAGS =
 AM_CPPFLAGS += -I$(srcdir)/lib/open-vm-tools/include
 AM_CPPFLAGS += -I$(srcdir)/lib/bora/include
 
+dash := -
+colon := :
+empty :=
+space := $(empty) $(empty)
+
 applicationdir := $(datadir)/applications
 pixmapsdir := $(datadir)/pixmaps
 
-helpdir :=$(docdir)/help
+helpdir := $(docdir)/help
 
 application_DATA = $(desktop_in_files:.desktop.in=.desktop)
 bin_PROGRAMS :=
@@ -60,8 +65,9 @@ doc_DATA :=
 dist_doc_DATA :=
 dist_help_DATA :=
 man_MANS :=
-dist_noinst_DATA :=
+dist_noinst_DATA =
 dist_noinst_HEADERS :=
+dist_noinst_SCRIPTS :=
 dist_pdf_DATA :=
 noinst_LIBRARIES :=
 noinst_PROGRAMS :=
@@ -69,12 +75,13 @@ pixmaps_DATA :=
 
 include_subdirs :=
 
-SUBDIRS := po
+SUBDIRS := . po
 DIST_SUBDIRS := $(SUBDIRS) $(include_subdirs)
 
 @INTLTOOL_DESKTOP_RULE@
 
-all:
+ALL =
+all: $(ALL)
 
 include lib/open-vm-tools/dict/Makefile.inc
 include lib/open-vm-tools/err/Makefile.inc
@@ -90,6 +97,7 @@ include lib/open-vm-tools/user/Makefile.inc
 
 include lib/bora/asyncsocket/Makefile.inc
 include lib/bora/basicHttp/Makefile.inc
+include lib/bora/dui/Makefile.inc
 include lib/bora/include/Makefile.inc
 include lib/bora/log/Makefile.inc
 include lib/bora/misc/Makefile.inc
@@ -108,5 +116,7 @@ include lib/libp11/Makefile.inc
 include lib/gtm/Makefile.inc
 
 include Makefile.inc
+include cocoa/Makefile.inc
 include doc/Makefile.inc
+include gtk/Makefile.inc
 include tunnel/Makefile.inc

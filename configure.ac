@@ -31,7 +31,6 @@ AC_CONFIG_SRCDIR([tunnel/tunnelMain.c])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 AC_PREFIX_DEFAULT([/usr])
-
 AC_CANONICAL_HOST
 
 # Quote the regular expressions
@@ -63,7 +62,6 @@ if test $enable_eulas != "no" ; then
 else
    VIEW_RPM_LICENSE="LGPLv2.1 only"
 fi
-AC_SUBST(VIEW_RPM_LICENSE)
 
 ssl_disable_loading="true"
 AC_ARG_ENABLE([static-ssl],
@@ -71,13 +69,23 @@ AC_ARG_ENABLE([static-ssl],
       [statically link against libssl])],
    [],[enable_static_ssl="no"])
 
-AC_ARG_ENABLE([windowed-mode],
-   [AS_HELP_STRING([--enable-windowed-mode],
-      [allow the user to select the remote desktop size])],
-   [],[enable_windowed_mode="yes"])
-if test "$enable_windowed_mode" != "no" ; then
-   AC_DEFINE(VIEW_ENABLE_WINDOW_MODE)
-fi
+AC_MSG_CHECKING([which interface to build])
+use_gtk="no"
+use_cocoa="no"
+case "$host_os" in
+   [darwin*])
+      AC_MSG_RESULT([Cocoa])
+      AC_DEFINE(VIEW_COCOA)
+      use_cocoa="yes"
+      ;;
+   [*])
+      AC_MSG_RESULT([Gtk+])
+      AC_DEFINE(VIEW_GTK)
+      use_gtk="yes"
+      ;;
+esac
+AM_CONDITIONAL([VIEW_GTK], [test "$use_gtk" = "yes"])
+AM_CONDITIONAL([VIEW_COCOA], [test "$use_cocoa" = "yes"])
 
 AC_MSG_CHECKING([for toolchain])
 if test "$TCROOT" ; then
@@ -86,6 +94,7 @@ if test "$TCROOT" ; then
    CXXFLAGS=
    LDFLAGS=
    LIBS=
+   OBJCFLAGS=
 
    if test "$TCROOT" = "yes"; then
       TCROOT="/build/toolchain"
@@ -93,12 +102,17 @@ if test "$TCROOT" ; then
    case "$build_cpu-$build_os" in
       [i[3456]86-linux*])
          BUILD_TCROOT="$TCROOT/lin32"
+	 buildgtkversion="2.4.14"
 	 ;;
       [x86_64-linux*])
          # 32-bit binaries will run on 64-bit machines, so just use
          # them
          BUILD_TCROOT="$TCROOT/lin32"
+	 buildgtkversion="2.4.14"
 	 ;;
+      [i[3456]86-darwin*])
+         BUILD_TCROOT="$TCROOT/mac32"
+         ;;
       [*])
          AC_MSG_RESULT([not supported])
          AC_MSG_ERROR([$build_cpu-$build_os is not yet supported for a toolchain build.])
@@ -106,17 +120,32 @@ if test "$TCROOT" ; then
    esac
    case "$host_cpu-$host_os" in
       [i[3456]86-linux*])
-	 binutilsversion="2.16.1-vt"
+	 binutilsversion="2.17.50.0.15-1"
          ccflavor="i686-linux"
-	 ccversion="4.1.1"
+	 ccversion="4.1.2-7"
          # -march=i586 is required to run on some VIA C3 chips
          CFLAGS="$CFLAGS -march=i586"
+	 glibversion="2.6.6"
+	 gtkversion="2.4.14"
+	 pangoversion="1.4.1"
          HOST_TCROOT="$TCROOT/lin32"
 	 ;;
       [x86_64-linux*])
+	 binutilsversion="2.17.50.0.15-1"
          ccflavor="x86_64-linux"
+	 ccversion="4.1.2-7"
+	 glibversion="2.16.4"
+	 gtkversion="2.12.11"
+	 pangoversion="1.20.5"
 	 HOST_TCROOT="$TCROOT/lin64"
 	 ;;
+      [i[3456]86-darwin*])
+         binutilsversion="2.17.50.0.15"
+         ccflavor="i686-apple-darwin9"
+         ccversion="5465"
+	 glibversion="2.6.6"
+         HOST_TCROOT="$TCROOT/mac32"
+         ;;
       [*])
          AC_MSG_RESULT([not supported])
          AC_MSG_ERROR([$host_cpu-$host_os is not yet supported for a toolchain host.])
@@ -133,6 +162,7 @@ if test "$TCROOT" ; then
          ;;
    esac
    CXXFLAGS="$CFLAGS"
+   OBJCFLAGS="$CXXFLAGS"
    # C-only warning options
    CFLAGS="$CFLAGS -Wno-pointer-sign -Wno-strict-prototypes"
 
@@ -148,63 +178,17 @@ if test "$TCROOT" ; then
    GZIP="$BUILD_TCROOT/gzip-1.3.5/bin/gzip"
    FAKEROOT="$BUILD_TCROOT/fakeroot-1.5.9ubuntu1-1/bin/fakeroot"
    ICUPKG="$BUILD_TCROOT/icu4c-$icuversion/sbin/icupkg"
+   INSTALL_NAME_TOOL="$BUILD_TCROOT/gcc-$ccversion/libexec/gcc/i686-apple-darwin9/4.0.1/install_name_tool"
    LD="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-gcc"
    LN="$BUILD_TCROOT/coreutils-5.97/bin/ln"
    LN_S="$BUILD_TCROOT/coreutils-5.97/bin/ln -s"
    MKSQUASHFS="$BUILD_TCROOT/squashfs-tools-3.1-r2/bin/mksquashfs"
+   OBJC="$CXX"
+   OTOOL="$BUILD_TCROOT/gcc-$ccversion/libexec/gcc/i686-apple-darwin9/4.0.1/otool"
    RPMBUILD="$BUILD_TCROOT/rpm-4.0.5/bin/rpmbuild"
    SED="$BUILD_TCROOT/sed-4.1.5/bin/sed"
 
-   case "$host_os" in
-      [linux*])
-	 AR="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ar"
-	 LDFLAGS="$LDFLAGS -Wl,-rpath-link -Wl,$HOST_TCROOT/gcc-$ccversion/lib"
-	 RANLIB="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ranlib"
-	 STRIP="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-strip"
-	 X11="xorg-7.1"
-	 ;;
-   esac
-
    PATH="$BUILD_TCROOT/coreutils-5.97/bin:$BUILD_TCROOT/gawk-3.1.6/bin:$PATH"
-
-   for dir in \
-      $X11/include \
-      zlib-1.2.3-3/include \
-      libpng-1.2.22/include \
-      fontconfig-2.2.3/include \
-      freetype-2.1.9/include/freetype2 \
-      cairo-1.2.4/include/cairo \
-      glib-2.6.6/include/glib-2.0 \
-      glib-2.6.6/lib/glib-2.0/include \
-      pango-1.4.1/include/pango-1.0 \
-      atk-1.9.0/include/atk-1.0 \
-      gtk+-2.4.14/include/gtk-2.0 \
-      gtk+-2.4.14/lib/gtk-2.0/include \
-   ; do
-      GTK_CFLAGS="$GTK_CFLAGS -I$HOST_TCROOT/$dir"
-   done
-
-   for dir in \
-      $X11/lib \
-      zlib-1.2.3-3/lib \
-      libpng-1.2.22/lib \
-      fontconfig-2.2.3/lib \
-      freetype-2.1.9/lib \
-      expat-1.95.8/lib \
-      cairo-1.2.4/lib \
-      glib-2.6.6/lib \
-      pango-1.4.1/lib \
-      atk-1.9.0/lib \
-      gtk+-2.4.14/lib \
-   ; do
-      case "$host_os" in
-         [linux*])
-	    GTK_LIBS="$GTK_LIBS -Wl,-rpath-link -Wl,$HOST_TCROOT/$dir"
-	    ;;
-      esac
-      GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/$dir"
-   done
-   GTK_LIBS="$GTK_LIBS -lglib-2.0 -lgobject-2.0 -latk-1.0 -lgtk-x11-2.0 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lpng"
 
    ICU_CPPFLAGS="-I$HOST_TCROOT/icu4c-$icuversion/include"
    ICU_LIBS="-L$HOST_TCROOT/icu4c-$icuversion/lib"
@@ -213,13 +197,59 @@ if test "$TCROOT" ; then
    XML_LIBS="-L$HOST_TCROOT/libxml2-2.6.30/lib -lxml2"
 
    BOOST_CPPFLAGS="-I$HOST_TCROOT/boost-1.34.1/include"
-   CURL_CFLAGS="-I$HOST_TCROOT/curl-7.18.0/include"
-   SSL_CFLAGS="-I$HOST_TCROOT/openssl-0.9.8h/include"
-   SSL_VERSION_NUM="0.9.8"
+
+   GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/include/glib-2.0"
+   GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/lib/glib-2.0/include"
+   GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/glib-$glibversion/lib -lglib-2.0 -lgobject-2.0 -lgmodule-2.0"
 
    case "$host_os" in
       [linux*])
+	 AR="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ar"
+	 if test -x /usr/bin/gdk-pixbuf-csource ; then
+	    GDK_PIXBUF_CSOURCE="/usr/bin/gdk-pixbuf-csource"
+  	 else
+	    GDK_PIXBUF_CSOURCE="$BUILD_TCROOT/gtk+-$buildgtkversion/bin/gdk-pixbuf-csource"
+	 fi
+	 LDFLAGS="$LDFLAGS -Wl,-rpath-link -Wl,$HOST_TCROOT/gcc-$ccversion/lib"
+	 RANLIB="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ranlib"
+	 STRIP="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-strip"
+	 GTK_LIBS="$GTK_LIBS $GLIB_LIBS"
+	 GTK_CFLAGS="$GTK_CFLAGS $GLIB_CFLAGS"
+         for dir in \
+      	    xorg-7.1/include \
+	    zlib-1.2.3-3/include \
+            libpng-1.2.22/include \
+            fontconfig-2.2.3/include \
+            freetype-2.1.9/include/freetype2 \
+            cairo-1.2.4/include/cairo \
+            pango-$pangoversion/include/pango-1.0 \
+            atk-1.9.0/include/atk-1.0 \
+            gtk+-$gtkversion/include/gtk-2.0 \
+            gtk+-$gtkversion/lib/gtk-2.0/include \
+         ; do
+            GTK_CFLAGS="$GTK_CFLAGS -I$HOST_TCROOT/$dir"
+         done
+
+         for dir in \
+            xorg-7.1/lib \
+            zlib-1.2.3-3/lib \
+            libpng-1.2.22/lib \
+            fontconfig-2.2.3/lib \
+            freetype-2.1.9/lib \
+            expat-1.95.8/lib \
+            cairo-1.2.4/lib \
+            pango-$pangoversion/lib \
+            atk-1.9.0/lib \
+            gtk+-$gtkversion/lib \
+         ; do
+	    GTK_LIBS="$GTK_LIBS -Wl,-rpath-link -Wl,$HOST_TCROOT/$dir"
+            GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/$dir"
+         done
+         GTK_LIBS="$GTK_LIBS -latk-1.0 -lgtk-x11-2.0 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lpng"
+	 SSL_CFLAGS="$SSL_CFLAGS -I$HOST_TCROOT/openssl-0.9.8h/include"
          SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"$HOST_TCROOT/openssl-0.9.8h/lib\\\""
+         SSL_VERSION_NUM="0.9.8"
+         SSL_LIBS="-ldl"
          SSL_LIBS="$SSL_LIBS -ldl"
 	 if test "$enable_static_ssl" = "no" ; then
             ssl_disable_loading="false"
@@ -233,12 +263,24 @@ if test "$TCROOT" ; then
             SSL_LIBS="$SSL_LIBS -ldl -L$HOST_TCROOT/openssl-0.9.8h/lib -Wl,-Bstatic -lssl -lcrypto -Wl,-Bdynamic"
             AC_DEFINE(BORA_LINK_SSL_DIRECTLY)
          fi
+	 CURL_CFLAGS="-I$HOST_TCROOT/curl-7.18.0/include"
          CURL_LIBS="-L$HOST_TCROOT/curl-7.18.0/lib -Wl,-Bstatic -lcurl -Wl,-Bdynamic"
          BOOST_LDFLAGS="-Wl,-rpath-link -Wl,$HOST_TCROOT/boost-1.34.1/lib -L$HOST_TCROOT/boost-1.34.1/lib"
          BOOST_LDFLAGS="$BOOST_LDFLAGS -Wl,-Bstatic -lboost_signals-gcc41-mt-1_34_1 -Wl,-Bdynamic"
 	 ;;
+      [darwin*])
+	 AR="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ar"
+	 glibversion="2.12.12"
+	 RANLIB="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ranlib"
+	 STRIP="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/strip"
+         SSL_VERSION_NUM="0.9.7"
+         SSL_LIBS="-lssl -lcrypto"
+         CURL_LIBS="-lcurl"
+         BOOST_LDFLAGS="-L$HOST_TCROOT/boost-1.34.1/lib -lboost_signals-mt-1_34_1"
+	 GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/gettext-0.17/include"
+         GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/gettext-0.17/lib -lintl"
+         ;;
    esac
-
    LIB_FILE_CPPFLAGS="$LIB_FILE_CPPFLAGS -DGLIBC_VERSION_21"
    LIB_SIG_CPPFLAGS="$LIB_SIG_CPPFLAGS -DGLIBC_VERSION_22"
    LIB_STRING_CPPFLAGS="$LIB_STRING_CPPFLAGS -DGLIBC_VERSION_22"
@@ -265,13 +307,19 @@ else
       RPMBUILD=rpmbuild
    fi
 
-   PKG_CHECK_MODULES(GTK, [gtk+-x11-2.0 >= 2.4.0])
+   # Need this manually since the first call is conditional.
+   PKG_PROG_PKG_CONFIG
+   if test "$use_cocoa" = "yes" ; then
+      PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.6.0 gmodule-2.0 >= 2.6.0])
+   else
+      PKG_CHECK_MODULES(GTK, [gtk+-x11-2.0 >= 2.4.0])
+   fi
    PKG_CHECK_MODULES(XML, [libxml-2.0 >= 2.6.0])
    PKG_CHECK_MODULES(CURL, [libcurl >= 7.16.0])
    case "$host_os" in
       [darwin*])
          # the -arch flags confuse automake at some point
-         CURL_LIBS=`pkg-config --libs-only-l libcurl`
+         CURL_LIBS=`$PKG_CONFIG --libs-only-l libcurl`
          # Leopard still ships with 0.9.7.
 	 OPENSSL_MIN_VER="0.9.7"
          ;;
@@ -290,17 +338,19 @@ case "$host_os" in
       LIBEXT="so"
       ;;
    [darwin*])
-      LIBS="$LIBS -framework Security"
+      LIBEXT="dylib"
+      OBJCFLAGS="$OBJCFLAGS -mmacosx-version-min=10.5"
       ;;
 esac
 
 # Checks for programs.
 # This needs to be after TCROOT is set to pick up the correct paths
 # for mawk et. al.
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign tar-pax])
 
 AC_PROG_CC
 AC_PROG_CXX
+AC_PROG_OBJC
 AM_PROG_CC_C_O
 AM_PROG_AS
 AC_PROG_LN_S
@@ -310,11 +360,14 @@ AC_PATH_PROG([AR],[ar])
 AC_PATH_PROG([DATE],[date])
 AC_PATH_PROG([DPKG_DEB],[dpkg-deb])
 AC_PATH_PROG([FAKEROOT],[fakeroot])
+AC_PATH_PROG([GDK_PIXBUF_CSOURCE],[gdk-pixbuf-csource])
 AC_PATH_PROG([GENCCODE],[genccode])
 AC_PATH_PROG([GENSPREP],[gensprep])
 AC_PATH_PROG([GZIP],[gzip])
 AC_PATH_PROG([ICUPKG],[icupkg])
+AC_PATH_PROG([INSTALL_NAME_TOOL],[install_name_tool])
 AC_PATH_PROG([MKSQUASHFS],[mksquashfs])
+AC_PATH_PROG([OTOOL],[otool])
 AC_PATH_PROG([RPMBUILD],[rpmbuild])
 AC_PATH_PROG([STRIP],[strip])
 AC_PROG_INTLTOOL([0.21])
@@ -322,7 +375,8 @@ AC_PROG_INTLTOOL([0.21])
 GETTEXT_PACKAGE="vmware-view"
 AC_SUBST(GETTEXT_PACKAGE)
 # Change this when [language].po files are added to cdk/po/.
-ALL_LINGUAS="ja de fr"
+#ALL_LINGUAS="de fr ja"
+ALL_LINGUAS=""
 AC_SUBST(ALL_LINGUAS)
 AM_GLIB_GNU_GETTEXT
 
@@ -340,11 +394,16 @@ AC_ARG_WITH([icons-dir],
    [AS_HELP_STRING([--with-icons-dir=DIR],
       [Use icon files found in DIR])],
    [],[with_icons_dir="$srcdir/icons/open"])
-CPPFLAGS="$CPPFLAGS -I$with_icons_dir"
+AC_MSG_CHECKING([for required icon files])
+for i in view_16x.png view_32x.png view_48x.png view_client_banner.png ; do
+   echo $ECHO_N " $i"
+   if ! test -f $with_icons_dir/$i ; then
+      echo " missing!"
+      AC_MSG_ERROR([$i was not found in $with_icons_dir])
+   fi
+done
+AC_MSG_RESULT([ all present and accounted for])
 ICONS_DIR="$with_icons_dir"
-AC_CHECK_HEADERS([view_16x.h view_32x.h view_48x.h view_client_banner.h],[],
-	         [AC_MSG_ERROR([Some required icon files were not found.])],
-                 [#define guint8 unsigned char])
 
 AC_ARG_WITH([packaging-name],
    [AS_HELP_STRING([--with-packages-name=NAME],
@@ -390,7 +449,7 @@ case "$host_os" in
 	    # This is only needed by the Debian change log, and OS X's
 	    # date doesn't support -R, so only do this here.
 	    DATE_R=`$DATE -R`
-         else
+	 else
             AC_MSG_WARN([fakeroot was not found; disabling deb])
             DPKG_DEB=
          fi
@@ -443,6 +502,17 @@ case "$host_os" in
       AC_DEFINE(_SVID_SOURCE)
       AC_DEFINE(_LARGEFILE64_SOURCE)
       AC_DEFINE(_FILE_OFFSET_BITS,[64])
+      GENCCODE_ASM_TARGET="gcc"
+      ;;
+   [darwin*])
+      for fw in AppKit Cocoa CoreData CoreServices Foundation \
+                Security SecurityInterface SystemConfiguration ; do
+	 VIEW_FRAMEWORKS="$VIEW_FRAMEWORKS -Wl,-framework -Wl,$fw"
+      done
+      for fw in CoreServices SystemConfiguration ; do
+         TUNNEL_FRAMEWORKS="$TUNNEL_FRAMEWORKS -Wl,-framework -Wl,$fw"
+      done
+      GENCCODE_ASM_TARGET="gcc-darwin"
       ;;
    [solaris*])
       LIB_USER_CPPFLAGS="$LIB_USER_CPPFLAGS -D_POSIX_PTHREAD_SEMANTICS"
@@ -547,6 +617,9 @@ if test ! "$TCROOT" ; then
                AC_MSG_RESULT([no])
             ])
 	 ;;
+      [darwin*])
+         CURL_LIBS="`$PKG_CONFIG --libs-only-l libcurl`"
+         ;;
    esac
 
    AX_BOOST_BASE([1.34.1])
@@ -591,6 +664,7 @@ RPM_OUTPUT_DIR="`pwd`/rpm-output"
 docdir='${datarootdir}/doc/${PACKAGING_NAME}'
 
 # workarounds for automake/gnumake's keyword collisions
+ELSE=else
 ENDIF=endif
 
 AC_SUBST(LIB_FILE_CPPFLAGS)
@@ -613,12 +687,16 @@ AC_SUBST(DEB_CONFLICTS)
 AC_SUBST(RPM_CONFLICTS)
 AC_SUBST(RPM_CONFLICTS_LITE)
 
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
 AC_SUBST(ICU_CPPFLAGS)
 AC_SUBST(ICU_LIBS)
 AC_SUBST(ICUDATA_ENTRY_POINT)
+AC_SUBST(GENCCODE_ASM_TARGET)
 
 AC_SUBST(XML_CFLAGS)
 AC_SUBST(XML_LIBS)
@@ -629,15 +707,20 @@ AC_SUBST(CURL_LIBS)
 AC_SUBST(SSL_CFLAGS)
 AC_SUBST(SSL_LIBS)
 
+AC_SUBST(TUNNEL_FRAMEWORKS)
+AC_SUBST(VIEW_FRAMEWORKS)
+
 AC_SUBST(BUILD_THINCLIENT_RPM)
 AC_SUBST(DATE_R)
 AC_SUBST(RPM_STAGE_ROOT)
 AC_SUBST(RPM_OUTPUT_DIR)
 AC_SUBST(RPM_ARCH)
 
+AC_SUBST(ELSE)
 AC_SUBST(ENDIF)
 
 AC_CONFIG_FILES([
+Info.plist
 Makefile
 VMware-view-open-client.control
 VMware-view-open-client.spec
@@ -645,6 +728,7 @@ buildNumber.h
 doc/changelog.Debian
 doc/vmware-view.1
 doc/vmware-view-tunnel.1
+fix-toolchain-paths.sh
 intltool-update
 intltool-merge
 intltool-extract

@@ -33,6 +33,7 @@
 #include <sys/socket.h> /* For socketpair */
 #include <sys/wait.h>   /* For waitpid */
 #include <signal.h>     /* For kill */
+#include <glib.h>       /* For g_find_program_in_path */
 
 
 #include "procHelper.hh"
@@ -98,7 +99,33 @@ ProcHelper::~ProcHelper()
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::ProcHelper::Connect --
+ * cdk::ProcHelper::GetIsInPath --
+ *
+ *      Predicate to determine if executable program is in the
+ *      effective path.
+ *
+ * Results:
+ *      true if input program found in path, false otherwise.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+ProcHelper::GetIsInPath(const Util::string &programName) // IN
+{
+    char *fullyQualifiedProgramName = g_find_program_in_path(programName.c_str());
+    g_free(fullyQualifiedProgramName);
+    return fullyQualifiedProgramName != NULL;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::ProcHelper::Start --
  *
  *      Fork and exec child process.  procName is the friendly name of the
  *      process, to be used in Log messages.  procPath is the path to the

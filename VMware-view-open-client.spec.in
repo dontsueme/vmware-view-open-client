@@ -63,7 +63,7 @@ exit 0
 %doc "/usr/share/man/man1/vmware-view-tunnel.1.gz"
 %attr(0444, root, root) "/usr/share/pixmaps/vmware-view.png"
 %attr(0444, root, root) "/usr/share/applications/vmware-view.desktop"
-%attr(0444, root, root) "/usr/share/locale/*/*/*"
+#%attr(0444, root, root) "/usr/share/locale/*/*/*"
 
 %if @BUILD_THINCLIENT_RPM@
 %files -n @PACKAGING_NAME@-lite

@@ -171,6 +171,45 @@
 #include "loglevel_user.h"
 
 #if defined(__APPLE__)
+#if defined(__LP64__)
+#if __DARWIN_UNIX03
+#define SC_EAX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rax)
+#define SC_EBX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rbx)
+#define SC_ECX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rcx)
+#define SC_EDX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rdx)
+#define SC_EDI(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rdi)
+#define SC_ESI(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rsi)
+#define SC_EBP(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rbp)
+#define SC_ESP(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rsp)
+#define SC_EIP(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rip)
+#define SC_R8(uc)  ((unsigned long) (uc)->uc_mcontext->__ss.__r8)
+#define SC_R9(uc)  ((unsigned long) (uc)->uc_mcontext->__ss.__r9)
+#define SC_R10(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__r10)
+#define SC_R11(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__r11)
+#define SC_R12(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__r12)
+#define SC_R13(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__r13)
+#define SC_R14(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__r14)
+#define SC_R15(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__r15)
+#else
+#define SC_EAX(uc) ((unsigned long) (uc)->uc_mcontext->ss.rax)
+#define SC_EBX(uc) ((unsigned long) (uc)->uc_mcontext->ss.rbx)
+#define SC_ECX(uc) ((unsigned long) (uc)->uc_mcontext->ss.rcx)
+#define SC_EDX(uc) ((unsigned long) (uc)->uc_mcontext->ss.rdx)
+#define SC_EDI(uc) ((unsigned long) (uc)->uc_mcontext->ss.rdi)
+#define SC_ESI(uc) ((unsigned long) (uc)->uc_mcontext->ss.rsi)
+#define SC_EBP(uc) ((unsigned long) (uc)->uc_mcontext->ss.rbp)
+#define SC_ESP(uc) ((unsigned long) (uc)->uc_mcontext->ss.rsp)
+#define SC_EIP(uc) ((unsigned long) (uc)->uc_mcontext->ss.rip)
+#define SC_R8(uc)  ((unsigned long) (uc)->uc_mcontext->ss.r8)
+#define SC_R9(uc)  ((unsigned long) (uc)->uc_mcontext->ss.r9)
+#define SC_R10(uc) ((unsigned long) (uc)->uc_mcontext->ss.r10)
+#define SC_R11(uc) ((unsigned long) (uc)->uc_mcontext->ss.r11)
+#define SC_R12(uc) ((unsigned long) (uc)->uc_mcontext->ss.r12)
+#define SC_R13(uc) ((unsigned long) (uc)->uc_mcontext->ss.r13)
+#define SC_R14(uc) ((unsigned long) (uc)->uc_mcontext->ss.r14)
+#define SC_R15(uc) ((unsigned long) (uc)->uc_mcontext->ss.r15)
+#endif
+#else
 #if __DARWIN_UNIX03
 #define SC_EAX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__eax)
 #define SC_EBX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__ebx)
@@ -191,6 +230,7 @@
 #define SC_EBP(uc) ((unsigned long) (uc)->uc_mcontext->ss.ebp)
 #define SC_ESP(uc) ((unsigned long) (uc)->uc_mcontext->ss.esp)
 #define SC_EIP(uc) ((unsigned long) (uc)->uc_mcontext->ss.eip)
+#endif
 #endif
 #elif defined(__FreeBSD__)
 #ifdef __x86_64__

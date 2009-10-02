@@ -44,3 +44,5 @@ N_("Secure connection timed out");
 N_("The session has timed out, please re-authenticate");
 N_("Session timed out");
 N_("Logout request by system");
+N_("Client disconnected following no activity");
+N_("Could not connect to server");

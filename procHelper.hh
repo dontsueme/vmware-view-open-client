@@ -52,6 +52,7 @@ public:
               std::vector<Util::string> args = std::vector<Util::string>(),
               Util::string stdIn = "", int skipFd1 = 0, int skipFd2 = 0);
    void Kill();
+   static bool GetIsInPath(const Util::string &programName);
 
    bool IsRunning() const { return mPid > -1; }
    pid_t GetPID() const { return mPid; }

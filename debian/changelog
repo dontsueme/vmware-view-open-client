@@ -1,3 +1,10 @@
+vmware-view-open-client (4.0.0-196715+dfsg-1) unstable; urgency=low
+
+  * Merging upstream version 4.0.0-196715+dfsg.
+  * Rediffing doc-pdf.patch.
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 02 Oct 2009 23:25:15 +0200
+
 vmware-view-open-client (3.1.2-188088+dfsg-1) unstable; urgency=low
 
   * Adding maintainer homepage field in control.

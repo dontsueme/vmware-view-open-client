@@ -29,6 +29,9 @@
  */
 
 #include "usb.hh"
+#ifdef __linux__
+#include "prefs.hh"
+#endif
 
 
 #include <glib.h>
@@ -67,14 +70,14 @@ namespace cdk {
  */
 
 bool
-Usb::Start(const Util::string &address,                        // IN
-           int port,                                           // IN
-           const Util::string &channelTicket,                  // IN
-           const std::vector<Util::string> &usbRedirectArgs)   // IN
+Usb::Start(const Util::string &address,       // IN
+           int port,                          // IN
+           const Util::string &channelTicket) // IN
 {
    if (IsRunning()) {
-      Warning("USB redirect already running.\n");
-      return false;
+      Warning("Stopping usb redirection.\n");
+      ProcHelper::Kill();
+      Warning("Restarting usb redirection.\n");
    }
 
    std::stringstream strmPort;
@@ -85,10 +88,13 @@ Usb::Start(const Util::string &address,                        // IN
    args.push_back(USB_PORT_ARG);      args.push_back(strmPort.str());
    args.push_back(USB_TICKET_ARG);    args.push_back(channelTicket);
 
+#ifdef __linux__
+   std::vector<Util::string> usbRedirectArgs = Prefs::GetPrefs()->GetUsbOptions();
    for (std::vector<Util::string>::const_iterator i = usbRedirectArgs.begin();
         i != usbRedirectArgs.end(); ++i) {
       args.push_back("-o");  args.push_back(*i);
    }
+#endif
 
    Util::string defaultPath = BINDIR G_DIR_SEPARATOR_S VMWARE_VIEW_USB;
    Util::string usbPath = Util::GetUsefulPath(defaultPath, VMWARE_VIEW_USB);

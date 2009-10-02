@@ -34,10 +34,16 @@
 
 #include <boost/function.hpp>
 #include <exception>
+
+#ifndef _WIN32
 #include <glib/gi18n.h>
+#endif
+#ifdef VIEW_GTK
 #include <gtk/gtkbutton.h>
 #include <gtk/gtkcomboboxentry.h>
 #include <gtk/gtkmessagedialog.h>
+#endif
+
 #include <map>
 
 #ifdef UTF_STRING
@@ -71,6 +77,24 @@ typedef std::string string;
 
 typedef std::map<string, string> ClientInfoMap;
 
+#define ZERO_STRING(x) memset(x, 0, strlen(x))
+
+#ifdef VIEW_GTK
+typedef ::GdkRectangle Rect;
+#else
+struct Rect {
+   int x;
+   int y;
+   int width;
+   int height;
+};
+#endif // VIEW_GTK
+enum {
+   ALL_SCREENS = -2,
+   FULL_SCREEN = -1
+};
+
+
 class exception
    : public std::exception
 {
@@ -96,11 +120,14 @@ DoneSlot EmptyDoneSlot();
 AbortSlot LogAbortSlot();
 
 
+#ifdef VIEW_GTK
 Util::string GetComboBoxEntryText(GtkComboBoxEntry *combo);
 Util::string GetComboBoxText(GtkComboBox *combo);
 GtkButton *CreateButton(const string stockId, string label = "");
+void SetButtonIcon(GtkButton *button, const string &stockId, string label = "");
 GtkWidget *CreateActionArea(GtkButton *button1, ...);
 void OverrideWindowUserTime(GtkWindow *window);
+#endif
 void UserWarning(const char *format, ...);
 string GetUsefulPath(const string systemPath, const string relativePath);
 

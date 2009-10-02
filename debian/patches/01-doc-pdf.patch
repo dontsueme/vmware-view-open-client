@@ -2,31 +2,26 @@ Author: Daniel Baumann <daniel@debian.org>
 Description: Removing pdf documents without source.
 
 diff -Naurp vmware-view-open-client.orig/Makefile.in vmware-view-open-client/Makefile.in
---- vmware-view-open-client.orig/Makefile.in	2009-09-15 16:32:24.000000000 +0000
-+++ vmware-view-open-client/Makefile.in	2009-09-15 16:37:17.000000000 +0000
-@@ -1300,10 +1300,6 @@ dist_noinst_HEADERS := lib/open-vm-tools
- 	lib/bora/include/vmlocale.h lib/bora/include/vthread.h \
+--- vmware-view-open-client.orig/Makefile.in	2009-10-02 20:38:31.000000000 +0000
++++ vmware-view-open-client/Makefile.in	2009-10-02 20:55:41.000000000 +0000
+@@ -1599,7 +1599,7 @@ dist_noinst_HEADERS := lib/open-vm-tools
  	lib/bora/include/vthreadBase.h lib/libp11/include/pkcs11.h \
  	extraTranslations.hh
--dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf \
--	doc/View_Client_Admin_Guide-de.pdf \
--	doc/View_Client_Admin_Guide-fr.pdf \
--	doc/View_Client_Admin_Guide-ja.pdf
+ dist_noinst_SCRIPTS := cocoa/pkg-dmg
+-dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
++#dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
  noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
  	libPanicDefault.a libString.a libStubs.a libUnicode.a \
- 	libUser.a libAsyncSocket.a libBasicHttp.a libLog.a \
+ 	libUser.a libAsyncSocket.a libBasicHttp.a $(am__append_1) \
 diff -Naurp vmware-view-open-client.orig/doc/Makefile.inc vmware-view-open-client/doc/Makefile.inc
---- vmware-view-open-client.orig/doc/Makefile.inc	2009-09-15 16:32:24.000000000 +0000
-+++ vmware-view-open-client/doc/Makefile.inc	2009-09-15 16:37:35.000000000 +0000
-@@ -18,11 +18,6 @@
+--- vmware-view-open-client.orig/doc/Makefile.inc	2009-10-02 20:38:31.000000000 +0000
++++ vmware-view-open-client/doc/Makefile.inc	2009-10-02 20:54:36.000000000 +0000
+@@ -18,7 +18,7 @@
  # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
  ################################################################################
  
 -dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
--dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
--dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
--dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
--
- if VIEW_EULAS
- doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
- doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt
++#dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
+ #dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
+ #dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
+ #dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf

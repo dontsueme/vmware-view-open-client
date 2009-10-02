@@ -53,6 +53,7 @@ public:
    void Connect(const BrokerXml::Tunnel &tunnelInfo);
    void Disconnect() { mProc.Kill(); }
 
+   bool GetIsBypassed() const { return mTunnelInfo.bypassTunnel; }
    Util::string GetConnectionId() const { return mTunnelInfo.connectionId; }
    Util::string GetTunnelUrl() const { return mTunnelInfo.server1; }
 

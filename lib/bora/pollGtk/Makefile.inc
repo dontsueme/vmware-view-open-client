@@ -18,7 +18,9 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
+if VIEW_GTK
 noinst_LIBRARIES += libPollGtk.a
+endif
 
 libPollGtk_a_SOURCES =
 libPollGtk_a_SOURCES += lib/bora/pollGtk/pollGtk.c

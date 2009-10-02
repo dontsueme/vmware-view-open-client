@@ -36,7 +36,6 @@
 
 
 #include "brokerXml.hh"
-#include "dlg.hh"
 #include "usb.hh"
 
 
@@ -61,8 +60,26 @@ public:
       STATE_ROLLING_BACK
    };
 
+   /*
+    * This enum represents the various statii the desktop can be in.  This is
+    * used for status messages and icons.
+    */
+   enum Status {
+      STATUS_UNKNOWN,
+      STATUS_RESETTING,
+      STATUS_LOGGING_OFF,
+      STATUS_ROLLING_BACK,
+      STATUS_LOCAL_ROLLBACK,
+      STATUS_CHECKED_OUT_DISABLED,
+      STATUS_CHECKED_OUT_BY_OTHER,
+      STATUS_NONBACKGROUND_TRANSFER,
+      STATUS_MAINTENANCE_MODE,
+      STATUS_LOGGED_ON,
+      STATUS_AVAILABLE
+   };
+
    Desktop(BrokerXml &xml, BrokerXml::Desktop &desktopInfo);
-   ~Desktop();
+   virtual ~Desktop();
 
    void SetInfo(BrokerXml::Desktop &desktopInfo);
    ConnectionState GetConnectionState() const { return mConnectionState; }
@@ -83,21 +100,37 @@ public:
    void Rollback(Util::AbortSlot onAbort, Util::DoneSlot onDone);
 
    Util::string GetState() const { return mDesktopInfo.state; }
+   bool GetOfflineEnabled() const { return mDesktopInfo.offlineEnabled; }
    BrokerXml::OfflineState GetOfflineState() const
       { return mDesktopInfo.offlineState; }
+   bool GetCheckedOutByOther() const { return mDesktopInfo.checkedOutByOther; }
    bool InMaintenanceMode() const { return mDesktopInfo.inMaintenance; }
+   bool InLocalRollback() const { return mDesktopInfo.inLocalRollback; }
+   bool IsCheckedOutHereAndDisabled() const;
+   bool InNonBackgroundDesktopTransfer() const;
+
+   Util::string GetCheckedOutHereAndDisabledMessage() const;
+   Util::string GetNonBackgroundDesktopTransferMessage() const;
 
    bool GetIsUSBEnabled() const { return mDesktopConn.enableUSB; }
    bool GetIsMMREnabled() const { return mDesktopConn.enableMMR; }
 
+   std::vector<Util::string> GetProtocols() const
+      { return mDesktopInfo.protocols; }
+   Util::string GetProtocol() const { return mProtocol; }
+   void SetProtocol(Util::string protocol) { mProtocol = protocol; }
+
    bool GetAutoConnect() const;
 
-   Dlg* GetUIDlg();
-   bool StartUI(GdkRectangle *geometry,
-                const std::vector<Util::string> &devRedirectArgs =
-                   std::vector<Util::string>(),
-                const std::vector<Util::string> &usbRedirectArgs =
-                   std::vector<Util::string>());
+   virtual Status GetStatus() const;
+   virtual Util::string GetStatusMsg();
+   bool IsCVP() const;
+   bool GetRequiresDownload() const;
+
+   void StartUsb();
+
+   const BrokerXml::DesktopConnection &GetConnection() const
+      { return mDesktopConn; }
 
    boost::signal0<void> changed;
 
@@ -119,8 +152,6 @@ private:
    void OnRollbackAbort(bool canceled, Util::exception err,
                         Util::AbortSlot onAbort);
 
-   void StartUsb(const std::vector<Util::string> &usbRedirectArgs);
-
    BrokerXml &mXml;
    BrokerXml::Desktop mDesktopInfo;
 
@@ -128,7 +159,7 @@ private:
    BrokerXml::DesktopConnection mDesktopConn;
    Usb mUsb;
 
-   Dlg *mDlg;
+   Util::string mProtocol;
 };
 
 

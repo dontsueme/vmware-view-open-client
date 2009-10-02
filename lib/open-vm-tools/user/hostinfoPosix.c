@@ -201,7 +201,7 @@ HostinfoGetLoadAverage(float *avg0,  // IN/OUT
 Bool
 Hostinfo_GetLoadAverage(uint32 *avg)      // IN/OUT
 {
-   float avg0;
+   float avg0 = 0;
 
    if (!HostinfoGetLoadAverage(&avg0, NULL, NULL)) {
       return FALSE;
@@ -230,7 +230,7 @@ Hostinfo_GetLoadAverage(uint32 *avg)      // IN/OUT
 void
 Hostinfo_LogLoadAverage(void)
 {
-   float avg0, avg1, avg2;
+   float avg0 = 0, avg1 = 0, avg2 = 0;
 
    if (!HostinfoGetLoadAverage(&avg0, &avg1, &avg2)) {
       return;

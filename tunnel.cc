@@ -45,6 +45,8 @@
 #define TUNNEL_SYSTEM_MESSAGE "TUNNEL SYSTEM MESSAGE: "
 #define TUNNEL_ERROR "TUNNEL ERROR: "
 
+#define SOCKET_ERROR "SOCKET "
+
 
 namespace cdk {
 
@@ -212,13 +214,19 @@ Tunnel::OnDisconnect(int status) // IN
 void
 Tunnel::OnErr(Util::string line) // IN: this
 {
+  /*
+   * In general, messages from the tunnel are not translated. The ones we know
+   * about and can reasonably translate, i.e., ones which don't have variable
+   * content, are defined in extraTranslations.hh.
+   */
    if (line == TUNNEL_READY) {
       mIsConnected = true;
       onReady();
    } else if (line.find(TUNNEL_STOPPED, 0, strlen(TUNNEL_STOPPED)) == 0) {
       mDisconnectReason = Util::string(line, strlen(TUNNEL_STOPPED));
    } else if (line.find(TUNNEL_DISCONNECT, 0, strlen(TUNNEL_DISCONNECT)) == 0) {
-      mDisconnectReason = Util::string(line, strlen(TUNNEL_DISCONNECT));
+      mDisconnectReason = _(Util::string(line,
+                              strlen(TUNNEL_DISCONNECT)).c_str());
    } else if (line.find(TUNNEL_SYSTEM_MESSAGE, 0,
                         strlen(TUNNEL_SYSTEM_MESSAGE)) == 0) {
       Util::string msg = Util::string(line, strlen(TUNNEL_SYSTEM_MESSAGE));
@@ -226,13 +234,11 @@ Tunnel::OnErr(Util::string line) // IN: this
       App::ShowDialog(GTK_MESSAGE_INFO, _("Message from View Server: %s"),
                       msg.c_str());
    } else if (line.find(TUNNEL_ERROR, 0, strlen(TUNNEL_ERROR)) == 0) {
-      /*
-       * Messages from the tunnel are not translated; the ones we know
-       * about are listed in extraTranslations.hh.
-       */
       const char *err = _(Util::string(line, strlen(TUNNEL_ERROR)).c_str());
       Log("Tunnel error message: %s\n", err);
       App::ShowDialog(GTK_MESSAGE_ERROR, _("Error from View Server: %s"), err);
+   } else if (line.find(SOCKET_ERROR, 0, strlen(SOCKET_ERROR)) == 0) {
+      mDisconnectReason = Util::string(line, strlen(SOCKET_ERROR));
    }
 }
 

@@ -1,6 +1,6 @@
 open_source_licenses.txt
-VMware View Open Client 3.1.2
-Build 188088, 2009-08-26
+VMware View Open Client 4.0.0
+Build 196715, 2009-09-29
 
 
 The following copyright statements and licenses apply to various open source

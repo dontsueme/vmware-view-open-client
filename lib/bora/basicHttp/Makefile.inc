@@ -21,7 +21,9 @@
 noinst_LIBRARIES += libBasicHttp.a
 
 libBasicHttp_a_SOURCES =
+libBasicHttp_a_SOURCES += lib/bora/basicHttp/bandwidth.c
 libBasicHttp_a_SOURCES += lib/bora/basicHttp/http.c
+libBasicHttp_a_SOURCES += lib/bora/basicHttp/basicHttpInt.h
 libBasicHttp_a_SOURCES += lib/bora/basicHttp/requestQueue.h
 
 libBasicHttp_a_CPPFLAGS = $(AM_CPPFLAGS) $(CURL_CFLAGS)
