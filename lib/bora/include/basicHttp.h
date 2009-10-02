@@ -1,5 +1,5 @@
 /*********************************************************
- * Copyright (C) 1998 VMware, Inc. All rights reserved.
+ * Copyright (C) 2008 VMware, Inc. All rights reserved.
  *
  * This file is part of VMware View Open Client.
  *
@@ -127,6 +127,13 @@ enum {
    // To be done, Digest, NTLM, etc.
 };
 
+typedef int BasicHttpProxyType;
+enum {
+   BASICHTTP_PROXY_NONE,
+   BASICHTTP_PROXY_HTTP,
+   BASICHTTP_PROXY_SOCKS4
+};
+
 typedef struct BasicHttpRequest BasicHttpRequest;
 typedef struct BasicHttpResponse BasicHttpResponse;
 typedef struct BasicHttpCookieJar BasicHttpCookieJar;
@@ -136,10 +143,6 @@ typedef struct BasicHttpCookieJar BasicHttpCookieJar;
 typedef void BasicHttpOnSentProc(BasicHttpRequest *request,
                                  BasicHttpResponse *response,
                                  void *clientData);
-
-typedef void BasicHttpOnReceiveProc(BasicHttpRequest *request,
-                                    BasicHttpResponse *response,
-                                    void *clientData);
 
 struct BasicHttpResponse {
    BasicHttpErrorCode      errorCode;
@@ -169,10 +172,51 @@ Bool BasicHttp_InitEx(PollCallbackProc *pollCallbackProc,
 void BasicHttp_Shutdown(void);
 
 BasicHttpCookieJar *BasicHttp_CreateCookieJar(void);
+BasicHttpCookieJar *BasicHttp_CreateCookieFile(const char *cookieFile);
 
-void BasicHttp_SetInitialCookie(BasicHttpCookieJar *cookieJar, const char *cookie);
+void BasicHttp_SetInitialCookie(BasicHttpCookieJar *cookieJar,
+                                const char *cookie);
+
+void BasicHttp_NewCookieSession(BasicHttpCookieJar *cookieJar);
 
 void BasicHttp_FreeCookieJar(BasicHttpCookieJar *cookieJar);
+
+typedef void BasicHttpFreeProc(void *buf);
+
+/* Returns -1 for error, which signals an abort. */
+typedef ssize_t BasicHttpReadProc(void *privat,
+                                  void *buffer,
+                                  size_t size,
+                                  size_t nmemb);
+
+typedef Bool BasicHttpRewindProc(void *privat);
+
+typedef size_t BasicHttpLengthProc(void *privat);
+
+typedef void BasicHttpDestructProc(void *privat);
+
+typedef struct BasicHttpSourceOps BasicHttpSourceOps;
+typedef struct BasicHttpSource BasicHttpSource;
+typedef struct BasicHttpBody BasicHttpBody;
+
+struct BasicHttpSourceOps {
+   BasicHttpReadProc *readProc;
+   BasicHttpRewindProc *rewindProc;
+   BasicHttpLengthProc *lengthProc;
+
+   BasicHttpDestructProc *destructProc;
+};
+
+BasicHttpSource *BasicHttp_AllocSource(const BasicHttpSourceOps *ops,
+                                       void *privat);
+
+void BasicHttp_FreeSource(BasicHttpSource *source);
+
+BasicHttpSource *BasicHttp_AllocMemorySource(uint8 *data,
+                                             size_t dataLen,
+                                             BasicHttpFreeProc *dataFreeProc);
+
+BasicHttpSource *BasicHttp_AllocStringSource(const char *data);
 
 BasicHttpRequest *BasicHttp_CreateRequest(const char *url,
                                           BasicHttpMethod httpMethod,
@@ -180,8 +224,26 @@ BasicHttpRequest *BasicHttp_CreateRequest(const char *url,
                                           const char *header,
                                           const char *body);
 
-void BasicHttp_AppendRequestHeader(BasicHttpRequest *request,
+BasicHttpRequest *BasicHttp_CreateRequestWithSSL(const char *url,
+                                          BasicHttpMethod httpMethod,
+                                          BasicHttpCookieJar *cookieJar,
+                                          const char *header,
+                                          const char *body,
+                                          const char *sslCAInfo);
+
+BasicHttpRequest *BasicHttp_CreateRequestEx(const char *url,
+                                            BasicHttpMethod httpMethod,
+                                            BasicHttpCookieJar *cookieJar,
+                                            const char *header,
+                                            BasicHttpSource *body,
+                                            const char *sslCAInfo);
+
+Bool BasicHttp_AppendRequestHeader(BasicHttpRequest *request,
                                    const char *header);
+
+Bool BasicHttp_AppendRangeRequestHeader(BasicHttpRequest *request,
+                                        int64 start,
+                                        int64 size);
 
 void BasicHttp_SetRequestNameAndPassword(BasicHttpRequest *request,
                                          int authenticationType,
@@ -194,15 +256,79 @@ void BasicHttp_SetUserAgent(BasicHttpRequest *request,
 void BasicHttp_SetSslCtxProc(BasicHttpRequest *request,
                              BasicHttpSslCtxProc *sslCtxProc);
 
+void BasicHttp_SetProxy(BasicHttpRequest *request,
+                        const char *proxy,
+                        BasicHttpProxyType proxyType);
+
 Bool BasicHttp_SendRequest(BasicHttpRequest *request,
                            BasicHttpOnSentProc *onSentProc,
                            void *clientData);
+
+size_t BasicHttp_GetNumResponseHeaders(BasicHttpRequest *request);
+
+const char *BasicHttp_GetResponseHeader(BasicHttpRequest *request, size_t header);
+
+#define BASICHTTP_UNKNOWN_SIZE -1
+
+typedef Bool BasicHttpProgressProc(BasicHttpRequest *request,
+                                   size_t bufferSize,
+                                   void *buffer,
+                                   uint64 totalTransferred,
+                                   uint64 transferRate, // in byte/sec
+                                   void *clientData);
+
+typedef int BasicHttpOptions;
+enum {
+   BASICHTTP_NO_RESPONSE_CONTENT             = 0x0001,
+};
+
+Bool BasicHttp_SendRequestEx(BasicHttpRequest *request,
+                             BasicHttpOptions options,
+                             BasicHttpProgressProc *sendProgressProc,
+                             BasicHttpProgressProc *recvProgressProc,
+                             BasicHttpOnSentProc *onSentProc,
+                             void *clientData);
+
+Bool BasicHttp_PauseRecvRequest(BasicHttpRequest *request,
+                                Bool pause);
+
+Bool BasicHttp_PauseSendRequest(BasicHttpRequest *request,
+                                Bool pause);
 
 void BasicHttp_CancelRequest(BasicHttpRequest *request);
 
 void BasicHttp_FreeRequest(BasicHttpRequest *request);
 
 void BasicHttp_FreeResponse(BasicHttpResponse *response);
+
+typedef struct BasicHttpContentInfo {
+   int64       totalSize;
+   int64       expectedLength;
+   int64       rangeStart;
+   int64       rangeEnd;
+} BasicHttpContentInfo;
+
+void BasicHttp_GetRecvContentInfo(BasicHttpRequest *request,
+                                  BasicHttpContentInfo *contentInfo);
+
+#define BASICHTTP_UNLIMITED_BANDWIDTH  0
+
+typedef struct BasicHttpBandwidthGroup BasicHttpBandwidthGroup;
+
+BasicHttpBandwidthGroup *BasicHttp_CreateBandwidthGroup(uint64 uploadLimit,
+                                                        uint64 downloadLimit);  // Bytes per second
+
+Bool BasicHttp_AddRequestToBandwidthGroup(BasicHttpBandwidthGroup *group,
+                                          BasicHttpRequest *request);
+
+void BasicHttp_RemoveRequestFromBandwidthGroup(BasicHttpBandwidthGroup *group,
+                                               BasicHttpRequest *request);
+
+void BasicHttp_ChangeBandwidthGroup(BasicHttpBandwidthGroup *group,
+                                    uint64 uploadLimit,
+                                    uint64 downloadLimit);
+
+void BasicHttp_DeleteBandwidthGroup(BasicHttpBandwidthGroup *group);
 
 
 #ifdef __cplusplus

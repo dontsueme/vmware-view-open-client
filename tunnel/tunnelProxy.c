@@ -1741,8 +1741,6 @@ TunnelProxy_HTTPRecv(TunnelProxy *tp,  // IN
 
    /* Queue new ACK if we haven't sent one in a while */
    if (tp->lastChunkIdSeen - tp->lastChunkAckSent >= TP_MAX_UNACKNOWLEDGED) {
-      DEBUG_MSG(("Recv'd %d unacknowledged chunks.  Sending ACK chunk.\n",
-                 TP_MAX_UNACKNOWLEDGED));
       TunnelProxySendChunk(tp, TP_CHUNK_TYPE_ACK, 0, NULL, NULL, 0);
    }
 }
@@ -2663,8 +2661,6 @@ TunnelProxyEchoTimeoutCb(void *userData) // IN: TunnelProxy
       now = tv.tv_sec * 1000;
       now += tv.tv_usec / 1000;
    }
-
-   DEBUG_MSG(("Sending echo_rq (now=%"FMT64"d)\n", now));
 
    TunnelProxy_FormatMsg(&req, &reqLen, "now=L", now, NULL);
    TunnelProxy_SendMsg(tp, TP_MSG_ECHO_RQ, req, reqLen);

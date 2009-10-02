@@ -1,0 +1,45 @@
+#!/bin/bash
+################################################################################
+# Copyright 2009 VMware, Inc.  All rights reserved.
+#
+# This file is part of VMware View Open Client.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation version 2.1 and no later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the Lesser GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
+################################################################################
+#
+# This script goes through the libraries an application links against,
+# and changes the link paths for things in toolchain to look in the
+# Contents/Frameworks inside the .app directory.
+#
+# It also fixes up the paths for the libraries it copies.
+#
+# See the man pages for otool and install_name_tool for details.
+#
+################################################################################
+
+FRAMEWORKS=$2
+
+function fix_toolchain_path {
+   for lib in $(@OTOOL@ -L "$1" | @AWK@ '{ print $1 }' | @GREP@ toolchain) ; do
+      echo @INSTALL_NAME_TOOL@ -change $lib @executable_path/../Frameworks/$(basename $lib) "$1"
+      @INSTALL_NAME_TOOL@ -change $lib @executable_path/../Frameworks/$(basename $lib) "$1"
+      if [ ! -f "$FRAMEWORKS/$(basename $lib)" ] ; then
+         echo @INSTALL@ $lib "$FRAMEWORKS"
+         @INSTALL@ $lib "$FRAMEWORKS"
+         fix_toolchain_path "$FRAMEWORKS/$(basename $lib)"
+      fi
+   done
+}
+
+fix_toolchain_path "$1"

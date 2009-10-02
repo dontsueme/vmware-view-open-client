@@ -18,7 +18,9 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
+if VIEW_GTK
 noinst_LIBRARIES += libGtm.a
+endif
 
 libGtm_a_SOURCES :=
 libGtm_a_SOURCES += lib/gtm/gtm.c

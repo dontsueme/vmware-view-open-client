@@ -34,10 +34,10 @@
 
 #include "desktop.hh"
 #include "broker.hh"
-#include "rdesktop.hh"
 #include "util.hh"
 
 
+#define CVPA_MOID_PREFIX "cvpa-moid:"
 #define FRAMEWORK_LISTENER_NAME "FRAMEWORKCHANNEL"
 
 
@@ -64,7 +64,7 @@ Desktop::Desktop(BrokerXml &xml,                  // IN
                  BrokerXml::Desktop &desktopInfo) // IN
    : mXml(xml),
      mConnectionState(STATE_DISCONNECTED),
-     mDlg(NULL)
+     mProtocol(desktopInfo.protocols[desktopInfo.defaultProtocol])
 {
    SetInfo(desktopInfo);
 }
@@ -121,6 +121,12 @@ Desktop::SetInfo(BrokerXml::Desktop &desktopInfo)
        mConnectionState == STATE_KILLING_SESSION) {
       // Don't use SetConnectionState to avoid emitting changed(); see below.
       mConnectionState = STATE_DISCONNECTED;
+      /*
+       * XXX: See comment in Broker::OnDesktopOpDone... just kill the
+       * session id here until 364022 is fixed, to avoid bugs like
+       * 448470.
+       */
+      mDesktopInfo.sessionId.clear();
    }
    /*
     * Don't explicitly emit changed() here. So far the only use of SetInfo is
@@ -185,7 +191,7 @@ Desktop::Connect(Util::AbortSlot onAbort,   // IN
    mXml.GetDesktopConnection(GetID(),
       boost::bind(&Desktop::OnGetDesktopConnectionAbort, this, _1, _2, onAbort),
       boost::bind(&Desktop::OnGetDesktopConnectionDone, this, _1, _2, onDone),
-      info);
+      info, mProtocol);
 }
 
 
@@ -209,13 +215,6 @@ void
 Desktop::Disconnect()
 {
    SetConnectionState(STATE_DISCONNECTED);
-   if (mDlg) {
-      ProcHelper *ph = dynamic_cast<ProcHelper*>(mDlg);
-      if (ph) {
-         ph->Kill();
-      }
-      mDlg = NULL;
-   }
 }
 
 
@@ -398,7 +397,8 @@ Desktop::CanConnect()
 {
    return mConnectionState == STATE_DISCONNECTED &&
      (GetOfflineState() == BrokerXml::OFFLINE_NONE ||
-      GetOfflineState() == BrokerXml::OFFLINE_CHECKED_IN);
+      GetOfflineState() == BrokerXml::OFFLINE_CHECKED_IN ||
+      !GetCheckedOutByOther());
 }
 
 
@@ -525,84 +525,6 @@ Desktop::OnRollbackAbort(bool cancelled,          // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Desktop::GetDlg --
- *
- *      Returns the RDesktop desktop UI object.
- *
- * Results:
- *      The UI Dlg.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-Dlg*
-Desktop::GetUIDlg()
-{
-   if (!mDlg) {
-      if (mDesktopConn.protocol == "RDP") {
-         RDesktop *ui = new RDesktop();
-         ui->onExit.connect(boost::bind(&Desktop::Disconnect, this));
-         mDlg = ui;
-      } else {
-         NOT_REACHED();
-      }
-   }
-   return mDlg;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Desktop::StartUI --
- *
- *      Calls Start on mDlg. Passes geometry on to rdesktop to allow
- *      multi-monitor screen sizes.
- *
- * Results:
- *      true if a desktop connection exists and the UI has been started, false
- *      otherwise.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-bool
-Desktop::StartUI(GdkRectangle *geometry,                           // IN
-                 const std::vector<Util::string> &devRedirectArgs, // IN/OPT
-                 const std::vector<Util::string> &usbRedirectArgs) // IN/OPT
-{
-   if (mConnectionState == STATE_CONNECTED && mDlg) {
-      RDesktop *rdesktop = dynamic_cast<RDesktop*>(mDlg);
-
-      // Start the vmware-view-usb app if USB is enabled.
-      if (mDesktopConn.enableUSB) {
-         StartUsb(usbRedirectArgs);
-      }
-
-      if (rdesktop) {
-         Warning("Connecting rdesktop to %s:%d.\n",
-                 mDesktopConn.address.c_str(), mDesktopConn.port);
-         rdesktop->Start(mDesktopConn.address, mDesktopConn.username,
-                         mDesktopConn.domainName, mDesktopConn.password,
-                         geometry, mDesktopConn.port, devRedirectArgs);
-      } else {
-         NOT_REACHED();
-      }
-      return true;
-   }
-   return false;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
  * cdk::Desktop::StartUsb --
  *
  *      Starts the vmware-view-usb application.
@@ -617,7 +539,7 @@ Desktop::StartUI(GdkRectangle *geometry,                           // IN
  */
 
 void
-Desktop::StartUsb(const std::vector<Util::string> &usbRedirectArgs)  // IN
+Desktop::StartUsb()
 {
    // First we must locate the framework listener.
    BrokerXml::ListenerMap::iterator it =
@@ -629,7 +551,312 @@ Desktop::StartUsb(const std::vector<Util::string> &usbRedirectArgs)  // IN
               it->second.port,
               mDesktopConn.channelTicket.c_str());
       mUsb.Start(it->second.address, it->second.port,
-                 mDesktopConn.channelTicket, usbRedirectArgs);
+                 mDesktopConn.channelTicket);
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::IsCVP --
+ *
+ *      Returns whether the desktop is a CVP desktop.
+ *
+ *      As it turns out, CVPA will not use a cvpa-moid id if the desktop
+ *      is not local.  Thus, we'll assume that a desktop is CVP only if
+ *      VIEW_CVP is defined.
+ *
+ * Results:
+ *      true if a CVP desktop, false otherwise.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Desktop::IsCVP()
+   const
+{
+#ifdef VIEW_CVP
+   return true;
+#else
+   return false;
+#endif // VIEW_CVP
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::GetRequiresDownload --
+ *
+ *      Returns whether the desktop must be downloaded prior to use.
+ *
+ *      Currently, this only applies to CVP desktops.  A CVP desktop that
+ *      has an offline state of OFFLINE_CHECKED_IN or OFFLINE_CHECKING_OUT
+ *      indicates that the desktop is not local and must be downloaded.
+ *
+ * Results:
+ *      true if this desktop must be downloaded to connect, false otherwise
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Desktop::GetRequiresDownload() const
+{
+   // Check if the desktop is not checked out or only partially checked out
+   bool isRemote = GetOfflineState() == BrokerXml::OFFLINE_CHECKED_IN ||
+                   GetOfflineState() == BrokerXml::OFFLINE_CHECKING_OUT;
+
+   return IsCVP() && GetOfflineEnabled() && isRemote && !GetCheckedOutByOther();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::IsCheckedOutHereAndDisabled --
+ *
+ *      Returns whether the desktop is checked out here, but is currently
+ *      disabled for some reason, for example, because the underlying VM files
+ *      have been corrupted.
+ *
+ * Results:
+ *      bool.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Desktop::IsCheckedOutHereAndDisabled()
+   const
+{
+   return false;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::InNonBackgroundDesktopTransfer --
+ *
+ *      Returns whether the desktop is in the middle of a "non background"
+ *      desktop transfer to or fromm this machine. A "non background" transfer
+ *      is either a check in or check out that must be completed or cancelled
+ *      before the desktop may be connected to.
+ *
+ *      Note that this function operates on only the desktop's offline desktop
+ *      state as reported by the broker or cvpa and should not be used to
+ *      determine if there is an active check in or check out operation
+ *      underway.
+ *
+ * Results:
+ *      bool.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Desktop::InNonBackgroundDesktopTransfer()
+   const
+{
+   switch (GetOfflineState()) {
+   case BrokerXml::OFFLINE_CHECKING_IN:
+   case BrokerXml::OFFLINE_CHECKING_OUT:
+      return !GetCheckedOutByOther();
+   default:
+      return false;
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::GetCheckedOutHereAndDisabledMessage --
+ *
+ *      Returns a message appropriate for display as to why a locally checked
+ *      out desktop is currently disabled.
+ *
+ * Results:
+ *      Util::string.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Util::string
+Desktop::GetCheckedOutHereAndDisabledMessage()
+   const
+{
+   ASSERT(IsCheckedOutHereAndDisabled());
+
+   return _("Desktop is corrupted.");
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::GetNonBackgroundDesktopTransferMessage --
+ *
+ *      Returns a message appropriate for display summarizing the current
+ *      progress made on a non background desktop transfer.
+ *
+ *      Note that this function operaets on only the desktop's offline desktop
+ *      state as reported by cvpa and should not be used to determine if there
+ *      is an active check in or check out operation underway.
+ *
+ * Results:
+ *      Util::string.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Util::string
+Desktop::GetNonBackgroundDesktopTransferMessage()
+   const
+{
+   ASSERT(InNonBackgroundDesktopTransfer());
+   /*
+    * This call uses information only returned by cvpa, so we should only be
+    * called on CVP. Given that only CVP clients can be in desktop transfers
+    * to a client machine, this is a valid ASSERT.
+    */
+   ASSERT(IsCVP());
+
+   Util::string message;
+
+   switch (GetOfflineState()) {
+   case BrokerXml::OFFLINE_CHECKING_IN:
+      message = _("Desktop check in paused. Select connect to resume.");
+      break;
+   case BrokerXml::OFFLINE_CHECKING_OUT:
+      message = _("Desktop check out paused. Select connect to resume.");
+      break;
+   default:
+      NOT_IMPLEMENTED();
+   }
+
+   return message;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::GetStatus --
+ *
+ *      Returns the desktop's current status.
+ *
+ * Results:
+ *      Desktop::Status.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Desktop::Status
+Desktop::GetStatus()
+   const
+{
+   switch (mConnectionState) {
+   case Desktop::STATE_RESETTING:
+      return Desktop::STATUS_RESETTING;
+   case Desktop::STATE_KILLING_SESSION:
+      return Desktop::STATUS_LOGGING_OFF;
+   case Desktop::STATE_ROLLING_BACK:
+      return Desktop::STATUS_ROLLING_BACK;
+   default:
+      if (InLocalRollback()) {
+         return STATUS_LOCAL_ROLLBACK;
+      } else if (IsCheckedOutHereAndDisabled()) {
+         return STATUS_CHECKED_OUT_DISABLED;
+      } else if (GetCheckedOutByOther() ||
+                 (!IsCVP() && InNonBackgroundDesktopTransfer())) {
+         return STATUS_CHECKED_OUT_BY_OTHER;
+      } else if (InNonBackgroundDesktopTransfer()) {
+         return STATUS_NONBACKGROUND_TRANSFER;
+      } else if (InMaintenanceMode()) {
+         return STATUS_MAINTENANCE_MODE;
+      } else if (!GetSessionID().empty()) {
+         return STATUS_LOGGED_ON;
+      } else {
+         return STATUS_AVAILABLE;
+      }
+      break;
+   }
+
+   NOT_REACHED();
+   return STATUS_UNKNOWN;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Desktop::GetStatusMsg --
+ *
+ *      Returns a user visible string describing the status of this desktop.
+ *
+ * Results:
+ *      string representing the desktop's status.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Util::string
+Desktop::GetStatusMsg()
+{
+   Desktop::Status status = GetStatus();
+
+   switch (status) {
+   case Desktop::STATUS_RESETTING:
+      return _("Resetting desktop");
+   case Desktop::STATUS_LOGGING_OFF:
+      return _("Logging off");
+   case Desktop::STATUS_ROLLING_BACK:
+      return _("Rolling back checkout");
+   case Desktop::STATUS_LOCAL_ROLLBACK:
+      return _("Desktop is being rolled back (may not be available)");
+   case Desktop::STATUS_CHECKED_OUT_DISABLED:
+      return GetCheckedOutHereAndDisabledMessage();
+   case Desktop::STATUS_CHECKED_OUT_BY_OTHER:
+      return _("Checked out to another machine");
+   case Desktop::STATUS_NONBACKGROUND_TRANSFER:
+      return GetNonBackgroundDesktopTransferMessage();
+   case Desktop::STATUS_MAINTENANCE_MODE:
+      return _("Maintenance (may not be available)");
+   case Desktop::STATUS_LOGGED_ON:
+      return _("Logged on");
+   case Desktop::STATUS_AVAILABLE:
+      return _("Available");
+   default:
+      NOT_REACHED();
+      return _("Unknown status");
    }
 }
 

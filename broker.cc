@@ -30,8 +30,7 @@
 
 
 #include <boost/bind.hpp>
-#include <glib/gi18n.h>
-
+#include <glib.h>
 
 #include "app.hh"
 #include "broker.hh"
@@ -40,12 +39,12 @@
 #include "util.hh"
 
 
-#define ERR_UNSUPPORTED_VERSION "UNSUPPORTED_VERSION"
 #define ERR_ALREADY_AUTHENTICATED "ALREADY_AUTHENTICATED"
 #define ERR_AUTHENTICATION_FAILED "AUTHENTICATION_FAILED"
-
-
-#define TOKEN_EVENT_TIMEOUT_MS 500
+#define ERR_DESKTOP_LAUNCH_ERROR "DESKTOP_LAUNCH_ERROR"
+#define ERR_NOT_AUTHENTICATED "NOT_AUTHENTICATED"
+#define ERR_NOT_ENTITLED "NOT_ENTITLED"
+#define ERR_UNSUPPORTED_VERSION "UNSUPPORTED_VERSION"
 
 
 namespace cdk {
@@ -71,13 +70,11 @@ Broker::Broker()
    : mXml(NULL),
      mTunnel(NULL),
      mDesktop(NULL),
-     mCryptoki(NULL),
-     mPin(NULL),
-     mX509(NULL),
      mCertState(CERT_NOT_REQUESTED),
      mRefreshTimeoutSourceID(0),
      mGettingDesktops(false),
-     mTokenEventTimeout(0)
+     mSmartCardPin(NULL),
+     mAuthRequestId(0)
 {
 }
 
@@ -100,12 +97,7 @@ Broker::Broker()
 
 Broker::~Broker()
 {
-   if (mRefreshTimeoutSourceID) {
-      g_source_remove(mRefreshTimeoutSourceID);
-      mRefreshTimeoutSourceID = 0;
-   }
    Reset();
-   delete mCryptoki;
 }
 
 
@@ -128,6 +120,19 @@ Broker::~Broker()
 void
 Broker::Reset()
 {
+   if (mRefreshTimeoutSourceID) {
+      g_source_remove(mRefreshTimeoutSourceID);
+      mRefreshTimeoutSourceID = 0;
+   }
+
+   /*
+    * The abort handlers here could access Desktops, so cancel them
+    * before deleting the desktops.
+   */
+   if (mXml) {
+      mXml->CancelRequests();
+   }
+
    for (std::vector<Desktop*>::iterator i = mDesktops.begin();
         i != mDesktops.end(); i++) {
       delete *i;
@@ -136,20 +141,15 @@ Broker::Reset()
    // already deleted above
    mDesktop = NULL;
 
-   mTunnelDisconnectCnx.disconnect();
+   ResetTunnel();
    mTunnelMonitor.Reset();
-   delete mTunnel;
-   mTunnel = NULL;
 
    delete mXml;
    mXml = NULL;
+   mAuthRequestId = 0;
 
-   ASSERT(!mX509);
-   ASSERT(!mPin);
+   ClearSmartCardPinAndReader();
 
-   if (mCryptoki) {
-      mCryptoki->CloseAllSessions();
-   }
    mCertState = CERT_NOT_REQUESTED;
 }
 
@@ -185,13 +185,21 @@ Broker::Initialize(const Util::string &hostname,      // IN
        secure ? "https" : "http", hostname.c_str(), port);
 
    mXml = new BrokerXml(hostname, port, secure);
+   if (!mCookieFile.empty()) {
+      mXml->SetCookieFile(mCookieFile);
+      mXml->ForgetCookies();
+   }
    mXml->certificateRequested.connect(
       boost::bind(&Broker::OnCertificateRequested, this, _1, _2, _3));
    mUsername = defaultUser;
    mDomain = defaultDomain;
 
+   mXml->QueueRequests();
    SetLocale();
+   GetConfiguration();
+   mXml->SendQueuedRequests();
 }
+
 
 /*
  *-----------------------------------------------------------------------------
@@ -220,100 +228,13 @@ Broker::SetLocale()
    char *locale = setlocale(LC_MESSAGES, NULL);
    if (locale != NULL && locale[0] != '\0' && strcmp(locale, "C") != 0 &&
        strcmp(locale, "POSIX") != 0) {
-      SetBusy(_("Setting client locale..."));
+      if (mDelegate) {
+         mDelegate->SetBusy(_("Setting client locale..."));
+      }
       mXml->SetLocale(locale,
                       boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
-                      boost::bind(&Broker::GetConfiguration, this));
-   } else {
-      GetConfiguration();
+                      boost::bind(&Broker::OnLocaleSet, this));
    }
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::SubmitScInsertPrompt --
- *
- *      Answer to a RequestScInsertPrompt call.  Quit the main loop
- *      and return to processing the certificate request.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      A Gtk main loop is quit.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-Broker::SubmitScInsertPrompt(bool useCert) // IN
-{
-   ASSERT(mCertState == CERT_SHOULD_RESPOND);
-   SetBusy(_("Logging in..."));
-   if (!useCert) {
-      mCertState = CERT_DID_RESPOND;
-   }
-   gtk_main_quit();
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::SubmitScPin --
- *
- *      Answer to a ScPinRequested call.  Store the PIN, and quit the
- *      extra main loop to continue with the SSL handshake process.
- *
- *      A NULL pin signifies that the card should not be logged in to.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      A Gtk main loop is quit.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-Broker::SubmitScPin(const char *pin) // IN
-{
-   SetBusy(_("Logging in..."));
-   ASSERT(!mPin);
-   mPin = g_strdup(pin);
-   gtk_main_quit();
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::SubmitCertificate --
- *
- *      Answer to the RequestScPin call.  Stores the cert to use, and
- *      quits a main loop so the SSL handshake can continue.
- *
- *      A NULL x509 signifies that no certificate should be used.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      A Gtk main loop is quit.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-Broker::SubmitCertificate(X509 *x509) // IN
-{
-   SetBusy(_("Logging in..."));
-   ASSERT(!mX509);
-   mX509 = x509;
-   gtk_main_quit();
 }
 
 
@@ -336,7 +257,9 @@ Broker::SubmitCertificate(X509 *x509) // IN
 void
 Broker::AcceptDisclaimer()
 {
-   SetBusy(_("Accepting disclaimer..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Accepting disclaimer..."));
+   }
    if (mCertState == CERT_REQUESTED) {
       /*
        * Pre-login message is enabled, and the server asked us for a
@@ -348,9 +271,13 @@ Broker::AcceptDisclaimer()
       mXml->ResetConnections();
       mCertState = CERT_SHOULD_RESPOND;
    }
+   mXml->QueueRequests();
    mXml->AcceptDisclaimer(
       boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
       boost::bind(&Broker::OnAuthResult, this, _1, _2));
+   InitTunnel();
+   GetDesktops();
+   mXml->SendQueuedRequests();
 }
 
 
@@ -374,12 +301,18 @@ void
 Broker::SubmitPasscode(const Util::string &username, // IN
                        const Util::string &passcode) // IN
 {
-   SetBusy(_("Logging in..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Logging in..."));
+   }
    mUsername = username;
+   mXml->QueueRequests();
    mXml->SecurIDUsernamePasscode(
       username, passcode,
       boost::bind(&Broker::OnAbort, this, _1, _2),
       boost::bind(&Broker::OnAuthResult, this, _1, _2));
+   InitTunnel();
+   GetDesktops();
+   mXml->SendQueuedRequests();
 }
 
 
@@ -402,11 +335,17 @@ Broker::SubmitPasscode(const Util::string &username, // IN
 void
 Broker::SubmitNextTokencode(const Util::string &tokencode) // IN
 {
-   SetBusy(_("Logging in..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Logging in..."));
+   }
+   mXml->QueueRequests();
    mXml->SecurIDNextTokencode(
       tokencode,
       boost::bind(&Broker::OnAbort, this, _1, _2),
       boost::bind(&Broker::OnAuthResult, this, _1, _2));
+   InitTunnel();
+   GetDesktops();
+   mXml->SendQueuedRequests();
 }
 
 
@@ -430,11 +369,17 @@ void
 Broker::SubmitPins(const Util::string &pin1, // IN
                    const Util::string &pin2) // IN
 {
-   SetBusy(_("Logging in..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Logging in..."));
+   }
+   mXml->QueueRequests();
    mXml->SecurIDPins(
       pin1, pin2,
       boost::bind(&Broker::OnAbort, this, _1, _2),
       boost::bind(&Broker::OnAuthResult, this, _1, _2));
+   InitTunnel();
+   GetDesktops();
+   mXml->SendQueuedRequests();
 }
 
 
@@ -459,13 +404,19 @@ Broker::SubmitPassword(const Util::string &username, // IN
                        const Util::string &password, // IN
                        const Util::string &domain)   // IN
 {
-   SetBusy(_("Logging in..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Logging in..."));
+   }
    mUsername = username;
    mDomain = domain;
+   mXml->QueueRequests();
    mXml->PasswordAuthentication(
       username, password, domain,
       boost::bind(&Broker::OnAbort, this, _1, _2),
       boost::bind(&Broker::OnAuthResult, this, _1, _2));
+   InitTunnel();
+   GetDesktops();
+   mXml->SendQueuedRequests();
 }
 
 
@@ -490,17 +441,23 @@ Broker::ChangePassword(const Util::string &oldPassword, // IN
                        const Util::string &newPassword, // IN
                        const Util::string &confirm)     // IN
 {
-   SetBusy(_("Changing password..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Changing password..."));
+   }
+   mXml->QueueRequests();
    mXml->ChangePassword(oldPassword, newPassword, confirm,
                         boost::bind(&Broker::OnAbort, this, _1,_2),
                         boost::bind(&Broker::OnAuthResult, this, _1, _2));
+   InitTunnel();
+   GetDesktops();
+   mXml->SendQueuedRequests();
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Broker::GetDesktopConnection --
+ * cdk::Broker::ConnectDesktop --
  *
  *      Begin connecting to a desktop.
  *
@@ -520,16 +477,16 @@ Broker::ConnectDesktop(Desktop *desktop) // IN
    ASSERT(desktop->GetConnectionState() == Desktop::STATE_DISCONNECTED);
 
    mDesktop = desktop;
-   RequestTransition(_("Connecting to the desktop..."));
-   if (!mTunnel) {
-      InitTunnel();
-   } else if (mTunnel->GetIsConnected()) {
+   if (mDelegate) {
+      mDelegate->RequestTransition(_("Connecting to the desktop..."));
+   }
+   if (GetTunnelReady()) {
+      Util::ClientInfoMap clientInfo = Util::GetClientInfo(mXml->GetHostname(),
+                                                           mXml->GetPort());
       /*
        * Connecting to the desktop before the tunnel is connected
        * results in DESKTOP_NOT_AVAILABLE.
        */
-      Util::ClientInfoMap clientInfo = Util::GetClientInfo(mXml->GetHostname(),
-                                                           mXml->GetPort());
       desktop->Connect(boost::bind(&Broker::OnAbort, this, _1, _2),
                        boost::bind(&Broker::MaybeLaunchDesktop, this),
                        clientInfo);
@@ -593,13 +550,11 @@ Broker::ResetDesktop(Desktop *desktop, // IN
    ASSERT(mXml);
    ASSERT(desktop);
 
-   Util::AbortSlot abort = boost::bind(&Broker::OnAbort, this, _1, _2);
-   if (andQuit) {
-      desktop->ResetDesktop(abort, boost::bind(&Broker::Quit, this));
-   } else {
-      desktop->ResetDesktop(abort, boost::bind(&Broker::OnDesktopOpDone,
-                                               this, desktop));
-      UpdateDesktops();
+   desktop->ResetDesktop(boost::bind(&Broker::OnAbort, this, _1, _2),
+                         boost::bind(&Broker::OnDesktopOpDone,
+                                     this, desktop, andQuit));
+   if (mDelegate && !andQuit) {
+      mDelegate->UpdateDesktops();
    }
 }
 
@@ -628,8 +583,9 @@ Broker::KillSession(Desktop *desktop) // IN
 
    desktop->KillSession(
                       boost::bind(&Broker::OnAbort, this, _1, _2),
-                      boost::bind(&Broker::OnDesktopOpDone, this, desktop));
-   UpdateDesktops();
+                      boost::bind(&Broker::OnDesktopOpDone, this, desktop,
+                                  false));
+   mDelegate->UpdateDesktops();
 }
 
 
@@ -657,8 +613,9 @@ Broker::RollbackDesktop(Desktop *desktop) // IN
    ASSERT(desktop->GetOfflineState() == BrokerXml::OFFLINE_CHECKED_OUT);
 
    desktop->Rollback(boost::bind(&Broker::OnAbort, this, _1, _2),
-                     boost::bind(&Broker::OnDesktopOpDone, this, desktop));
-   UpdateDesktops();
+                     boost::bind(&Broker::OnDesktopOpDone, this, desktop,
+                                 false));
+   mDelegate->UpdateDesktops();
 }
 
 
@@ -680,8 +637,15 @@ Broker::RollbackDesktop(Desktop *desktop) // IN
  */
 
 void
-Broker::OnDesktopOpDone(Desktop *desktop) // IN
+Broker::OnDesktopOpDone(Desktop *desktop,   // IN
+                        bool andDisconnect) // IN
 {
+   if (andDisconnect) {
+      if (mDelegate) {
+         mDelegate->Disconnect();
+      }
+      return;
+   }
    if (desktop->GetConnectionState() == Desktop::STATE_RESETTING ||
        desktop->GetConnectionState() == Desktop::STATE_KILLING_SESSION) {
       /*
@@ -699,7 +663,7 @@ Broker::OnDesktopOpDone(Desktop *desktop) // IN
          g_source_remove(mRefreshTimeoutSourceID);
       }
       mRefreshTimeoutSourceID =
-         g_timeout_add(4000, RefreshDesktopsTimeout, this);
+         g_timeout_add(10000, RefreshDesktopsTimeout, this);
    } else {
       GetDesktops(true);
    }
@@ -755,7 +719,9 @@ Broker::RefreshDesktopsTimeout(gpointer data) // IN
 void
 Broker::Logout()
 {
-   SetBusy(_("Logging out..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Logging out..."));
+   }
    mXml->Logout(boost::bind(&Broker::OnAbort, this, _1, _2),
                 boost::bind(&Broker::OnLogoutResult, this));
 }
@@ -780,7 +746,9 @@ Broker::Logout()
 void
 Broker::GetConfiguration()
 {
-   SetBusy(_("Getting server configuration..."));
+   if (mDelegate) {
+      mDelegate->SetBusy(_("Getting server configuration..."));
+   }
    mXml->GetConfiguration(
       boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
       boost::bind(&Broker::OnConfigurationDone, this, _1, _2));
@@ -808,6 +776,9 @@ void
 Broker::OnAuthResult(BrokerXml::Result &result,   // IN
                      BrokerXml::AuthResult &auth) // IN
 {
+   if (result.result == "ok" && mDelegate) {
+      mDelegate->SetLogoutOnCertRemoval(auth.logoutOnCertRemoval);
+   }
    OnAuthInfo(result, auth.authInfo);
 }
 
@@ -863,85 +834,116 @@ Broker::OnAuthInfo(BrokerXml::Result &result,     // IN
    Log("Auth Info: Name: %s, result: %s\n",
        authInfo.name.c_str(), result.result.c_str());
 
+   mAuthRequestId = mXml->GetRequestId();
+
    if (result.result == "ok" && !treatOkAsPartial) {
-      OnAuthComplete();
-   } else if (result.result == "partial" || result.result == "ok") {
-      SetReady();
-      const Util::string error = authInfo.GetError();
-      if (!error.empty()) {
-         App::ShowDialog(GTK_MESSAGE_ERROR, _("Error authenticating: %s"),
-                         error.c_str());
-      }
-
-      if (authInfo.GetAuthType() != BrokerXml::AUTH_DISCLAIMER &&
-          mCertState == CERT_REQUESTED) {
-         /*
-          * No pre-login message, and cert auth optional.  We need to
-          * forget the cookies here, because get-configuration has
-          * moved in its auth chain past certificate auth to
-          * password/etc. auth.  If we do a get-configuration again,
-          * it will remember that it had past cert auth and just ask
-          * for a password again, without looking at the certificate
-          * we gave it.
-          */
-         Log("Got non-disclaimer auth method and cert was previously requested;"
-             " enabling cert response and retrying GetConfiguration()...\n");
-         mXml->ForgetCookies();
-         mXml->ResetConnections();
-         mCertState = CERT_SHOULD_RESPOND;
-         GetConfiguration();
-         return;
-      }
-
-      switch (authInfo.GetAuthType()) {
-      case BrokerXml::AUTH_DISCLAIMER:
-         RequestDisclaimer(authInfo.GetDisclaimer());
-         break;
-      case BrokerXml::AUTH_SECURID_PASSCODE:
-         RequestPasscode(mUsername);
-         break;
-      case BrokerXml::AUTH_SECURID_NEXTTOKENCODE:
-         RequestNextTokencode(mUsername);
-         break;
-      case BrokerXml::AUTH_SECURID_PINCHANGE:
-         // This is a bit complicated, so defer to another function
-         OnAuthInfoPinChange(authInfo.params);
-         break;
-      case BrokerXml::AUTH_SECURID_WAIT:
-         App::ShowDialog(GTK_MESSAGE_INFO,
-                         _("Your new RSA SecurID PIN has been set.\n\n"
-                           "Please wait for the next tokencode to appear"
-                           " on your RSA SecurID token, then continue."));
-         RequestPasscode(mUsername);
-         break;
-      case BrokerXml::AUTH_WINDOWS_PASSWORD: {
-         bool readOnly = false;
-         Util::string user = authInfo.GetUsername(&readOnly);
-         RequestPassword(user.empty() ? mUsername : user, readOnly,
-                         authInfo.GetDomains(), mDomain);
-         break;
-      }
-      case BrokerXml::AUTH_WINDOWS_PASSWORD_EXPIRED:
-         mUsername = authInfo.GetUsername();
-         RequestPasswordChange(mUsername, mDomain);
-         break;
-      case BrokerXml::AUTH_CERT_AUTH:
-         mXml->SubmitCertAuth(
-            true, boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
-            boost::bind(&Broker::OnAuthResult, this, _1, _2));
-         break;
-      default:
-         App::ShowDialog(GTK_MESSAGE_ERROR,
-                         _("Unknown authentication method requested: %s"),
-                         authInfo.name.c_str());
-         RequestBroker();
-         break;
-      }
-   } else {
+      // get-desktops reply is later in this RPC.
+      return;
+   } else if (result.result != "partial" && result.result != "ok") {
       App::ShowDialog(GTK_MESSAGE_ERROR, _("Unknown result returned: %s"),
                       result.result.c_str());
-      SetReady();
-      RequestBroker();
+      if (mDelegate) {
+         mDelegate->SetReady();
+         mDelegate->RequestBroker();
+      }
+      return;
+   }
+
+   if (mDelegate) {
+      mDelegate->SetReady();
+   }
+   const Util::string error = authInfo.GetError();
+   if (!error.empty()) {
+      App::ShowDialog(GTK_MESSAGE_ERROR, _("Error authenticating: %s"),
+                      error.c_str());
+   }
+
+   if (authInfo.GetAuthType() != BrokerXml::AUTH_DISCLAIMER &&
+       mCertState == CERT_REQUESTED) {
+      /*
+       * No pre-login message, and cert auth optional.  We need to
+       * forget the cookies here, because get-configuration has
+       * moved in its auth chain past certificate auth to
+       * password/etc. auth.  If we do a get-configuration again,
+       * it will remember that it had past cert auth and just ask
+       * for a password again, without looking at the certificate
+       * we gave it.
+       */
+      Log("Got non-disclaimer auth method and cert was previously requested;"
+          " enabling cert response and retrying GetConfiguration()...\n");
+      mXml->ForgetCookies();
+      mXml->ResetConnections();
+      mCertState = CERT_SHOULD_RESPOND;
+      GetConfiguration();
+      return;
+   }
+
+   switch (authInfo.GetAuthType()) {
+   case BrokerXml::AUTH_DISCLAIMER:
+      if (mDelegate) {
+         mDelegate->RequestDisclaimer(authInfo.GetDisclaimer());
+      }
+      break;
+   case BrokerXml::AUTH_SECURID_PASSCODE:
+      if (mDelegate) {
+         mDelegate->RequestPasscode(mUsername);
+      }
+      break;
+   case BrokerXml::AUTH_SECURID_NEXTTOKENCODE:
+      if (mDelegate) {
+         mDelegate->RequestNextTokencode(mUsername);
+      }
+      break;
+   case BrokerXml::AUTH_SECURID_PINCHANGE:
+      // This is a bit complicated, so defer to another function
+      OnAuthInfoPinChange(authInfo.params);
+      break;
+   case BrokerXml::AUTH_SECURID_WAIT:
+      App::ShowDialog(GTK_MESSAGE_INFO,
+                      _("Your new RSA SecurID PIN has been set.\n\n"
+                        "Please wait for the next tokencode to appear"
+                        " on your RSA SecurID token, then continue."));
+      if (mDelegate) {
+         mDelegate->RequestPasscode(mUsername);
+      }
+      break;
+   case BrokerXml::AUTH_WINDOWS_PASSWORD: {
+      bool readOnly = false;
+      Util::string user = authInfo.GetUsername(&readOnly);
+      if (mDelegate) {
+         mDelegate->RequestPassword(user.empty() ? mUsername : user, readOnly,
+                                    authInfo.GetDomains(), mDomain);
+      }
+      break;
+   }
+   case BrokerXml::AUTH_WINDOWS_PASSWORD_EXPIRED:
+      mUsername = authInfo.GetUsername();
+      if (mDelegate) {
+         mDelegate->RequestPasswordChange(mUsername, mDomain);
+      }
+      break;
+   case BrokerXml::AUTH_CERT_AUTH:
+      if (mDelegate) {
+         mDelegate->SetBusy(_("Logging in..."));
+      }
+      mXml->QueueRequests();
+      mXml->SubmitCertAuth(
+         true, mSmartCardPin, mSmartCardReader,
+         boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
+         boost::bind(&Broker::OnAuthResult, this, _1, _2));
+      InitTunnel();
+      GetDesktops();
+      mXml->SendQueuedRequests();
+      ClearSmartCardPinAndReader();
+      break;
+   default:
+      App::ShowDialog(GTK_MESSAGE_ERROR,
+                      _("Unknown authentication method requested: %s"),
+                      authInfo.name.c_str());
+      if (mDelegate) {
+         mDelegate->RequestBroker();
+      }
+      break;
    }
 }
 
@@ -988,44 +990,9 @@ Broker::OnAuthInfoPinChange(std::vector<BrokerXml::Param> &params) // IN
    if (!userSelectable && pin.empty()) {
       App::ShowDialog(GTK_MESSAGE_ERROR,
                       _("Invalid PIN Change response sent by server."));
-   } else {
-      RequestPinChange(pin, message, userSelectable);
+   } else if (mDelegate) {
+      mDelegate->RequestPinChange(pin, message, userSelectable);
    }
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::OnAuthComplete --
- *
- *      Handle the next phase of broker interaction following a successful (or
- *      skipped) authentication step.  If the broker is version >1, initialize
- *      the tunnel.  Begins loading the desktop list.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      Displays PIN change page.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-Broker::OnAuthComplete()
-{
-   /*
-    * If this is a 1.0 broker, it'll get upset if we send both
-    * the tunnel and desktop list requests at the same time. So
-    * we'll set up the tunnel after we get the desktop list. See
-    * bug 311999.
-    */
-   if (mXml->GetBrokerVersion() != BrokerXml::VERSION_1) {
-      InitTunnel();
-   }
-   GetDesktops();
-   SetBusy(_("Getting desktop list..."));
 }
 
 
@@ -1052,6 +1019,7 @@ Broker::GetDesktops(bool refresh) // IN/OPT
    if (!mGettingDesktops || !refresh) {
       mGettingDesktops = true;
       mXml->GetDesktops(
+         mSupportedProtocols,
          boost::bind(&Broker::OnAbort, this, _1, _2),
          boost::bind(refresh ? &Broker::OnGetDesktopsRefresh :
                         &Broker::OnGetDesktopsSet, this, _2));
@@ -1078,16 +1046,72 @@ Broker::GetDesktops(bool refresh) // IN/OPT
 void
 Broker::InitTunnel()
 {
-   ASSERT(!mTunnel);
+   /*
+    * Ensure we have a clean state for the tunnel.
+    */
+   if (mTunnel) {
+      ResetTunnel();
+   }
+   mXml->GetTunnelConnection(
+      boost::bind(&Broker::OnAbort, this, _1, _2),
+      boost::bind(&Broker::OnGetTunnelConnectionDone, this, _2));
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Broker::ResetTunnel --
+ *
+ *      Reset tunnel state to allow a new tunnel connection.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Broker::ResetTunnel()
+{
+   mTunnelDisconnectCnx.disconnect();
+   delete mTunnel;
+   mTunnel = NULL;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Broker::OnGetTunnelConnectionDone --
+ *
+ *      Done handler for get-tunnel-connection - creates a tunnel and
+ *      connects it to the tunnel server, if direct connect is not
+ *      enabled.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Tunnel may be started & connected.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Broker::OnGetTunnelConnectionDone(BrokerXml::Tunnel &tunnel) // IN
+{
+   mTunnelDisconnectCnx.disconnect();
+   delete mTunnel;
 
    mTunnel = new Tunnel();
    mTunnel->onReady.connect(boost::bind(&Broker::OnTunnelConnected, this));
    mTunnelDisconnectCnx = mTunnel->onDisconnect.connect(
       boost::bind(&Broker::OnTunnelDisconnect, this, _1, _2));
-
-   mXml->GetTunnelConnection(
-      boost::bind(&Broker::OnTunnelRPCAbort, this, _1, _2),
-      boost::bind(&Tunnel::Connect, mTunnel, _2));
+   mTunnel->Connect(tunnel);
 }
 
 
@@ -1111,14 +1135,21 @@ Broker::InitTunnel()
 void
 Broker::OnTunnelConnected()
 {
-   ASSERT(mTunnel);
-   ASSERT(mTunnel->GetIsConnected());
-   if (mDesktop &&
-       mDesktop->GetConnectionState() == Desktop::STATE_DISCONNECTED) {
-      ConnectDesktop(mDesktop);
-   } else {
-      MaybeLaunchDesktop();
+   ASSERT(GetTunnelReady());
+   if (mDesktop) {
+      switch (mDesktop->GetConnectionState()) {
+      case Desktop::STATE_DISCONNECTED:
+         ConnectDesktop(mDesktop);
+         return;
+      case Desktop::STATE_CONNECTED:
+         // App will likely respawn the desktop if desired.
+         mDesktop->Disconnect();
+         return;
+      default:
+         break;
+      }
    }
+   MaybeLaunchDesktop();
 }
 
 
@@ -1143,13 +1174,18 @@ void
 Broker::OnTunnelDisconnect(int status,                    // IN
                            Util::string disconnectReason) // IN
 {
-   delete mTunnel;
-   mTunnel = NULL;
-   if (disconnectReason.empty() && status &&
-       !mTunnelMonitor.ShouldThrottle()) {
+   // ResetTunnel resets the monitor too
+   bool shouldThrottle = mTunnelMonitor.ShouldThrottle();
+
+   ResetTunnel();
+
+   if (disconnectReason.empty() && status && !shouldThrottle) {
       InitTunnel();
    } else {
-      TunnelDisconnected(disconnectReason);
+      mTunnelMonitor.Reset();
+      if (mDelegate) {
+         mDelegate->TunnelDisconnected(disconnectReason);
+      }
    }
 }
 
@@ -1175,24 +1211,22 @@ void
 Broker::OnGetDesktopsSet(BrokerXml::EntitledDesktops &desktops) // IN
 {
    mGettingDesktops = false;
-   // Since we didn't do this in OnAuthInfo, let's do it now.
-   if (mXml->GetBrokerVersion() == BrokerXml::VERSION_1 &&
-       !mTunnel) {
-      InitTunnel();
-   }
 
    std::vector<Desktop *> newDesktops;
    for (BrokerXml::DesktopList::iterator i = desktops.desktops.begin();
         i != desktops.desktops.end(); i++) {
       Desktop *desktop = new Desktop(*mXml, *i);
       newDesktops.push_back(desktop);
-      desktop->changed.connect(boost::bind(&Broker::UpdateDesktops, this));
+      desktop->changed.connect(boost::bind(&Broker::Delegate::UpdateDesktops,
+                                           mDelegate));
    }
 
    mDesktops = newDesktops;
-   SetReady();
-   // This is a superset of UpdateDesktops().
-   RequestDesktop();
+   if (mDelegate) {
+      mDelegate->SetReady();
+      // This is a superset of UpdateDesktops().
+      mDelegate->RequestDesktop();
+   }
 }
 
 
@@ -1236,7 +1270,8 @@ Broker::OnGetDesktopsRefresh(BrokerXml::EntitledDesktops &desktops) // IN
          // New desktop--add it.
          Desktop *desktop = new Desktop(*mXml, *i);
          newDesktops.push_back(desktop);
-         desktop->changed.connect(boost::bind(&Broker::UpdateDesktops, this));
+         desktop->changed.connect(boost::bind(&Broker::Delegate::UpdateDesktops,
+                                              mDelegate));
       }
    }
    // Delete desktops that aren't still in the list.
@@ -1247,7 +1282,9 @@ Broker::OnGetDesktopsRefresh(BrokerXml::EntitledDesktops &desktops) // IN
    mDesktops.clear();
 
    mDesktops = newDesktops;
-   UpdateDesktops();
+   if (mDelegate) {
+      mDelegate->UpdateDesktops();
+   }
 }
 
 
@@ -1271,8 +1308,8 @@ Broker::OnGetDesktopsRefresh(BrokerXml::EntitledDesktops &desktops) // IN
 void
 Broker::MaybeLaunchDesktop()
 {
-   if (GetTunnelReady() && GetDesktopReady()) {
-      RequestLaunchDesktop(mDesktop);
+   if (mDelegate && GetTunnelReady() && GetDesktopReady()) {
+      mDelegate->RequestLaunchDesktop(mDesktop);
    }
 }
 
@@ -1296,8 +1333,10 @@ Broker::MaybeLaunchDesktop()
 void
 Broker::OnLogoutResult()
 {
-   SetReady();
-   Quit();
+   if (mDelegate) {
+      mDelegate->SetReady();
+      mDelegate->Disconnect();
+   }
 }
 
 
@@ -1326,22 +1365,48 @@ Broker::OnAbort(bool cancelled,      // IN
                 Util::exception err) // IN
 {
    // Update list to reflect reset Desktop ConnectionState values on failure.
-   UpdateDesktops();
+   if (mDelegate) {
+      mDelegate->UpdateDesktops();
 
-   SetReady();
+      mDelegate->SetReady();
+   }
    if (cancelled) {
       return;
    }
    if (err.code() == ERR_AUTHENTICATION_FAILED) {
-      RequestBroker();
       App::ShowDialog(GTK_MESSAGE_ERROR, _("Error authenticating: %s"),
                       err.what());
-   } else if (err.code() == "NOT_AUTHENTICATED") {
-      RequestBroker();
-      App::ShowDialog(GTK_MESSAGE_ERROR,
-                      _("The View Server has logged you out."));
+      if (mDelegate) {
+         mDelegate->RequestBroker();
+      }
+   } else if (err.code() == ERR_NOT_AUTHENTICATED) {
+      /*
+       * VDM 2.0 sends NOT_AUTHENTICATED instead of notexecuted for
+       * requests that need auth if the corresponding
+       * submit-authentication partially failed.
+       *
+       * So, we ignore these errors when we're in a multi-rpc that
+       * we've already had an auth result for (bz 471680).
+       */
+      if (mXml->GetProtocolVersion() != BaseXml::VERSION_1 ||
+          mXml->GetRequestId() != mAuthRequestId) {
+         Util::string hostname = mXml->GetHostname();
+         int port = mXml->GetPort();
+         bool secure = mXml->GetSecure();
+         Reset();
+         Initialize(hostname, port, secure, mUsername, mDomain);
+      }
+   } else if (err.code() == ERR_DESKTOP_LAUNCH_ERROR &&
+              mTunnel && mTunnel->GetIsBypassed() &&
+              !mTunnelMonitor.ShouldThrottle()) {
+      /*
+       * XXX: Going this route is very slow, as the broker waits for tunnel
+       *      setup before failing the desktop connection.
+       */
+      ResetTunnel();
+      InitTunnel();
    } else {
-      if (err.code() == "NOT_ENTITLED") {
+      if (err.code() == ERR_NOT_ENTITLED) {
          // This probably means we have out-of-date information; refresh.
          GetDesktops(true);
       }
@@ -1357,7 +1422,7 @@ Broker::OnAbort(bool cancelled,      // IN
  *
  *      Failure handler for our first request.  If the server doesn't support
  *      this RPC, drop the broker into protocol 1.0 mode.  If we're already
- *      authenticated, continue as normal.
+ *      authenticated (e.g. via cvpa cookie state), continue as normal.
  *
  * Results:
  *      None
@@ -1391,13 +1456,23 @@ Broker::OnInitialRPCAbort(bool cancelled,      // IN
       }
 
       if (err.code() == ERR_UNSUPPORTED_VERSION) {
-         switch (mXml->GetBrokerVersion()) {
+         switch (mXml->GetProtocolVersion()) {
+         case BrokerXml::VERSION_4_5:
+            mXml->SetProtocolVersion(BrokerXml::VERSION_4);
+            goto retry_with_setlocale;
+         case BrokerXml::VERSION_4:
+            mXml->SetProtocolVersion(BrokerXml::VERSION_3);
+            goto retry_with_setlocale;
          case BrokerXml::VERSION_3:
-            mXml->SetBrokerVersion(BrokerXml::VERSION_2);
+            mXml->SetProtocolVersion(BrokerXml::VERSION_2);
+         retry_with_setlocale:
+            mXml->QueueRequests();
             SetLocale();
+            GetConfiguration();
+            mXml->SendQueuedRequests();
             return;
          case BrokerXml::VERSION_2:
-            mXml->SetBrokerVersion(BrokerXml::VERSION_1);
+            mXml->SetProtocolVersion(BrokerXml::VERSION_1);
             // Don't retry SetLocale, as 1.0 doesn't support it at all.
             GetConfiguration();
             return;
@@ -1405,41 +1480,29 @@ Broker::OnInitialRPCAbort(bool cancelled,      // IN
             break;
          }
       } else if (err.code() == ERR_ALREADY_AUTHENTICATED) {
-         OnAuthComplete();
+         if (mTunnel) {
+            GetDesktops();
+         } else {
+            mXml->QueueRequests();
+            InitTunnel();
+            GetDesktops();
+            mXml->SendQueuedRequests();
+         }
          return;
       }
    }
 
+   /*
+    * After OnAbort() is called, we may be deleted, so save the
+    * delegate so we can reset it to the broker page (if it was doing
+    * smart card auth, for example).
+    */
+   Delegate *delegate = mDelegate;
    Reset();
    OnAbort(cancelled, err);
-   // Cert selection may have changed the dialog state.
-   RequestBroker();
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::OnTunnelRPCAbort --
- *
- *      RPC abort handler for tunnel connection RPCs.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      Deletes mTunnel.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-Broker::OnTunnelRPCAbort(bool cancelled,      // IN
-                         Util::exception err) // IN
-{
-   delete mTunnel;
-   mTunnel = NULL;
-   OnAbort(cancelled, err);
+   if (delegate) {
+      delegate->RequestBroker();
+   }
 }
 
 
@@ -1464,6 +1527,7 @@ Broker::GetTunnelReady()
 {
    return mTunnel && mTunnel->GetIsConnected();
 }
+
 
 /*
  *-----------------------------------------------------------------------------
@@ -1527,71 +1591,26 @@ Broker::OnCertificateRequested(SSL *ssl,           // IN
       // fall through...
    case CERT_DID_RESPOND:
    case CERT_REQUESTED:
-      return 0;
+      break;
    case CERT_SHOULD_RESPOND:
+      if (mDelegate) {
+         ClearSmartCardPinAndReader();
+         CertAuthInfo info = mDelegate->GetCertAuthInfo(ssl);
+         *x509 = info.cert;
+         *privKey = info.key;
+         mSmartCardPin = info.pin;
+         mSmartCardReader = info.reader;
+         if (!*x509 || !*privKey) {
+            ClearSmartCardPinAndReader();
+         }
+      }
+      mCertState = CERT_DID_RESPOND;
       break;
    default:
       NOT_IMPLEMENTED();
       break;
    }
-
-   if (!mCryptoki) {
-      mCryptoki = new Cryptoki();
-      mCryptoki->requestPin.connect(boost::bind(&Broker::OnScPinRequested,
-                                                this, _1, _2));
-      mCryptoki->LoadModules(LIBDIR"/vmware/view/pkcs11");
-   }
-
-   std::list<X509 *> certs;
-requestCerts:
-   Cryptoki::FreeCertificates(certs);
-
-   if (mCryptoki->GetHasSlots() && !mCryptoki->GetHasTokens()) {
-      RequestScInsertPrompt(mCryptoki);
-      // block the caller until we have an answer.
-      gtk_main();
-      // Set by SubmitScInsertPrompt() if the user canceled.
-      if (mCertState == CERT_DID_RESPOND) {
-         return 0;
-      }
-   }
-   mCertState = CERT_DID_RESPOND;
-
-   certs = mCryptoki->GetCertificates(SSL_get_client_CA_list(ssl));
-   switch (certs.size()) {
-   case 0:
-      return 0;
-   case 1:
-      mX509 = certs.front();
-      break;
-   default:
-      RequestCertificate(certs);
-      StartWatchingForTokenEvents();
-      // We need to block the caller until we have an answer.
-      gtk_main();
-      StopWatchingForTokenEvents();
-      if (mCertState == CERT_SHOULD_RESPOND) {
-         goto requestCerts;
-      }
-      break;
-   }
-
-   *x509 = mX509;
-   certs.remove(mX509);
-   mX509 = NULL;
-   Cryptoki::FreeCertificates(certs);
-
-   if (*x509) {
-      *privKey = mCryptoki->GetPrivateKey(*x509);
-      if (mCertState == CERT_SHOULD_RESPOND) {
-         X509_free(*x509);
-         *x509 = NULL;
-         goto requestCerts;
-      }
-   }
-
    Log("Returning cert: %p key: %p\n", *x509, *privKey);
-
    return *x509 && *privKey ? 1 : 0;
 }
 
@@ -1599,158 +1618,28 @@ requestCerts:
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Broker::OnScPinRequested --
+ * cdk::Broker::ClearSmartCardPinAndReader --
  *
- *      Cryptoki callback for when a PIN is requested.  Ask App for
- *      the PIN.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-char *
-Broker::OnScPinRequested(const Util::string &label, // IN
-                         const X509 *x509)          // IN
-{
-   RequestScPin(label, x509);
-   StartWatchingForTokenEvents();
-   // We need to block the caller until we have an answer.
-   gtk_main();
-   StopWatchingForTokenEvents();
-   char *ret = mPin;
-   mPin = NULL;
-   // the caller frees ret.
-   return ret;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::GetSmartCardRedirects --
- *
- *      Get rdesktop redirect arguments for the smart cards we know
- *      about.
- *
- * Results:
- *      A list of strings that should be used with the -r option of
- *      rdesktop.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-std::vector<Util::string>
-Broker::GetSmartCardRedirects()
-{
-   std::vector<Util::string> names;
-   if (mCryptoki) {
-      names = mCryptoki->GetSlotNames();
-      for (std::vector<Util::string>::iterator i = names.begin();
-           i != names.end(); i++) {
-         *i = "scard:" + *i;
-      }
-   }
-   return names;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::StartWatchingForTokenEvents --
- *
- *      Adds a timeout which monitors for smart card event when the
- *      user is on a smart card related screen.
+ *      Overwrites and frees the PIN and clears the Reader.
  *
  * Results:
  *      None
  *
  * Side effects:
- *      TokenEventMonitor() will be called in timeouts.
+ *      None
  *
  *-----------------------------------------------------------------------------
  */
 
 void
-Broker::StartWatchingForTokenEvents()
+Broker::ClearSmartCardPinAndReader()
 {
-   ASSERT(mTokenEventTimeout == 0);
-
-   // Ignore any currently pending events.
-   while (mCryptoki->GetHadEvent()) { }
-
-   mTokenEventTimeout = g_timeout_add(TOKEN_EVENT_TIMEOUT_MS,
-                                      TokenEventMonitor, this);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::StopWatchingForTokenEvent --
- *
- *      Removes the token timeout poll.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      TokenEventMonitor() will no longer be called.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-Broker::StopWatchingForTokenEvents()
-{
-   if (mTokenEventTimeout) {
-      g_source_remove(mTokenEventTimeout);
-      mTokenEventTimeout = 0;
+   if (mSmartCardPin) {
+      ZERO_STRING(mSmartCardPin);
+      g_free(mSmartCardPin);
+      mSmartCardPin = NULL;
    }
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Broker::TokenEventMonitor --
- *
- *      If any token had an event, quit the main loop so that the
- *      token auth detection process is restarted.
- *
- * Results:
- *      false if the source should be removed.
- *
- * Side effects:
- *      A main loop is quit if false is returned.
- *
- *-----------------------------------------------------------------------------
- */
-
-gboolean
-Broker::TokenEventMonitor(gpointer data) // IN
-{
-   Broker *that = reinterpret_cast<Broker *>(data);
-   ASSERT(that);
-
-   ASSERT(that->mCertState == CERT_DID_RESPOND);
-
-   if (!that->mCryptoki->GetHadEvent()) {
-      return true;
-   }
-
-   that->mCertState = CERT_SHOULD_RESPOND;
-   that->mTokenEventTimeout = 0;
-   gtk_main_quit();
-   return false;
+   mSmartCardReader.clear();
 }
 
 

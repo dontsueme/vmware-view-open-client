@@ -40,6 +40,7 @@
 
 #include "tunnelProxy.h"
 
+#include "cdkProxy.h"
 #include "dynbuf.h"
 #include "log.h"
 #include "msg.h"
@@ -692,8 +693,8 @@ TunnelSocketProxyConnectCb(AsyncSocket *asock, // IN
 static void
 TunnelConnect(void)
 {
-   const char *http_proxy = NULL;
-   const char *http_proxy_env = NULL;
+   char *http_proxy = NULL;
+   CdkProxyType proxyType;
    const char *host;
    unsigned short port;
    int asockErr = ASOCKERR_SUCCESS;
@@ -715,36 +716,19 @@ TunnelConnect(void)
       Panic("Invalid <server-url> argument: %s\n", serverUrl);
    }
 
-   if (Str_Strcmp(serverProto, "http") == 0) {
-      http_proxy_env = "http_proxy";
-      http_proxy = getenv(http_proxy_env);
-   } else if (Str_Strcmp(serverProto, "https") == 0) {
-      http_proxy_env = "https_proxy";
-      http_proxy = getenv(http_proxy_env);
-      if (!http_proxy || !*http_proxy) {
-         http_proxy_env = "HTTPS_PROXY";
-         http_proxy = getenv(http_proxy_env);
-      }
-   } else {
-      Panic("Unknown <server-url> protocol '%s'.\n", serverProto);
+   http_proxy = CdkProxy_GetProxyForUrl(serverUrl, &proxyType);
+   if (http_proxy && !TunnelParseUrl(http_proxy, NULL, &proxyHost, &proxyPort,
+                                     NULL, NULL)) {
+       Warning("Invalid proxy URL '%s'.  Attempting direct connection.\n",
+               http_proxy);
+       free(http_proxy);
+       http_proxy = NULL;
    }
 
    if (http_proxy) {
-      if (!*http_proxy) {
-         /* Ignore empty proxy env var */
-         http_proxy = NULL;
-      } else if (!TunnelParseUrl(http_proxy, NULL, &proxyHost, &proxyPort,
-                                 NULL, NULL)) {
-         Warning("Invalid %s URL '%s'.  Attempting direct connection.\n",
-                 http_proxy_env, http_proxy);
-         http_proxy = NULL;
-      }
-   }
-
-   if (http_proxy) {
-      Log("Connecting to tunnel server '%s:%d' over %s, via %s server '%s:%d'.\n",
+      Log("Connecting to tunnel server '%s:%d' over %s, via proxy server '%s:%d'.\n",
           serverHost, serverPort, serverSecure ? "HTTPS" : "HTTP",
-          http_proxy_env, proxyHost, proxyPort);
+          proxyHost, proxyPort);
       host = proxyHost;
       port = proxyPort;
       connectFn = TunnelSocketProxyConnectCb;
@@ -768,6 +752,7 @@ TunnelConnect(void)
    AsyncSocket_SetErrorFn(gAsock, TunnelSocketErrorCb, NULL);
    AsyncSocket_UseNodelay(gAsock, TRUE);
 
+   free(http_proxy);
    free(serverUrl);
    free(serverProto);
    free(serverHost);

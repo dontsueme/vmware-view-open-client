@@ -31,6 +31,7 @@
 
 #include <arpa/inet.h>
 #include <glib.h>
+#ifdef VIEW_GTK
 #include <gtk/gtkalignment.h>
 #include <gtk/gtkentry.h>
 #include <gtk/gtkhbbox.h>
@@ -38,16 +39,19 @@
 #include <gtk/gtkimage.h>
 #include <gtk/gtklabel.h>
 #include <gtk/gtkstock.h>
-#include <libxml/uri.h>
-#ifdef __linux__
-#include <linux/if_ether.h>
 #endif
-// Mac OS X requires sys/socket.h before net/if.h.
-#include <sys/socket.h>
-#include <net/if.h>
+#include <libxml/uri.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <vector>
+
+#if defined(__linux__)
+#include <linux/if_ether.h>
+#include <net/if.h>
+#endif
 
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
@@ -59,7 +63,9 @@ extern "C" {
 
 
 #include "util.hh"
+#ifdef VIEW_GTK
 #include "app.hh"
+#endif
 
 extern "C" {
 #include "file.h"
@@ -68,11 +74,16 @@ extern "C" {
 }
 
 
+#ifdef VIEW_GTK
 // Here to avoid conflict with vm_basic_types.h
 #include <gdk/gdkx.h>
+#endif
 
 
 #define MAX_HOSTNAME_LENGTH 255
+
+#define IMG_KEY "imgKey"
+#define LABEL_KEY "labelKey"
 
 
 namespace cdk {
@@ -184,6 +195,9 @@ LogAbortSlot()
 }
 
 
+#ifdef VIEW_GTK
+
+
 /*
  *-----------------------------------------------------------------------------
  *
@@ -289,6 +303,8 @@ CreateButton(const string stockId, // IN
    gtk_widget_show(img);
    gtk_box_pack_start(GTK_BOX(contents), img, false, false, 0);
 
+   g_object_set_data(G_OBJECT(button), IMG_KEY, img);
+
    if (label.empty()) {
       GtkStockItem item = { 0, };
       gboolean found = gtk_stock_lookup(stockId.c_str(), &item);
@@ -303,10 +319,55 @@ CreateButton(const string stockId, // IN
    gtk_widget_show(l);
    gtk_box_pack_start(GTK_BOX(contents), l, false, false, 0);
 
+   g_object_set_data(G_OBJECT(button), LABEL_KEY, l);
+
    AtkObject *atk = gtk_widget_get_accessible(GTK_WIDGET(button));
    atk_object_set_name(atk, gtk_label_get_text(GTK_LABEL(l)));
 
    return GTK_BUTTON(button);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util::SetButtonIcon --
+ *
+ *      Changes the image and label displayed in the button.  This button must
+ *      have been created by the Util::CreateButton method.  gtk_widget_show
+ *      is also called on the button before the function returns.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+SetButtonIcon(GtkButton *button,     // IN
+              const string &stockId, // IN
+              string label)          // IN/OPT
+{
+   GtkWidget *img = GTK_WIDGET(g_object_get_data(G_OBJECT(button), IMG_KEY));
+   ASSERT(GTK_IS_IMAGE(img));
+   GtkLabel *l = GTK_LABEL(g_object_get_data(G_OBJECT(button), LABEL_KEY));
+   ASSERT(GTK_IS_LABEL(l));
+
+   gtk_image_set_from_stock(GTK_IMAGE(img), stockId.c_str(),
+                            GTK_ICON_SIZE_BUTTON);
+
+   if (label.empty()) {
+      GtkStockItem item = { 0 };
+      gtk_stock_lookup(stockId.c_str(), &item);
+      label = item.label;
+   }
+
+   gtk_label_set_text_with_mnemonic(l, label.c_str());
+
+   gtk_widget_show(GTK_WIDGET(button));
 }
 
 
@@ -398,6 +459,9 @@ OverrideWindowUserTime(GtkWindow *window) // IN
                        GDK_PROP_MODE_REPLACE, (guchar*)&evTime, 1);
 #endif
 }
+
+
+#endif // VIEW_GTK
 
 
 /*
@@ -655,7 +719,10 @@ GetUsefulPath(const string systemPath,   // IN
    self = (char *)malloc(pathSize);
    ASSERT(self);
    int rv = _NSGetExecutablePath(self, &pathSize);
-   ASSERT(rv == 0);
+   // condition is needed for OBJDIR=release builds to avoid warnings
+   if (rv != 0) {
+      ASSERT(rv == 0);
+   }
 #else
    self = Posix_ReadLink("/proc/self/exe");
    ASSERT(self);
@@ -719,6 +786,7 @@ GetClientInfo(const string broker, // IN
    }
 
    info["LoggedOn_Username"] = g_get_user_name();
+
    string lang = setlocale(LC_MESSAGES, NULL);
    if (lang == "C" || lang == "POSIX" || lang == "") {
       info["Language"] = "en";
@@ -727,16 +795,90 @@ GetClientInfo(const string broker, // IN
    }
 
    time_t now = time(NULL);
-   long gmt_offset = localtime(&now)->tm_gmtoff;
-   info["TimeOffset_GMT"] = Format("%.2d:%.2d", gmt_offset / 3600,
-                                   abs(gmt_offset) % 3600 / 60);
+   struct tm tm_now;
+   localtime_r(&now, &tm_now);
+   info["TimeOffset_GMT"] = Format("%.2d:%.2d", tm_now.tm_gmtoff / 3600,
+                                   abs(tm_now.tm_gmtoff) % 3600 / 60);
 
-#ifdef __linux__
-   info["Type"] = "Linux";
-#elif defined(__APPLE__)
+   const char *tzid = getenv("TZ");
+   char *contents = NULL;
+   if (!tzid) {
+      if (g_file_get_contents("/etc/timezone", &contents, NULL, NULL)) {
+         // Debian
+         tzid = g_strstrip(contents);
+      } else if (getuid() != 0) {
+         // Don't run as root, for security reasons.
+
+         /*
+          * SuSE, RHEL and unsupported distro cases use a child process (bash)
+          * to parse the clock file for us, so we don't have to do all of the
+          * messy * handling of edge cases here, e.g., multiple time zone key
+          * words, extraneous white space, commented out time zone key words.
+          */
+
+         // Bash script to process clock file.
+         static char tz_sh[] = {
+            "if [ -f \"/etc/sysconfig/clock\" ]; then\n"
+            "   . /etc/sysconfig/clock\n"
+            "   if [ \"${TIMEZONE}\" ]; then\n"
+            "       echo \"$TIMEZONE\"\n"
+            "       exit 0\n"
+            "   elif [ \"${ZONE}\" ]; then\n"
+            "       echo \"$ZONE\"\n"
+            "       exit 0\n"
+            "   fi\n"
+            "fi\n"
+            "exit 0\n"
+         };
+
+         char *bash[] = { "/bin/bash", NULL };
+         GPid pid = -1;
+         int std_in = -1;
+         int std_out = -1;
+
+         static const int maxTzIdLen = 64;
+         contents = (char *)g_new0(char, maxTzIdLen);
+
+         // Launch bash process
+         Bool spawned = g_spawn_async_with_pipes(
+                                NULL, bash, NULL,
+                                (GSpawnFlags)0,
+                                NULL, NULL, &pid,
+                                &std_in, &std_out, NULL,
+                                NULL);
+         ASSERT(spawned);
+
+         if (spawned) {
+            // Write time zone script to bash process stdin.
+            if ((size_t)write(std_in, tz_sh, sizeof(tz_sh)) == sizeof(tz_sh)) {
+                // Read time zone result from bash script.
+                if (read(std_out, contents, maxTzIdLen - 1) != -1) {
+                    if (contents[0] != '\0') {
+                        /* 
+                         * bash script returns timezone gleaned from clock
+                         * file: strip any trailing space or newline.
+                         */
+                        tzid = g_strstrip(contents);
+                    }
+                    // else clock file did not contain an acceptable timezone.
+                }
+            }
+
+            // Cleanup
+            close(std_in);
+            close(std_out);
+            g_spawn_close_pid(pid);
+         }
+      }
+   }
+   info["TZID"] = tzid ? tzid : tm_now.tm_zone;
+   g_free(contents);
+
+#ifdef __APPLE__
    info["Type"] = "Mac";
+#elif defined(__linux__)
+   info["Type"] = "Linux";
 #endif
-
    return info;
 }
 

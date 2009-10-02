@@ -44,8 +44,7 @@ class Usb
 {
 public:
    bool Start(const Util::string &address, int port,
-              const Util::string &channelTicket,
-              const std::vector<Util::string> &usbRedirectArgs);
+              const Util::string &channelTicket);
 
 };
 

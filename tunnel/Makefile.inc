@@ -33,6 +33,10 @@ vmware_view_tunnel_LDADD :=
 vmware_view_tunnel_LDADD += libAsyncSocket.a
 vmware_view_tunnel_LDADD += libPollDefault.a
 vmware_view_tunnel_LDADD += libPoll.a
+vmware_view_tunnel_LDADD += libProxy.a
 vmware_view_tunnel_LDADD += libSsl.a
 vmware_view_tunnel_LDADD += libString.a
 vmware_view_tunnel_LDADD += $(SSL_LIBS)
+if VIEW_COCOA
+vmware_view_tunnel_LDADD += $(TUNNEL_FRAMEWORKS)
+endif

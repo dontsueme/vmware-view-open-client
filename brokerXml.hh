@@ -25,37 +25,31 @@
 /*
  * brokerXml.hh --
  *
- *    Broker XML API.
+ *    Handlers for the specific Broker XML API requests.
  */
 
 #ifndef BROKER_XML_HH
 #define BROKER_XML_HH
 
+#ifdef _WIN32
+#include <atlbase.h>
+#endif
 
 #include <boost/function.hpp>
-#include <boost/signal.hpp>
 #include <libxml/tree.h>
-#include <list>
-#include <openssl/ssl.h>
 #include <vector>
 
 
-#include "basicHttp.h"
-#include "util.hh"
+#include "baseXml.hh"
 
 
 namespace cdk {
 
 
 class BrokerXml
+   : public BaseXml
 {
 public:
-   enum BrokerVersion {
-      VERSION_1,
-      VERSION_2,
-      VERSION_3
-   };
-
    enum AuthType {
       AUTH_NONE = 0,
       AUTH_DISCLAIMER,
@@ -73,28 +67,10 @@ public:
       OFFLINE_CHECKED_OUT,
       OFFLINE_CHECKING_IN,
       OFFLINE_CHECKING_OUT,
+      OFFLINE_BACKGROUND_CHECKING_IN,
       OFFLINE_NONE
    };
 
-   struct Result
-   {
-      Util::string result;
-      Util::string errorCode;
-      Util::string errorMessage;
-      Util::string userMessage;
-
-      bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
-   };
-
-   struct Param
-   {
-      Util::string name;
-      std::vector<Util::string> values;
-      bool readOnly;
-
-      Param() : readOnly(false) { }
-      bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
-   };
 
    struct AuthInfo
    {
@@ -127,7 +103,9 @@ public:
    struct AuthResult
    {
       AuthInfo authInfo;
+      bool logoutOnCertRemoval;
 
+      AuthResult() : logoutOnCertRemoval(false) { }
       bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
    };
 
@@ -161,15 +139,21 @@ public:
       Util::string name;
       Util::string type;
       Util::string state;
+      bool offlineEnabled;
       OfflineState offlineState;
+      bool checkedOutByOther;
       Util::string sessionId;
       bool resetAllowed;
       bool resetAllowedOnSession;
       bool inMaintenance;
+      bool inLocalRollback;
       UserPreferences userPreferences;
+      std::vector<Util::string> protocols;
+      int defaultProtocol;
 
       Desktop();
-      bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
+      virtual ~Desktop() {}
+      virtual bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
    };
 
    typedef std::vector<Desktop> DesktopList;
@@ -204,6 +188,7 @@ public:
       Util::string username;
       Util::string password;
       Util::string domainName;
+      Util::string token;
       bool enableUSB;
       bool enableMMR;
 
@@ -226,16 +211,30 @@ public:
    typedef boost::function1<void, Result&> ResetDesktopSlot;
    typedef boost::function1<void, Result&> RollbackSlot;
 
-   static Util::exception BadBrokerException();
+   struct DoneSlots {
+      ConfigurationSlot configuration;
+      LocaleSlot locale;
+      AuthenticationSlot authentication;
+      TunnelConnectionSlot tunnelConnection;
+      DesktopsSlot desktops;
+      PreferencesSlot preferences;
+      DesktopPreferencesSlot desktopPreferences;
+      DesktopConnectionSlot desktopConnection;
+      LogoutSlot logout;
+      KillSessionSlot killSession;
+      ResetDesktopSlot reset;
+      RollbackSlot rollback;
+   };
 
-   BrokerXml(Util::string hostname, int port, bool secure);
+   struct RequestState
+      : public BaseXml::RequestState
+   {
+      DoneSlots onDone;
+   };
+
+   BrokerXml(Util::string hostname, int port, bool secure,
+             const Util::string &sslCAPath = "");
    ~BrokerXml();
-
-   Util::string GetHostname() const { return mHostname; }
-   int GetPort() const { return mPort; }
-
-   BrokerVersion GetBrokerVersion() const { return mVersion; }
-   void SetBrokerVersion(BrokerVersion version) { mVersion = version; }
 
    void GetConfiguration(Util::AbortSlot onAbort, ConfigurationSlot onDone);
 
@@ -265,13 +264,17 @@ public:
                        Util::string confirm, Util::AbortSlot onAbort,
                        AuthenticationSlot onDone);
 
-   void SubmitCertAuth(bool accept, Util::AbortSlot onAbort,
+   void SubmitCertAuth(bool accept,
+                       const char *pin,
+                       const Util::string &reader,
+                       Util::AbortSlot onAbort,
                        AuthenticationSlot onDone);
 
    void GetTunnelConnection(Util::AbortSlot onAbort,
                             TunnelConnectionSlot onDone);
 
-   void GetDesktops(Util::AbortSlot onAbort, DesktopsSlot onDone);
+   void GetDesktops(std::vector<Util::string> protocols,
+                    Util::AbortSlot onAbort, DesktopsSlot onDone);
 
    void GetUserGlobalPreferences(Util::AbortSlot onAbort,
                                  PreferencesSlot onDone);
@@ -288,7 +291,8 @@ public:
    void GetDesktopConnection(Util::string desktopId,
                              Util::AbortSlot onAbort,
                              DesktopConnectionSlot onDone,
-                             const Util::ClientInfoMap &info);
+                             const Util::ClientInfoMap &info,
+                             const Util::string &protocol);
 
    void Logout(Util::AbortSlot onAbort, LogoutSlot onDone);
 
@@ -304,60 +308,14 @@ public:
                  Util::AbortSlot onAbort,
                  RollbackSlot onDone);
 
-   void CancelRequests();
-   void ForgetCookies();
-   void ResetConnections();
+protected:
+   virtual bool SendHttpRequest(BaseXml::RequestState *req,
+				const Util::string &body);
 
-   boost::signal3<int, SSL *, X509 **, EVP_PKEY **> certificateRequested;
+   virtual bool ResponseDispatch(xmlNode *operationNode,
+                                 BaseXml::RequestState &state,
+                                 Result &result);
 
-private:
-   struct DoneSlots
-   {
-      ConfigurationSlot configuration;
-      LocaleSlot locale;
-      AuthenticationSlot authentication;
-      TunnelConnectionSlot tunnelConnection;
-      DesktopsSlot desktops;
-      PreferencesSlot preferences;
-      DesktopPreferencesSlot desktopPreferences;
-      DesktopConnectionSlot desktopConnection;
-      LogoutSlot logout;
-      KillSessionSlot killSession;
-      ResetDesktopSlot reset;
-      RollbackSlot rollback;
-   };
-
-   struct RequestState
-   {
-      Util::string requestOp;
-      Util::string responseOp;
-      Util::string args;
-      Util::AbortSlot onAbort;
-      DoneSlots onDone;
-      BasicHttpRequest *request;
-   };
-
-   static Util::string GetContent(xmlNode *parentNode);
-   static xmlNode *GetChild(xmlNode *parentNode, const char *targetName);
-   static Util::string GetChildContent(xmlNode *parentNode, const char *targetName);
-   static int GetChildContentInt(xmlNode *parentNode, const char *targetName);
-   static bool GetChildContentBool(xmlNode *parentNode, const char *targetName);
-   static void OnResponse(BasicHttpRequest *request,
-                          BasicHttpResponse *response,
-                          void *data);
-   static void OnSslCtx(BasicHttpRequest *request, void *sslctx,
-                        void *clientData);
-   static int OnCertificateRequest(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
-
-   Util::string Encode(const Util::string& val);
-   bool SendRequest(RequestState &req);
-
-   std::list<RequestState> mActiveRequests;
-   Util::string mHostname;
-   int mPort;
-   bool mSecure;
-   BasicHttpCookieJar *mCookieJar;
-   BrokerVersion mVersion;
 };
 
 

@@ -25,23 +25,28 @@
 /*
  * brokerXml.cc --
  *
- *    Broker XML API.
+ *    Handlers for the specific Broker XML API requests.
  */
 
 
-#include <glib/gi18n.h>
 #include <gmodule.h>
 #include <libxml/parser.h>
 #include <list>
+#include <set>
+
+
+#ifdef _WIN32
+#define _(String) (String)
+#else
+#include <glib/gi18n.h>
+#endif
 
 
 #include "brokerXml.hh"
+#include "cdkProxy.h"
 
 
-#define BROKER_V1_HDR "<?xml version=\"1.0\"?><broker version=\"1.0\">"
-#define BROKER_V2_HDR "<?xml version=\"1.0\"?><broker version=\"2.0\">"
-#define BROKER_V3_HDR "<?xml version=\"1.0\"?><broker version=\"3.0\">"
-#define BROKER_TAIL "</broker>"
+#define BROKER_NODE_NAME "broker"
 
 
 namespace cdk {
@@ -65,12 +70,9 @@ namespace cdk {
 
 BrokerXml::BrokerXml(Util::string hostname, // IN
                      int port,              // IN
-                     bool secure)           // IN
-   : mHostname(hostname),
-     mPort(port),
-     mSecure(secure),
-     mCookieJar(BasicHttp_CreateCookieJar()),
-     mVersion(VERSION_3)
+                     bool secure,           // IN
+                     const Util::string &sslCAPath)// IN
+   : BaseXml(BROKER_NODE_NAME, hostname, port, secure, sslCAPath)
 {
 }
 
@@ -80,7 +82,7 @@ BrokerXml::BrokerXml(Util::string hostname, // IN
  *
  * cdk::BrokerXml::~BrokerXml --
  *
- *      Destructor.  Cancel all active requests.
+ *      Destructor.
  *
  * Results:
  *      None
@@ -93,285 +95,134 @@ BrokerXml::BrokerXml(Util::string hostname, // IN
 
 BrokerXml::~BrokerXml()
 {
-   ResetConnections();
-   BasicHttp_FreeCookieJar(mCookieJar);
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::BrokerXml::GetContent --
+ * cdk::BrokerXml::SendHttpRequest --
  *
- *       Get the text content from a named child node.
- *
- * Results:
- *       Content Util::string, possibly empty.
- *
- * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-Util::string
-BrokerXml::GetContent(xmlNode *parentNode) // IN
-{
-   if (parentNode) {
-      for (xmlNode *currentNode = parentNode->children; currentNode;
-           currentNode = currentNode->next) {
-         if (XML_TEXT_NODE == currentNode->type) {
-            return (const char  *)currentNode->content;
-         }
-      }
-   }
-   return "";
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::GetChild --
- *
- *       Find a child node with a given name.
- *
- *       From apps/lib/basicSOAP/basicSoapCommon.c.
+ *      Set the proxy configuration on this request before it gets
+ *      sent.
  *
  * Results:
- *       xmlNode or NULL.
+ *      Returns value from BaseXml::SendHttpRequest.
  *
  * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-xmlNode *
-BrokerXml::GetChild(xmlNode *parentNode,    // IN
-                    const char *targetName) // IN
-{
-   if (parentNode) {
-      for (xmlNode *currentNode = parentNode->children; currentNode;
-           currentNode = currentNode->next) {
-         if (XML_ELEMENT_NODE == currentNode->type) {
-            const char *currentName = (const char*) currentNode->name;
-            /*
-             * Be careful. XML is normally case-sensitive, but I am
-             * being generous and allowing case differences.
-             */
-            if (currentName && (0 == Str_Strcasecmp(currentName, targetName))) {
-               return currentNode;
-            }
-         }
-      }
-   }
-   return NULL;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::GetChildContent --
- *
- *       Get the text content from a named child node.
- *
- * Results:
- *       Content Util::string, possibly empty.
- *
- * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-Util::string
-BrokerXml::GetChildContent(xmlNode *parentNode,    // IN
-                           const char *targetName) // IN
-{
-   if (parentNode) {
-      xmlNode *node = GetChild(parentNode, targetName);
-      if (node) {
-         return GetContent(node);
-      }
-   }
-   return "";
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::GetChildContentInt --
- *
- *       Get the int content from a named child node.
- *
- * Results:
- *       Integer value or -1 if invalid content or empty.
- *
- * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-int
-BrokerXml::GetChildContentInt(xmlNode *parentNode,    // IN
-                              const char *targetName) // IN
-{
-   Util::string strval = GetChildContent(parentNode, targetName);
-   if (strval.empty()) {
-      return -1;
-   }
-   return strtol(strval.c_str(), NULL, 10);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::GetChildContentBool --
- *
- *       Get the bool content from a named child node.
- *
- * Results:
- *       true if XML value is "1", "TRUE", or "YES".  false, otherwise.
- *
- * Side effects:
- *       None.
+ *      None
  *
  *-----------------------------------------------------------------------------
  */
 
 bool
-BrokerXml::GetChildContentBool(xmlNode *parentNode,    // IN
-                               const char *targetName) // IN
+BrokerXml::SendHttpRequest(BaseXml::RequestState *req, // IN
+			   const Util::string &body)   // IN
 {
-   Util::string strval = GetChildContent(parentNode, targetName);
-   if (strval == "1" || strval == "true" || strval == "TRUE" ||
-       strval == "yes" || strval == "YES") {
+   Util::string url = Util::Format("%s://%s", GetSecure() ? "https" : "http",
+				   GetHostname().c_str());
+
+   CdkProxyType proxyType = CDK_PROXY_NONE;
+   char *proxy = CdkProxy_GetProxyForUrl(url.c_str(), &proxyType);
+   if (proxy) {
+      switch (proxyType) {
+      case CDK_PROXY_HTTP:
+	 req->proxyType = BASICHTTP_PROXY_HTTP;
+	 break;
+      case CDK_PROXY_SOCKS4:
+	 req->proxyType = BASICHTTP_PROXY_SOCKS4;
+	 break;
+      default:
+	 NOT_REACHED();
+	 break;
+      }
+      req->proxy = proxy;
+      free(proxy);
+   } else {
+      req->proxyType = BASICHTTP_PROXY_NONE;
+   }
+   return BaseXml::SendHttpRequest(req, body);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BrokerXml::ResponseDispatch --
+ *
+ *      Dispatcher for handling responses for the request types introduced
+ *      by this class.
+ *
+ * Results:
+ *      'true' if the response was handled. 'false' otherwise.
+ *
+ * Side effects:
+ *      Response signals may be fired.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+BrokerXml::ResponseDispatch(xmlNode *operationNode,           // IN
+                            BaseXml::RequestState &baseState, // IN
+                            Result &result)                     // IN
+{
+   RequestState &state = static_cast<RequestState &>(baseState);
+
+   if (result.result == "notexecuted") {
+      Log("Not executed: %s; skipping callbacks.\n", baseState.responseOp.c_str());
       return true;
    }
-   return false;
-}
 
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::Result::Parse --
- *
- *       Parse the common <result> success/fault element returned in all
- *       requests.
- *
- * Results:
- *       true if parsed success result, false if parse failed or a fault result
- *       was received and the onAbort handler was invoked.
- *
- * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-bool
-BrokerXml::Result::Parse(xmlNode *parentNode,     // IN
-                         Util::AbortSlot onAbort) // IN
-{
-   ASSERT(parentNode);
-
-   result = GetChildContent(parentNode, "result");
-   if (result.empty()) {
-      onAbort(false, Util::exception(_("Invalid response from broker: "
-                                       "Invalid \"result\" in XML.")));
-      return false;
-   }
-
-   // Non-ok is not necessarily a failure
-   if (result != "ok") {
-      errorCode = GetChildContent(parentNode, "error-code");
-      errorMessage = GetChildContent(parentNode, "error-message");
-      userMessage = GetChildContent(parentNode, "user-message");
-   }
-
-   // Error code or message is always a failure
-   if (!errorCode.empty() || !errorMessage.empty()) {
-      if (!userMessage.empty()) {
-         onAbort(false, Util::exception(userMessage, errorCode));
-      } else if (!errorMessage.empty()) {
-         onAbort(false, Util::exception(errorMessage, errorCode));
-      } else {
-         onAbort(false, Util::exception(Util::Format(_("Unknown error: %s"),
-                                                     errorCode.c_str()),
-                                        errorCode));
+   if (state.responseOp == "configuration") {
+      Configuration config;
+      if (config.Parse(operationNode, state.onAbort)) {
+         state.onDone.configuration(result, config);
       }
-      return false;
-   }
-
-   return true;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::Param::Parse --
- *
- *       Parse a <param> node parentNode containing a name element and
- *       possibly multiple value elements.
- *
- * Results:
- *       true if parsed successfully, false otherwise and the onAbort handler
- *       was invoked.
- *
- * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-bool
-BrokerXml::Param::Parse(xmlNode *parentNode,     // IN
-                        Util::AbortSlot onAbort) // IN
-{
-   name = GetChildContent(parentNode, "name");
-   if (name.empty()) {
-      onAbort(false, Util::exception(_("Invalid response from broker: "
-                                       "Parameter with no name.")));
-      return false;
-   }
-
-   readOnly = (GetChild(parentNode, "readonly") != NULL);
-
-   xmlNode *valuesNode = GetChild(parentNode, "values");
-   if (valuesNode) {
-      for (xmlNode *valueNode = valuesNode->children; valueNode;
-           valueNode = valueNode->next) {
-         if (Str_Strcasecmp((const char *) valueNode->name, "value") == 0) {
-            Util::string valueStr = GetContent(valueNode);
-            if (!valueStr.empty()) {
-               values.push_back(valueStr);
-            }
-         }
+   } else if (state.responseOp == "set-locale") {
+      state.onDone.locale(result);
+   } else if (state.responseOp == "submit-authentication") {
+      AuthResult authResult;
+      if (authResult.Parse(operationNode, state.onAbort)) {
+         state.onDone.authentication(result, authResult);
       }
-   }
-
-   if (values.size() == 0) {
-      /*
-       * XXX: When logging in with a cert, the broker sometimes is not
-       * sending a value for the username (which we don't really care
-       * about anyway).
-       */
-#if 0
-      onAbort(false, Util::exception(Util::Format(
-         _("Invalid response from broker: Parameter \"%s\" has no value."),
-         name.c_str())));
+   } else if (state.responseOp == "tunnel-connection") {
+      Tunnel tunnel;
+      if (tunnel.Parse(operationNode, state.onAbort)) {
+         state.onDone.tunnelConnection(result, tunnel);
+      }
+   } else if (state.responseOp == "desktops") {
+      EntitledDesktops desktops;
+      if (desktops.Parse(operationNode, state.onAbort)) {
+         state.onDone.desktops(result, desktops);
+      }
+   } else if (state.responseOp == "user-global-preferences" ||
+              state.responseOp == "set-user-global-preferences") {
+      UserPreferences prefs;
+      if (prefs.Parse(operationNode, state.onAbort)) {
+         state.onDone.preferences(result, prefs);
+      }
+   } else if (state.responseOp == "set-user-desktop-preferences") {
+      UserPreferences prefs;
+      if (prefs.Parse(operationNode, state.onAbort)) {
+         Util::string desktopId = GetChildContent(operationNode, "desktop-id");
+         state.onDone.desktopPreferences(result, desktopId, prefs);
+      }
+   } else if (state.responseOp == "desktop-connection") {
+      DesktopConnection conn;
+      if (conn.Parse(operationNode, state.onAbort)) {
+         state.onDone.desktopConnection(result, conn);
+      }
+   } else if (state.responseOp == "logout") {
+      state.onDone.logout(result);
+   } else if (state.responseOp == "kill-session") {
+      state.onDone.killSession(result);
+   } else if (state.responseOp == "reset-desktop") {
+      state.onDone.reset(result);
+   } else if (state.responseOp == "rollback-checkout-desktop") {
+      state.onDone.rollback(result);
+   } else {
       return false;
-#else
-      Warning("Invalid response from broker: Parameter \"%s\" has no value.\n",
-              name.c_str());
-#endif
    }
 
    return true;
@@ -668,6 +519,8 @@ BrokerXml::AuthResult::Parse(xmlNode *parentNode,     // IN
 {
    ASSERT(parentNode);
 
+   logoutOnCertRemoval = GetChildContentBool(parentNode,
+                                             "logout-on-cert-removal-enabled");
    // Authentication info seems optional
    if (GetChild(parentNode, "authentication")) {
       return authInfo.Parse(parentNode, onAbort);
@@ -771,6 +624,7 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
    type = GetChildContent(parentNode, "type");
    state = GetChildContent(parentNode, "state");
 
+   offlineEnabled = GetChildContentBool(parentNode, "offline-enabled");
    Util::string offline = GetChildContent(parentNode, "offline-state");
    if (offline == "checked in") {
       offlineState = OFFLINE_CHECKED_IN;
@@ -780,18 +634,52 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
       offlineState = OFFLINE_CHECKING_IN;
    } else if (offline == "checking out") {
       offlineState = OFFLINE_CHECKING_OUT;
+   } else if (offline == "background checking in") {
+      offlineState = OFFLINE_BACKGROUND_CHECKING_IN;
    } else if (offline.empty()) {
-      offlineState = OFFLINE_NONE;
+      offlineState = OFFLINE_CHECKED_IN;
    } else {
       Log("Unknown offline state \"%s\" in XML.", offline.c_str());
+      NOT_IMPLEMENTED();
       offlineState = OFFLINE_NONE;
    }
 
+   checkedOutByOther = GetChildContentBool(parentNode, "checked-out-by-other");
    sessionId = GetChildContent(parentNode, "session-id");
    resetAllowed = GetChildContentBool(parentNode, "reset-allowed");
    resetAllowedOnSession = GetChildContentBool(parentNode,
                                                "reset-allowed-on-session");
    inMaintenance = GetChildContentBool(parentNode, "in-maintenance-mode");
+   inLocalRollback = GetChildContentBool(parentNode, "in-local-rollback");
+
+   xmlNode *protocolNode = GetChild(parentNode, "protocols");
+   if (protocolNode) {
+      std::set<Util::string> protos;
+      Util::string defaultProto;
+      for (xmlNode *protoNode = protocolNode->children; protoNode;
+           protoNode = protoNode->next) {
+         if (Str_Strcasecmp((const char *)protoNode->name, "protocol") == 0) {
+            Util::string proto = GetChildContent(protoNode, "name");
+            if (!proto.empty()) {
+               if (GetChildContentBool(protoNode, "is-default")) {
+                  defaultProto = proto;
+               }
+               protos.insert(proto);
+            }
+         }
+      }
+      for (std::set<Util::string>::iterator i = protos.begin();
+           i != protos.end(); i++) {
+         protocols.push_back(*i);
+         if (*i == defaultProto) {
+            defaultProtocol = protocols.size() - 1;
+         }
+      }
+   }
+   if (protocols.empty()) {
+      protocols.push_back("RDP");
+      defaultProtocol = 0;
+   }
    return userPreferences.Parse(parentNode, onAbort);
 }
 
@@ -818,6 +706,15 @@ BrokerXml::DesktopConnection::Parse(xmlNode *parentNode,     // IN
 {
    id = GetChildContent(parentNode, "id");
    address = GetChildContent(parentNode, "address");
+   /*
+    * The broker always returns "localhost" for tunneled connections,
+    * but that may resolve to an IPv6 address, which our tunnel proxy
+    * is not listening on.  This results in the RDP client's
+    * connection timing out.  See bug #391088.
+    */
+   if (address == "localhost") {
+      address = "127.0.0.1";
+   }
    port = GetChildContentInt(parentNode, "port");
    channelTicket = GetChildContent(parentNode, "framework-channel-ticket");
    protocol = GetChildContent(parentNode, "protocol");
@@ -842,6 +739,11 @@ BrokerXml::DesktopConnection::Parse(xmlNode *parentNode,     // IN
             listeners.insert(std::make_pair(listenerName, listener));
          }
       }
+   }
+
+   xmlNode *settingsNode = GetChild(parentNode, "protocol-settings");
+   if (settingsNode) {
+      token = GetChildContent(settingsNode, "token");
    }
 
    return true;
@@ -927,283 +829,6 @@ BrokerXml::EntitledDesktops::Parse(xmlNode *parentNode,     // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::BrokerXml::Encode --
- *
- *      Encode an XML text string, escaping entity characters correctly using
- *      xmlEncodeSpecialChars.
- *
- * Results:
- *      XML-safe encoded Util::string.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-Util::string
-BrokerXml::Encode(const Util::string& val) // IN
-{
-   xmlChar *enc = xmlEncodeSpecialChars(NULL, (const xmlChar*)val.c_str());
-   Util::string result = (const char*)enc;
-   free(enc);
-   return result;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::SendRequest --
- *
- *      Post an XML API request using basicHttp.
- *
- * Results:
- *      true if request was queued successfully.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-bool
-BrokerXml::SendRequest(RequestState &req) // IN
-{
-   ASSERT(!req.requestOp.empty());
-   ASSERT(!req.responseOp.empty());
-
-   // NOTE: We get a 404 if we access "/broker/xml/"
-   Util::string url = Util::Format("%s://%s:%d/broker/xml",
-                                   mSecure ? "https" : "http",
-                                   mHostname.c_str(), mPort);
-
-   const char *hdr;
-   switch (mVersion) {
-   case VERSION_1:
-      hdr = BROKER_V1_HDR;
-      break;
-   case VERSION_2:
-      hdr = BROKER_V2_HDR;
-      break;
-   case VERSION_3:
-      hdr = BROKER_V3_HDR;
-      break;
-   default:
-      NOT_REACHED();
-   };
-
-   Util::string body;
-
-   if (req.args.empty()) {
-      body = Util::Format("%s<%s/>" BROKER_TAIL, hdr, req.requestOp.c_str());
-   } else {
-      body = Util::Format("%s<%s>%s</%s>" BROKER_TAIL, hdr,
-                          req.requestOp.c_str(), req.args.c_str(),
-                          req.requestOp.c_str());
-   }
-
-   DEBUG_ONLY(Warning("BROKER REQUEST: %s\n", body.c_str()));
-
-#ifdef VMX86_DEBUG
-   xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
-   xmlDocPtr tmpdoc;
-
-   if (ctxt) {
-      tmpdoc = xmlCtxtReadMemory(ctxt, body.c_str(), body.length(), "noname.xml",
-                                 NULL, XML_PARSE_DTDVALID);
-      if (tmpdoc) {
-         if (!ctxt->wellFormed) {
-            Warning("XML is not well formed\n");
-         }
-         xmlFreeDoc(tmpdoc);
-      } else {
-         Warning("Failed to parse the XML\n");
-      }
-      xmlFreeParserCtxt(ctxt);
-   } else {
-      Warning("No parser context, skipping XML validation...\n");
-   }
-#endif
-
-   req.request = BasicHttp_CreateRequest(url.c_str(), BASICHTTP_METHOD_POST,
-                                         mCookieJar, NULL, body.c_str());
-   ASSERT_MEM_ALLOC(req.request);
-
-   BasicHttp_SetSslCtxProc(req.request, OnSslCtx);
-
-   bool success = BasicHttp_SendRequest(req.request, &BrokerXml::OnResponse,
-                                        this);
-   if (success) {
-      mActiveRequests.push_back(req);
-   }
-
-   return success;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::OnResponse --
- *
- *      Parse an XML API response based on the response operation.  Invokes the
- *      onAbort/onDone handler passed to the initial request.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-BrokerXml::OnResponse(BasicHttpRequest *request,   // IN
-                      BasicHttpResponse *response, // IN
-                      void *data)                  // IN
-{
-   BrokerXml *that = reinterpret_cast<BrokerXml*>(data);
-   ASSERT(that);
-
-   xmlDoc *doc = NULL;
-   xmlNode *docNode;
-   xmlNode *operationNode;
-   Result result;
-
-   RequestState state;
-   for (std::list<RequestState>::iterator i = that->mActiveRequests.begin();
-        i != that->mActiveRequests.end(); i++) {
-      if ((*i).request == request) {
-         state = *i;
-         that->mActiveRequests.erase(i);
-         break;
-      }
-   }
-   ASSERT(state.request == request);
-   BasicHttp_FreeRequest(request);
-   request = NULL;
-   state.request = NULL;
-
-   if (response->errorCode != BASICHTTP_ERROR_NONE) {
-      state.onAbort(false, Util::exception(_("Could not connect to broker.")));
-      goto exit;
-   }
-
-   DEBUG_ONLY(Warning("BROKER RESPONSE: %s\n", response->content));
-
-   doc = xmlReadMemory(response->content, strlen(response->content),
-                       "notused.xml", NULL, 0);
-   BasicHttp_FreeResponse(response);
-   response = NULL;
-
-   if (!doc) {
-      Warning("The response could not be parsed as XML.\n");
-      goto malformedXml;
-   }
-
-   docNode = xmlDocGetRootElement(doc);
-   if (!docNode || Str_Strcasecmp((const char*)docNode->name, "broker") != 0) {
-      Warning("No <broker> root element found in document.\n");
-      goto malformedXml;
-   }
-
-   // Protocol-level errors mean no operation node
-   if (GetChildContent(docNode, "result") == "error") {
-      Util::string errCode = GetChildContent(docNode, "error-code");
-      Log("Broker XML general error: %s\n", errCode.c_str());
-      if (result.Parse(docNode, state.onAbort)) {
-         state.onAbort(false,
-            Util::exception(_("Invalid response from broker: General error.")));
-      }
-      goto exit;
-   }
-
-   operationNode = GetChild(docNode, state.responseOp.c_str());
-   if (!operationNode) {
-      Warning("No <%s> child of <broker>\n", state.responseOp.c_str());
-      goto malformedXml;
-   }
-
-   if (!result.Parse(operationNode, state.onAbort)) {
-      goto exit;
-   }
-
-   if (state.responseOp == "configuration") {
-      Configuration config;
-      if (config.Parse(operationNode, state.onAbort)) {
-         state.onDone.configuration(result, config);
-      }
-   } else if (state.responseOp == "set-locale") {
-      state.onDone.locale(result);
-   } else if (state.responseOp == "submit-authentication") {
-      AuthResult authResult;
-      if (authResult.Parse(operationNode, state.onAbort)) {
-         state.onDone.authentication(result, authResult);
-      }
-   } else if (state.responseOp == "tunnel-connection") {
-      Tunnel tunnel;
-      if (tunnel.Parse(operationNode, state.onAbort)) {
-         state.onDone.tunnelConnection(result, tunnel);
-      }
-   } else if (state.responseOp == "desktops") {
-      EntitledDesktops desktops;
-      if (desktops.Parse(operationNode, state.onAbort)) {
-         state.onDone.desktops(result, desktops);
-      }
-   } else if (state.responseOp == "user-global-preferences" ||
-              state.responseOp == "set-user-global-preferences") {
-      UserPreferences prefs;
-      if (prefs.Parse(operationNode, state.onAbort)) {
-         state.onDone.preferences(result, prefs);
-      }
-   } else if (state.responseOp == "set-user-desktop-preferences") {
-      UserPreferences prefs;
-      if (prefs.Parse(operationNode, state.onAbort)) {
-         Util::string desktopId = GetChildContent(operationNode, "desktop-id");
-         state.onDone.desktopPreferences(result, desktopId, prefs);
-      }
-   } else if (state.responseOp == "desktop-connection") {
-      DesktopConnection conn;
-      if (conn.Parse(operationNode, state.onAbort)) {
-         state.onDone.desktopConnection(result, conn);
-      }
-   } else if (state.responseOp == "logout") {
-      state.onDone.logout(result);
-   } else if (state.responseOp == "kill-session") {
-      state.onDone.killSession(result);
-   } else if (state.responseOp == "reset-desktop") {
-      state.onDone.reset(result);
-   } else if (state.responseOp == "rollback-checkout-desktop") {
-      state.onDone.rollback(result);
-   } else {
-      state.onAbort(false, Util::exception(_("Invalid response from broker: "
-                                             "Unknown response \"%s\"."),
-                                           state.responseOp.c_str()));
-      goto exit;
-   }
-   goto exit;
-
-malformedXml:
-   {
-      Util::string msg = Util::Format(
-         _("The server \"%s\" may not be a compatible View Connection "
-           "Server. Check the server address and try again."),
-         that->mHostname.c_str());
-      state.onAbort(false, Util::exception(msg));
-   }
-
-exit:
-   BasicHttp_FreeRequest(request);
-   BasicHttp_FreeResponse(response);
-   xmlFreeDoc(doc);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
  * cdk::BrokerXml::GetConfiguration --
  *
  *      Send a "get-configuration" request to the broker server.
@@ -1221,11 +846,11 @@ void
 BrokerXml::GetConfiguration(Util::AbortSlot onAbort,  // IN
                             ConfigurationSlot onDone) // IN
 {
-   RequestState req;
-   req.requestOp = "get-configuration";
-   req.responseOp = "configuration";
-   req.onAbort = onAbort;
-   req.onDone.configuration = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "get-configuration";
+   req->responseOp = "configuration";
+   req->onAbort = onAbort;
+   req->onDone.configuration = onDone;
    SendRequest(req);
 }
 
@@ -1251,12 +876,12 @@ BrokerXml::SetLocale(Util::string locale,     // IN
                      Util::AbortSlot onAbort, // IN
                      LocaleSlot onDone)       // IN
 {
-   RequestState req;
-   req.requestOp = "set-locale";
-   req.responseOp = "set-locale";
-   req.args = "<locale>" + Encode(locale) + "</locale>";
-   req.onAbort = onAbort;
-   req.onDone.locale = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "set-locale";
+   req->responseOp = "set-locale";
+   req->args = "<locale>" + Encode(locale) + "</locale>";
+   req->onAbort = onAbort;
+   req->onDone.locale = onDone;
    SendRequest(req);
 }
 
@@ -1315,12 +940,12 @@ BrokerXml::SubmitAuthentication(AuthInfo &auth,            // IN
    arg += "</params>";
    arg += "</screen>";
 
-   RequestState req;
-   req.requestOp = "do-submit-authentication";
-   req.responseOp = "submit-authentication";
-   req.args = arg;
-   req.onAbort = onAbort;
-   req.onDone.authentication = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "do-submit-authentication";
+   req->responseOp = "submit-authentication";
+   req->args = arg;
+   req->onAbort = onAbort;
+   req->onDone.authentication = onDone;
    SendRequest(req);
 }
 
@@ -1583,9 +1208,11 @@ BrokerXml::ChangePassword(Util::string oldPassword,  // IN
  */
 
 void
-BrokerXml::SubmitCertAuth(bool accept,               // IN
-                          Util::AbortSlot onAbort,   // IN
-                          AuthenticationSlot onDone) // IN
+BrokerXml::SubmitCertAuth(bool accept,                // IN
+                          const char *pin,            // IN
+                          const Util::string &reader, // IN
+                          Util::AbortSlot onAbort,    // IN
+                          AuthenticationSlot onDone)  // IN
 {
    AuthInfo authInfo;
    authInfo.name = "cert-auth";
@@ -1594,6 +1221,16 @@ BrokerXml::SubmitCertAuth(bool accept,               // IN
    acceptParam.name = "accept";
    acceptParam.values.push_back(accept ? "true" : "false");
    authInfo.params.push_back(acceptParam);
+
+   Param pinParam;
+   pinParam.name = "smartCardPIN";
+   pinParam.values.push_back(pin ? Util::string(pin) : "");
+   authInfo.params.push_back(pinParam);
+
+   Param readerParam;
+   readerParam.name = "smartCardReader";
+   readerParam.values.push_back(reader);
+   authInfo.params.push_back(readerParam);
 
    SubmitAuthentication(authInfo, onAbort, onDone);
 }
@@ -1619,11 +1256,11 @@ void
 BrokerXml::GetTunnelConnection(Util::AbortSlot onAbort,     // IN
                                TunnelConnectionSlot onDone) // IN
 {
-   RequestState req;
-   req.requestOp = "get-tunnel-connection";
-   req.responseOp = "tunnel-connection";
-   req.onAbort = onAbort;
-   req.onDone.tunnelConnection = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "get-tunnel-connection";
+   req->responseOp = "tunnel-connection";
+   req->onAbort = onAbort;
+   req->onDone.tunnelConnection = onDone;
    SendRequest(req);
 }
 
@@ -1646,14 +1283,23 @@ BrokerXml::GetTunnelConnection(Util::AbortSlot onAbort,     // IN
  */
 
 void
-BrokerXml::GetDesktops(Util::AbortSlot onAbort, // IN
-                       DesktopsSlot onDone)     // IN
+BrokerXml::GetDesktops(std::vector<Util::string> protocols, // IN
+                       Util::AbortSlot onAbort,             // IN
+                       DesktopsSlot onDone)                 // IN
 {
-   RequestState req;
-   req.requestOp = "get-desktops";
-   req.responseOp = "desktops";
-   req.onAbort = onAbort;
-   req.onDone.desktops = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "get-desktops";
+   req->responseOp = "desktops";
+   req->onAbort = onAbort;
+   req->onDone.desktops = onDone;
+   if (!protocols.empty()) {
+      req->args = "<supported-protocols>";
+      for (std::vector<Util::string>::iterator i = protocols.begin();
+           i != protocols.end(); ++i) {
+         req->args += "<protocol><name>" + Encode(*i) + "</name></protocol>";
+      }
+      req->args += "</supported-protocols>";
+   }
    SendRequest(req);
 }
 
@@ -1678,11 +1324,11 @@ void
 BrokerXml::GetUserGlobalPreferences(Util::AbortSlot onAbort, // IN
                                     PreferencesSlot onDone)  // IN
 {
-   RequestState req;
-   req.requestOp = "get-user-global-preferences";
-   req.responseOp = "user-global-preferences";
-   req.onAbort = onAbort;
-   req.onDone.preferences = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "get-user-global-preferences";
+   req->responseOp = "user-global-preferences";
+   req->onAbort = onAbort;
+   req->onDone.preferences = onDone;
    SendRequest(req);
 }
 
@@ -1717,12 +1363,12 @@ BrokerXml::SetUserGlobalPreferences(UserPreferences &prefs,  // IN
    }
    arg += "</user-preferences>";
 
-   RequestState req;
-   req.requestOp = "set-user-global-preferences";
-   req.responseOp = "set-user-global-preferences";
-   req.args = arg;
-   req.onAbort = onAbort;
-   req.onDone.preferences = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "set-user-global-preferences";
+   req->responseOp = "set-user-global-preferences";
+   req->args = arg;
+   req->onAbort = onAbort;
+   req->onDone.preferences = onDone;
    SendRequest(req);
 }
 
@@ -1762,12 +1408,12 @@ BrokerXml::SetUserDesktopPreferences(Util::string desktopId,        // IN
    }
    arg += "</user-preferences>";
 
-   RequestState req;
-   req.requestOp = "set-user-desktop-preferences";
-   req.responseOp = "set-user-desktop-preferences";
-   req.args = arg;
-   req.onAbort = onAbort;
-   req.onDone.desktopPreferences = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "set-user-desktop-preferences";
+   req->responseOp = "set-user-desktop-preferences";
+   req->args = arg;
+   req->onAbort = onAbort;
+   req->onDone.desktopPreferences = onDone;
    SendRequest(req);
 }
 
@@ -1792,28 +1438,34 @@ void
 BrokerXml::GetDesktopConnection(Util::string desktopId,          // IN
                                 Util::AbortSlot onAbort,         // IN
                                 DesktopConnectionSlot onDone,    // IN
-                                const Util::ClientInfoMap &info) // IN
+                                const Util::ClientInfoMap &info, // IN
+                                const Util::string &protocol)    // IN
 {
    ASSERT(!desktopId.empty());
 
-   RequestState req;
-   req.requestOp = "get-desktop-connection";
-   req.responseOp = "desktop-connection";
-   req.args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
+   RequestState *req = new RequestState();
+   req->requestOp = "get-desktop-connection";
+   req->responseOp = "desktop-connection";
+   req->args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
+
+   if (!protocol.empty()) {
+      req->args += "<protocol><name>" + Encode(protocol) +
+                   "</name></protocol>";
+   }
 
    if (!info.empty()) {
-      req.args += "<environment-information>";
+      req->args += "<environment-information>";
       for (Util::ClientInfoMap::const_iterator iter = info.begin();
            iter != info.end(); ++iter) {
-         req.args += Util::Format("<info name=\"%s\">%s</info>",
+         req->args += Util::Format("<info name=\"%s\">%s</info>",
                                   Encode(iter->first).c_str(),
                                   Encode(iter->second).c_str());
       }
-      req.args += "</environment-information>";
+      req->args += "</environment-information>";
    }
 
-   req.onAbort = onAbort;
-   req.onDone.desktopConnection = onDone;
+   req->onAbort = onAbort;
+   req->onDone.desktopConnection = onDone;
    SendRequest(req);
 }
 
@@ -1838,11 +1490,11 @@ void
 BrokerXml::Logout(Util::AbortSlot onAbort, // IN
                   LogoutSlot onDone)       // IN
 {
-   RequestState req;
-   req.requestOp = "do-logout";
-   req.responseOp = "logout";
-   req.onAbort = onAbort;
-   req.onDone.logout = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "do-logout";
+   req->responseOp = "logout";
+   req->onAbort = onAbort;
+   req->onDone.logout = onDone;
    SendRequest(req);
 }
 
@@ -1871,12 +1523,12 @@ BrokerXml::KillSession(Util::string sessionId,  // IN
 {
    ASSERT(!sessionId.empty());
 
-   RequestState req;
-   req.requestOp = "kill-session";
-   req.responseOp = "kill-session";
-   req.args = "<session-id>" + Encode(sessionId) + "</session-id>";
-   req.onAbort = onAbort;
-   req.onDone.killSession = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "kill-session";
+   req->responseOp = "kill-session";
+   req->args = "<session-id>" + Encode(sessionId) + "</session-id>";
+   req->onAbort = onAbort;
+   req->onDone.killSession = onDone;
    SendRequest(req);
 }
 
@@ -1904,12 +1556,12 @@ BrokerXml::ResetDesktop(Util::string desktopId,  // IN
 {
    ASSERT(!desktopId.empty());
 
-   RequestState req;
-   req.requestOp = "reset-desktop";
-   req.responseOp = "reset-desktop";
-   req.args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
-   req.onAbort = onAbort;
-   req.onDone.reset = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "reset-desktop";
+   req->responseOp = "reset-desktop";
+   req->args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
+   req->onAbort = onAbort;
+   req->onDone.reset = onDone;
    SendRequest(req);
 }
 
@@ -1937,126 +1589,13 @@ BrokerXml::Rollback(Util::string desktopId,  // IN
 {
    ASSERT(!desktopId.empty());
 
-   RequestState req;
-   req.requestOp = "rollback-checkout-desktop";
-   req.responseOp = "rollback-checkout-desktop";
-   req.args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
-   req.onAbort = onAbort;
-   req.onDone.rollback = onDone;
+   RequestState *req = new RequestState();
+   req->requestOp = "rollback-checkout-desktop";
+   req->responseOp = "rollback-checkout-desktop";
+   req->args = "<desktop-id>" + Encode(desktopId) + "</desktop-id>";
+   req->onAbort = onAbort;
+   req->onDone.rollback = onDone;
    SendRequest(req);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::BadBrokerException --
- *
- *      Returns a standard exception for wacky broker responses.
- *
- * Results:
- *      The exception.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-Util::exception
-BrokerXml::BadBrokerException()
-{
-   return Util::exception(_("Invalid response from broker."));
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::CancelRequests --
- *
- *      Cancel pending HTTP requests.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      Request onAbort handlers are run with cancelled = true.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-BrokerXml::CancelRequests()
-{
-   std::list<Util::AbortSlot> slots;
-   /*
-    * It is extremely likely that an onAbort() handler will delete
-    * this object, which will re-enter here and double-free things, so
-    * clear the list, and then call the abort handlers.
-    */
-   for (std::list<RequestState>::iterator i = mActiveRequests.begin();
-        i != mActiveRequests.end(); i++) {
-      BasicHttp_FreeRequest(i->request);
-      slots.push_back(i->onAbort);
-   }
-   mActiveRequests.clear();
-   Log("Cancelling %d Broker XML requests.\n", slots.size());
-   for (std::list<Util::AbortSlot>::iterator i = slots.begin();
-        i != slots.end(); i++) {
-      (*i)(true, Util::exception(_("Request cancelled by user.")));
-   }
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::ForgetCookies --
- *
- *      Forget all stored cookies.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      Cookie jar is recreated.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-BrokerXml::ForgetCookies()
-{
-   BasicHttp_FreeCookieJar(mCookieJar);
-   mCookieJar = BasicHttp_CreateCookieJar();
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::ResetConnections --
- *
- *      Force cURL to close all connections.  This resets BasicHttp,
- *      which is a bit heavy handed, but we are wading through a lot
- *      of layers of abstractions, and this works.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      BasicHttp is reinitialized.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-BrokerXml::ResetConnections()
-{
-   CancelRequests();
-   BasicHttp_Shutdown();
-   BasicHttp_Init(Poll_Callback, Poll_CallbackRemove);
 }
 
 
@@ -2104,7 +1643,9 @@ BrokerXml::Desktop::Desktop()
    : offlineState(OFFLINE_NONE),
      resetAllowed(false),
      resetAllowedOnSession(false),
-     inMaintenance(false)
+     inMaintenance(false),
+     inLocalRollback(false),
+     defaultProtocol(0)
 {
 }
 
@@ -2130,85 +1671,6 @@ BrokerXml::DesktopConnection::DesktopConnection()
      enableUSB(false),
      enableMMR(false)
 {
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::OnSslCtx --
- *
- *      Callback from basicHttp when an SSL context is set up by cURL.
- *      Add our certificate request handler.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-BrokerXml::OnSslCtx(BasicHttpRequest *request, // IN
-                    void *sslctx,              // IN
-                    void *clientData)          // IN
-{
-   BrokerXml *that = reinterpret_cast<BrokerXml*>(clientData);
-   ASSERT(that);
-   SSL_CTX *ctx = (SSL_CTX *)sslctx;
-   SSL_CTX_set_app_data(ctx, that);
-
-   /*
-    * SSL_CTX_set_client_cert_cb was turned into a real function in
-    * 0.9.8e. Prior to that it was just a macro to set a member of the
-    * SSL_CTX directly.  This tries to use the function if it's
-    * available, or sets the member directly if not.
-    */
-   static bool certCbChecked = false;
-   static bool hasCertCb = false;
-   if (!certCbChecked) {
-      GModule *self = g_module_open(NULL, (GModuleFlags)0);
-      gpointer func = NULL;
-      hasCertCb = g_module_symbol(self, "SSL_CTX_set_client_cert_cb", &func);
-      g_module_close(self);
-      DEBUG_ONLY(Log("Has SSL_CTX_set_client_cert_cb: %d\n", hasCertCb));
-   }
-   if (hasCertCb) {
-      SSL_CTX_set_client_cert_cb(ctx, OnCertificateRequest);
-   } else {
-      ctx->client_cert_cb = OnCertificateRequest;
-   }
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::OnCertificateRequest --
- *
- *      Callback when the server requests a certificate.  Emit the
- *      certificateRequested signal.
- *
- * Results:
- *      Those of the certificate requested signal.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-int
-BrokerXml::OnCertificateRequest(SSL *ssl,           // IN
-                                X509 **x509,        // OUT
-                                EVP_PKEY **privKey) // OUT
-{
-   BrokerXml *that =
-      reinterpret_cast<BrokerXml *>(SSL_CTX_get_app_data(ssl->ctx));
-   ASSERT(that);
-   return that->certificateRequested(ssl, x509, privKey);
 }
 
 
