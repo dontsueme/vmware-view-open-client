@@ -28,6 +28,12 @@
  *      Implementation of CdkWinCredsViewController.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import "cdkBroker.h"
 #import "cdkBrokerAddress.h"
 #import "cdkCreds.h"
@@ -186,7 +192,7 @@ extern "C" {
       strlen(secret), secret, NULL);
 
    if (rv != noErr) {
-      Warning("Could not save password: %ld: %s (%s)\n", rv,
+      Warning("Could not save password: %d: %s (%s)\n", (int)rv,
               GetMacOSStatusErrorString(rv),
               GetMacOSStatusCommentString(rv));
    }

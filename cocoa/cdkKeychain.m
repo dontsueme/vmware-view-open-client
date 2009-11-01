@@ -28,6 +28,12 @@
  *      Implementatino of CdkKeychain!
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import <openssl/err.h>
 #import <openssl/rsa.h>
 #import <openssl/x509.h>
@@ -35,6 +41,17 @@
 
 #import "cdkKeychain.h"
 #import "util.hh"
+
+
+/*
+ * d2i_X509() changed signature between 0.9.7 and 0.9.8, which we use
+ * on OS X 10.5.
+ */
+#ifdef OPENSSL_097
+#define D2I_X509_CONST
+#else
+#define D2I_X509_CONST const
+#endif
 
 
 @interface CdkKeychain (Private)
@@ -332,7 +349,7 @@ CdkKeychainFreeIdentity(void *parent,        // IN/UNUSED
    X509 *x509 = NULL;
    SecCertificateRef cert = NULL;
    CSSM_DATA data = { 0 };
-   unsigned char *tmpCert;
+   D2I_X509_CONST unsigned char *tmpCert;
 
    require_noerr(SecIdentityCopyCertificate(identity, &cert), bail);
    require_noerr(SecCertificateGetData(cert, &data), bail);

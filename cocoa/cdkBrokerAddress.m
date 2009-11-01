@@ -28,6 +28,12 @@
  *      Implementation of CdkBrokerAddress.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #include "baseXml.hh"
 #import "cdkBrokerAddress.h"
 #include "cdkString.h"

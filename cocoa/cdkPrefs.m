@@ -28,6 +28,12 @@
  *      Implementation of CdkPrefs.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import "cdkDesktopSize.h"
 #import "cdkPrefs.h"
 #include "util.hh"

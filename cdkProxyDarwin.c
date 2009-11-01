@@ -28,6 +28,10 @@
  *      Implementaiton of CdkProxy for Mac OS X.
  */
 
+#include "vm_basic_types.h"
+#define _UINT64
+
+
 #include <CoreServices/CoreServices.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 

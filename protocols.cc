@@ -41,7 +41,7 @@
 #define PROTOCOL_RGS_LABEL _("HP RGS")
 
 #define PROTOCOL_PCOIP "PCOIP"
-#define PROTOCOL_PCOIP_LABEL _("Teradici PCoIP")
+#define PROTOCOL_PCOIP_LABEL _("PCoIP")
 
 #define PROTOCOL_LOCALVM "localvm"
 #define PROTOCOL_LOCALVM_LABEL _("Local")

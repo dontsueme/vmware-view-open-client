@@ -171,7 +171,7 @@
 #include "loglevel_user.h"
 
 #if defined(__APPLE__)
-#if defined(__LP64__)
+#if defined(VM_X86_64)
 #if __DARWIN_UNIX03
 #define SC_EAX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rax)
 #define SC_EBX(uc) ((unsigned long) (uc)->uc_mcontext->__ss.__rbx)

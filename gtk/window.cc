@@ -434,6 +434,11 @@ Window::SetContent(Dlg *dlg) // IN
       }
       if (dynamic_cast<DesktopDlg *>(mDlg)) {
          mDesktopUIExitCnx.disconnect();
+         if (mDesktopHelper) {
+            mDesktopHelper->Kill();
+            g_idle_add(OnIdleDeleteProcHelper, mDesktopHelper);
+            mDesktopHelper = NULL;
+         }
          if (!GetFullscreen() && Prefs::GetPrefs()->GetBackground().empty()) {
             /*
              * This causes GtkWindow's centering logic to be reset, so

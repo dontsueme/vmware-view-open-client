@@ -28,11 +28,16 @@
  *      Implementation of CdkCreds.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import "cdkCreds.h"
 
 
 extern "C" {
-#import "vm_basic_types.h"
 #import "vm_assert.h"
 }
 

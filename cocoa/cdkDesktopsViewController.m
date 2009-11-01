@@ -28,6 +28,12 @@
  *      Implementation of CdkDesktopsViewController.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import "cdkBroker.h"
 #import "cdkDesktop.h"
 #import "cdkDesktopSize.h"

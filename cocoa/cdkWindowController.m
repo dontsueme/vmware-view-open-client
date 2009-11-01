@@ -28,6 +28,12 @@
  *     Implementation of CdkWindowController
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import <SecurityInterface/SFChooseIdentityPanel.h>
 
 
@@ -251,7 +257,7 @@ enum {
 {
    Log("Continue!");
    switch ([viewControllers indexOfObject:viewController]) {
-   case SERVER_VIEW:
+   case SERVER_VIEW: {
       CdkBrokerAddress *server =
 	 [(CdkBrokerViewController *)viewController brokerAddress];
       Log("Connecting to %s...\n", [[server description] UTF8String]);
@@ -259,45 +265,53 @@ enum {
                    defaultUser:[[CdkPrefs sharedPrefs] user]
                  defaultDomain:[[CdkPrefs sharedPrefs] domain]];
       break;
+   }
    case DISCLAIMER_VIEW:
       [broker acceptDisclaimer];
       break;
-   case PASSCODE_CREDS_VIEW:
+   case PASSCODE_CREDS_VIEW: {
       id<CdkPasscodeCreds> passcodeCreds = [viewController representedObject];
       [broker submitUsername:[passcodeCreds username]
                     passcode:[passcodeCreds secret]];
       break;
-   case TOKENCODE_CREDS_VIEW:
+   }
+   case TOKENCODE_CREDS_VIEW: {
       id<CdkTokencodeCreds> tokencodeCreds = [viewController representedObject];
       [broker submitNextTokencode:[tokencodeCreds secret]];
       break;
-   case CHANGE_PIN_VIEW:
+   }
+   case CHANGE_PIN_VIEW: {
       id<CdkChangePinCreds> changePinCreds = [viewController representedObject];
       [broker submitPin:[changePinCreds secret]
                     pin:[changePinCreds confirm]];
       break;
-   case CONFIRM_PIN_VIEW:
+   }
+   case CONFIRM_PIN_VIEW: {
       id<CdkConfirmPinCreds> confirmPinCreds = [viewController representedObject];
       [broker submitPin:[confirmPinCreds secret]
                     pin:[confirmPinCreds confirm]];
       break;
-   case WIN_CREDS_VIEW:
+   }
+   case WIN_CREDS_VIEW: {
       id<CdkWinCreds> winCreds = [viewController representedObject];
       [broker submitUsername:[winCreds username]
                     password:[winCreds secret]
                       domain:[winCreds domain]];
       break;
-   case CHANGE_WIN_CREDS_VIEW:
+   }
+   case CHANGE_WIN_CREDS_VIEW: {
       id<CdkChangeWinCreds> changeCreds = [viewController representedObject];
       [broker submitOldPassword:[changeCreds oldSecret]
                     newPassword:[changeCreds secret]
                         confirm:[changeCreds confirm]];
       break;
-   case DESKTOPS_VIEW:
+   }
+   case DESKTOPS_VIEW: {
       CdkDesktopsViewController *desktops
 	 = (CdkDesktopsViewController *)viewController;
       [broker connectDesktop:[desktops desktop]];
       break;
+   }
    default:
       Log("Bad view index: %d",
 	    [viewControllers indexOfObject:viewController]);
@@ -983,7 +997,7 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs // IN
    SecIdentitySearchRef search;
    OSStatus rv = SecIdentitySearchCreate(NULL, 0, &search);
    if (rv != noErr) {
-      Warning("Could not create search: %ld\n", rv);
+      Warning("Could not create search: %d\n", (int)rv);
       return NULL;
    }
 
