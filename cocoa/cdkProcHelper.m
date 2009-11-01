@@ -28,6 +28,12 @@
  *      Implementation of CdkProcHelper.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import <boost/bind.hpp>
 
 

@@ -28,6 +28,12 @@
  *      Implementation of CdkRdc.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #include <glib.h>
 
 
@@ -256,7 +262,7 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
                                          strlen(secret), secret, NULL);
    }
    if (rv != noErr) {
-      Warning("Could not save password: %ld: %s (%s)\n", rv,
+      Warning("Could not save password: %d: %s (%s)\n", (int)rv,
               GetMacOSStatusErrorString(rv),
               GetMacOSStatusCommentString(rv));
    }

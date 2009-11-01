@@ -28,6 +28,12 @@
  *      Implemention of cdk::App.
  */
 
+extern "C" {
+#include "vm_basic_types.h"
+#define _UINT64
+}
+
+
 #import <Cocoa/Cocoa.h>
 
 

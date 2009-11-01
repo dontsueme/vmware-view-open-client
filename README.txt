@@ -1,5 +1,5 @@
 VMware View Open Client 4.0.0
-Build 196715, 2009-09-29
+Build 201987, 2009-10-16
 
 VMware is a registered trademark or trademark (the "Marks") of VMware, Inc.
 in the United States and/or other jurisdictions and is not licensed to you
@@ -36,9 +36,6 @@ WELCOME
 
 Welcome to the release of VMware View Open Client 4.0.0.
 
-VMware View Open Client was formerly known as VMware VDM Client for
-Linux.
-
 For VMware View partners, official builds of VMware View Client are
 available through VMware Partner Engineering. If you don't feel
 you can use an official build, perhaps because you are targeting a
@@ -63,9 +60,8 @@ STATUS
 
 This is the BETA release of VMware View Open Client 4.0.0.
 
-This release also introduces USB and Multimedia Redirection (MMR) support.
-Please carefully review the Known Issues for these components as certain
-functions are limited.
+This release introduces PCoIP support.  Please carefully review the
+Known Issues for these components as certain functions are limited.
 
 
 CONTACT
@@ -80,8 +76,8 @@ http://code.google.com/p/vmware-view-open-client/
 VIEW BROKER COMPATIBILITY
 -------------------------
 
-This release is compatible with VDM 2.0, VDM 2.1, View 3.0, and
-View 3.1.
+This release is compatible with VDM 2.0, VDM 2.1, View 3.0, View 3.1,
+and View 4.0.
 
 
 SYSTEM REQUIREMENTS
@@ -98,26 +94,33 @@ Required Version    Libraries
 ----------------    ---------
 glibc 2.x           libc.so.6, libdl.so.2
 gcc 3.4.x           libstdc++.so.6, libgcc_s.so.1
-glib 2.8            libglib-2.0.so.0, libgobject-2.0.so.0
-gtk+2 2.8           libgtk-x11-2.0.so.0, libgdk-x11.2.0.so.0,
+glib 2.6            libglib-2.0.so.0, libgobject-2.0.so.0
+gtk+2 2.4           libgtk-x11-2.0.so.0, libgdk-x11.2.0.so.0,
                     libgdk_pixbuf-2.0.so.0
 libpng 1.2.x        libpng12.so.0
 openssl 0.9.8       libssl.so.0.9.8, libcrypto.so.0.9.8
 libxml 2.6.x        libxml2.so.2
 zlib 1.2.3          libz.so.1
 
-In addition, rdesktop is required. VMware View Open Client has been
-tested against rdesktop versions 1.4.1, 1.5.0, and 1.6.0.  rdesktop
-version 1.5.0 or higher is required to connect to a Windows Vista or
-Windows Server 2008 Terminal Services desktop.
+In addition, rdesktop is required for RDP
+connections. VMware View Open Client has been tested against
+rdesktop versions 1.4.1, 1.5.0, and 1.6.0.  rdesktop version 1.5.0 or
+higher is required to connect to a Windows Vista or Windows Server
+2008 Terminal Services desktop.
 
 To use multiple monitors when connecting to desktops, the Xinerama
 extension to the X Window System must be enabled with more than one
 display defined. The system must also be running a window manager that
 supports the _NET_WM_FULLSCREEN_MONITORS window manager protocol,
 defined in freedesktop.org's Extended Window Manager Hints.
-Future releases of Metacity (2.26), Compiz (0.8), KWin for KDE (4.2),
-and xfwm4 for xfce4 (4.6.0) are expected to support this protocol.
+
+Recent releases of Metacity (2.26), Compiz (0.8), KWin for KDE (4.2),
+and xfwm4 for xfce4 (4.6.0) support this protocol.
+
+To use MMR, USB, and PCoIP, additional libraries and binaries are
+available to partners.  As these are not available under an Open
+Source license, we are unable to provide them via Google Code at this
+time.
 
 
 INSTALLATION
@@ -128,15 +131,16 @@ VMware View Open Client is distributed in the following forms:
  * Standard RPM
  * Novell SLETC Add-on RPM
  * Debian .deb package
+ * Source tarball
 
 To use the binary tar gzip, simply unpack the tarball:
 
-$ tar zxf VMware-view-open-client-4.0.0-196715.tar.gz
+$ tar zxf VMware-view-open-client-4.0.0-201987.tar.gz
 
 To run, navigate to the 'bin' subdirectory and run directly from the
 command line:
 
-$ cd VMware-view-open-client-4.0.0-196715/bin
+$ cd VMware-view-open-client-4.0.0-201987/bin
 $ ./vmware-view
 
 You can also copy files from the tarball into system directories:
@@ -170,6 +174,7 @@ packages installed, whose method will vary depending on your distribution:
 
 Project          Version
 -------------    -------
+Glib             2.6.0
 Gtk+             2.4.0
 libxml2          2.6.0
 libcurl          7.18.0
@@ -177,10 +182,6 @@ OpenSSL          0.9.8
 Boost.Signals    1.34.1
 
 If running configure fails, please check config.log for more details.
-
-Note: When building from source, OpenSSl will be statically linked by default.
-See the INSTALL file for information on changing this and other configuration
-options.
 
 
 SMART CARD SUPPORT
@@ -209,7 +210,36 @@ ISSUES RESOLVED IN THIS RELEASE
 "gc" denotes issues reported on code.google.com.
 "bz" denotes bugs filed in VMware's bugzilla.
 
+Version 4.0.0 build 201987:
+
+*) README.txt updated
+*) Failed assertion after timeout (bz 475796)
+*) Fixed compilation problems on OS X 10.6 (Snow Leopard)
+
+
+ISSUES RESOLVED IN PREVIOUS RELEASES
+------------------------------------
+
 Version 4.0.0 build 196715:
+
+*) New window size UI
+*) Fixes to windowed mode keyboard focus
+*) Improved View protocol support
+*) Accepts -K option like rdesktop to not grab the keyboard
+*) Unusual Time format for German and Japanese users on the Smart Card
+   Cert screen (bz 390241)
+*) When authenticating with smart cards, users will need to enter
+   their PIN/password when connecting to the Windows desktop
+
+Version 3.1.2 build 188088:
+
+*) Added French translations
+*) A new preference which no longer disables Metacity keybindings on
+  SLED SP2 (set allowDisableMetacityKeybindingWorkaround to true in
+  ~/.vmware/view-preferences)
+*) Does not try to launch USB client if it's not installed
+
+Version 3.1.0 build 169073:
 
 *) Get "Gtk: gtk_main_quit: assertion `main_loops != NULL' failed" while
    using smart card authentication (bz 393737)
@@ -223,9 +253,6 @@ Version 4.0.0 build 196715:
    (bz 409297)
 *) /usr/share/doc/VMware-view-client/help directory will not be deleted
    when uninstalling from RPM (bz 365618)
-
-ISSUES RESOLVED IN PREVIOUS RELEASES
-------------------------------------
 
 Version 3.1.0 build 160969:
 
@@ -270,14 +297,12 @@ KNOWN ISSUES IN THIS RELEASE
    administrative UI (bz 330941)
 *) The client may not time out when attempting to reach an unreachable
    broker (bz 322204, bz 325803)
-*) Unusual Time format for German and Japanese users on the Smart Card
-   Cert screen (bz 390241)
-*) When authenticating with smart cards, users will need to enter
-   their PIN/password when connecting to the Windows desktop
 *) The client may exit with SEGV (signal 11) after resetting a desktop
    (bz 407225)
 *) When using smart cards, the view client may hang when quitting
    (bz 407231)
+*) 'Retry' and 'Cancel' buttons don't work after network interruption
+   (bz 474562)
 
 TROUBLESHOOTING
 ---------------
@@ -336,9 +361,9 @@ FEATURES
 *) USB redirection
 *) Multi-monitor sessions
 
-The following features of the View Client for Windows 3.1 are not
+The following features of the View Client for Windows 4.0 are not
 implemented in this release.
 
 *) Multiple desktop sessions
-*) Windowed sessions
 *) Fullscreen toolbar
+*) Log in as current user

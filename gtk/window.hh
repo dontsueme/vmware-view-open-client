@@ -111,6 +111,9 @@ protected:
    static gboolean OnIdleNonInteractive(gpointer data)
       {  reinterpret_cast<Window *>(data)->ForwardHandler(); return false; }
 
+   static gboolean OnIdleDeleteProcHelper(gpointer data)
+      { delete reinterpret_cast<ProcHelper *>(data); return false; }
+
    virtual void DoDesktopConnect(Desktop *desktop)
       { mBroker->ConnectDesktop(desktop); }
    virtual void DoInitialize();

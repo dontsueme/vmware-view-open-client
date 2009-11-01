@@ -1,3 +1,9 @@
+vmware-view-open-client (4.0.0-201987+dfsg-1) unstable; urgency=low
+
+  * Merging upstream version 4.0.0-201987+dfsg.
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 01 Nov 2009 10:01:28 +0100
+
 vmware-view-open-client (4.0.0-196715+dfsg-1) unstable; urgency=low
 
   * Merging upstream version 4.0.0-196715+dfsg.

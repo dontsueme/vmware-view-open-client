@@ -3362,4 +3362,5 @@ SSL_SetErrorHook(SSLSock ssl,                         // IN
    ssl->errorHook = hookProc;
    ssl->errorHookContext = context;
 }
-#endif // __APPLE_READ_BUG_WORKAROUND_ d 
+#endif // __APPLE_READ_BUG_WORKAROUND__
+
