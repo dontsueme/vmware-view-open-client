@@ -86,6 +86,7 @@ WindowSizeDlg::WindowSizeDlg(GtkWindow *parent) // IN
    g_signal_connect_swapped(G_OBJECT(mSlider), "value-changed",
                             G_CALLBACK(OnSliderChanged), this);
    gtk_scale_set_draw_value(GTK_SCALE(mSlider), false);
+   gtk_range_set_increments(GTK_RANGE(mSlider), 1.0, 1.0);
    gtk_widget_set_size_request(GTK_WIDGET(mSlider), 300, -1);
 
    GtkWidget *hbox = gtk_hbox_new(true, 0);

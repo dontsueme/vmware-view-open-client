@@ -677,7 +677,7 @@ Window::RequestBroker()
    Reset();
    BrokerDlg *brokerDlg = new BrokerDlg(Prefs::GetPrefs()->GetDefaultBroker());
    SetContent(brokerDlg);
-   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("_Connect"));
+   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("C_onnect"));
 
    // Hit the Connect button if broker was supplied and we're non-interactive.
    if (brokerDlg->IsValid() &&
@@ -1883,6 +1883,17 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
 
    Util::Rect geometry;
    Prefs::DesktopSize desktopSize = Prefs::GetPrefs()->GetDefaultDesktopSize();
+   if (GetFullscreen()) {
+      switch (desktopSize) {
+      case Prefs::ALL_SCREENS:
+      case Prefs::FULL_SCREEN:
+         break;
+      default:
+         NOT_REACHED();
+         desktopSize = Prefs::FULL_SCREEN;
+         break;
+      }
+   }
    GetFullscreenGeometry(
       desktopSize == Prefs::ALL_SCREENS, &geometry,
       desktopSize == Prefs::ALL_SCREENS ? &mMonitorBounds : NULL);
@@ -1910,6 +1921,8 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
       break;
    }
 
+   geometry.width = MAX(geometry.width, 640);
+   geometry.height = MAX(geometry.height, 480);
    Log("Connecting to desktop with total geometry %dx%d.\n",
        geometry.width, geometry.height);
 
@@ -1926,13 +1939,17 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
       desktop->StartUsb();
    }
 
+   const BrokerXml::DesktopConnection &conn = desktop->GetConnection();
+   Log("Connecting to desktop %s: %s://%s@%s:%d\n",
+       conn.id.c_str(), conn.protocol.c_str(), conn.username.c_str(),
+       conn.address.c_str(), conn.port);
+
    if (rdesktop) {
-      rdesktop->Start(desktop->GetConnection(), deskDlg->GetWindowId(),
-                      &geometry, GetSmartCardRedirects());
+      rdesktop->Start(conn, deskDlg->GetWindowId(), &geometry,
+                      GetSmartCardRedirects());
       deskDlg->SetInhibitCtrlEnter(true);
    } else if (rmks) {
-      rmks->Start(desktop->GetConnection(), deskDlg->GetWindowId(),
-                  &geometry);
+      rmks->Start(conn, deskDlg->GetWindowId(), &geometry);
       deskDlg->SetInhibitCtrlEnter(false);
    } else {
       NOT_REACHED();

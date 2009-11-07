@@ -147,14 +147,27 @@ ProcHelper::GetIsInPath(const Util::string &programName) // IN
 void
 ProcHelper::Start(Util::string procName,          // IN
                   Util::string procPath,          // IN
-                  std::vector<Util::string> args, // IN
-                  Util::string stdIn,             // IN
-                  int skipFd1,                    // IN
-                  int skipFd2)                    // IN
+                  std::vector<Util::string> args, // IN/OPT
+                  int argsCensorMask,             // IN/OPT
+                  Util::string stdIn,             // IN/OPT
+                  int skipFd1,                    // IN/OPT
+                  int skipFd2)                    // IN/OPT
 {
    ASSERT(mPid == -1);
    ASSERT(!procPath.empty());
    ASSERT(!procName.empty());
+
+   Util::string cmd = procPath;
+   for (unsigned int i = 0; i < args.size(); i++) {
+      cmd += " '";
+      if (i <= 8 * sizeof(argsCensorMask) && ((1 << i) & argsCensorMask)) {
+         cmd += "[omitted]";
+      } else {
+         cmd += args[i];
+      }
+      cmd += "'";
+   }
+   Log("Starting child: %s\n", cmd.c_str());
 
    char const **argList = (char const**)
       Util_SafeMalloc(sizeof(char*) * (args.size() + 2));

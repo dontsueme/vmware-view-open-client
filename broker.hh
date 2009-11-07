@@ -201,6 +201,7 @@ private:
    };
 
    static gboolean RefreshDesktopsTimeout(gpointer data);
+   static gboolean OnIdleSubmitCertAuth(gpointer data);
 
    void ClearSmartCardPinAndReader();
 
@@ -220,6 +221,7 @@ private:
    std::vector<Util::string> mSupportedProtocols;
    Util::string mCookieFile;
    unsigned int mAuthRequestId;
+   unsigned int mIdleCertAuthId;
 };
 
 

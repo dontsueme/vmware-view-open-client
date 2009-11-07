@@ -171,14 +171,20 @@ RMks::Start(const BrokerXml::DesktopConnection &connection, // IN/UNUSED
             const Util::Rect *geometry)                     // IN/UNUSED
 {
    std::vector<Util::string> args;
+   int argsMask = 0;
+
    args.push_back("pcoip_client");
    args.push_back("mksvchanclient");
+
+   // We don't want to log the connection token.
+   argsMask |= 1 << args.size();
    args.push_back(Util::Format("%s:%d;%s", connection.address.c_str(),
                                connection.port, connection.token.c_str()));
+
    args.push_back(Util::Format("%dx%d", geometry->width, geometry->height));
    args.push_back(windowId);
 
-   ProcHelper::Start(VMwareRMksBinary, VMwareRMksBinary, args);
+   ProcHelper::Start(VMwareRMksBinary, VMwareRMksBinary, args, argsMask);
 }
 
 

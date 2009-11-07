@@ -204,6 +204,8 @@ DesktopDlg::OnPlugAdded(GtkSocket *s,      // IN
       if (GTK_IS_WINDOW(parent)) {
          gtk_window_resize(GTK_WINDOW(parent), that->mInitialWidth,
                            that->mInitialHeight);
+         gtk_widget_size_allocate(GTK_WIDGET(that->mSocket),
+                                  &parent->allocation);
       }
    }
 

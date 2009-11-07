@@ -50,7 +50,9 @@ public:
 
    void Start(Util::string procName, Util::string procPath,
               std::vector<Util::string> args = std::vector<Util::string>(),
-              Util::string stdIn = "", int skipFd1 = 0, int skipFd2 = 0);
+              int argsCensorMask = 0, Util::string stdIn = "",
+              int skipFd1 = 0, int skipFd2 = 0);
+
    void Kill();
    static bool GetIsInPath(const Util::string &programName);
 
