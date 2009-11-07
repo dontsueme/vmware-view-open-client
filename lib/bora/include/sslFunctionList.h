@@ -32,22 +32,17 @@
 #ifndef _SSL_FUNCTION_LIST_H_
 #define _SSL_FUNCTION_LIST_H_
 
-#if defined(VMCRYPTO_FIPS_COMPLIANT) || defined(OPENSSL_098)
-#define SHA1_T1 size_t
-#else
+#if !defined(VMCRYPTO_FIPS_COMPLIANT) && !defined(OPENSSL_097)
 #define SHA1_T1 unsigned long
+#else
+#define SHA1_T1 size_t
 #endif
 
-#ifdef OPENSSL_098
-#define SSL_U_C_A_T1 const unsigned char *
-#define SSL_C_U_C_A_T1 const unsigned char *
-#define EVP_VF_T1 const unsigned char *
-#define EVP_DU_T1 size_t
-#define PEM_W_B_RPK_T1 const RSA *
-#define D2I_PK_T1 const unsigned char **
-#define D2I_X509_T1 const unsigned char **
-#define HMAC_T1 size_t
-#else
+#ifdef OPENSSL_100
+#define STACK _STACK
+#endif
+
+#ifdef OPENSSL_097
 #define SSL_U_C_A_T1 unsigned char *
 #define SSL_C_U_C_A_T1 unsigned char *
 #define EVP_VF_T1 unsigned char *
@@ -56,6 +51,15 @@
 #define D2I_PK_T1 unsigned char **
 #define D2I_X509_T1 unsigned char **
 #define HMAC_T1 int
+#else
+#define SSL_U_C_A_T1 const unsigned char *
+#define SSL_C_U_C_A_T1 const unsigned char *
+#define EVP_VF_T1 const unsigned char *
+#define EVP_DU_T1 size_t
+#define PEM_W_B_RPK_T1 const RSA *
+#define D2I_PK_T1 const unsigned char **
+#define D2I_X509_T1 const unsigned char **
+#define HMAC_T1 size_t
 #endif
 
 #define VMW_SSL_VOID_FUNCTIONS_COMMON \

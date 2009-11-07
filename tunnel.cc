@@ -161,10 +161,15 @@ Tunnel::Connect(const BrokerXml::Tunnel &tunnelInfo) // IN
    Log("Executing secure HTTP tunnel: %s\n", tunnelPath.c_str());
 
    std::vector<Util::string> args;
+   int argsMask = 0;
+
    args.push_back(GetTunnelUrl());
+
+   // Don't log the connection ID.
+   argsMask |= 1 << args.size();
    args.push_back(GetConnectionId());
 
-   mProc.Start(VMWARE_VIEW_TUNNEL, tunnelPath, args);
+   mProc.Start(VMWARE_VIEW_TUNNEL, tunnelPath, args, argsMask);
 }
 
 

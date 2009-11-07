@@ -383,7 +383,7 @@ AM_GLIB_GNU_GETTEXT
 # These need to be after AC_PROG_SED
 if test -z "$TCROOT" ; then
    changequote(,)dnl
-   SSL_VERSION_NUM="`$PKG_CONFIG --modversion openssl | $SED -e 's/[a-zA-Z]*$//'`"
+   SSL_VERSION_NUM="`$PKG_CONFIG --modversion openssl | $SED -e 's/[^0-9\.].*$//'`"
    changequote([,])dnl
 fi
 SSL_CFLAGS="$SSL_CFLAGS -DLIBCRYPTO_SO=libcrypto.$LIBEXT.$SSL_VERSION_NUM"

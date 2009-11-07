@@ -249,6 +249,17 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop *> &desktops, // IN
       gtk_box_pack_end(GTK_BOX(box), GTK_WIDGET(l), false, false, 0);
       gtk_label_set_mnemonic_widget(l, GTK_WIDGET(mWindowSize));
    }
+   /*
+    * We need to manually update the size here:
+    *
+    * If the saved pref is not full screen, and --fullscreen was
+    * used, and all monitors is not available, then the
+    * SetDesktopSize() above won't trigger a size changed, since
+    * the UI state was already full screen.
+    *
+    * See bug 485605.
+    */
+   Prefs::GetPrefs()->SetDefaultDesktopSize(GetDesktopSize());
 }
 
 
@@ -570,7 +581,7 @@ Prefs::DesktopSize
 DesktopSelectDlg::GetDesktopSize()
 {
    GtkTreeIter iter;
-   if (!gtk_combo_box_get_active_iter(mWindowSize, &iter)) {
+   if (!mWindowSize || !gtk_combo_box_get_active_iter(mWindowSize, &iter)) {
       return Prefs::FULL_SCREEN;
    }
 

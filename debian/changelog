@@ -1,3 +1,10 @@
+vmware-view-open-client (4.0.0-207079+dfsg-1) unstable; urgency=low
+
+  * Merging upstream version 4.0.0-207079+dfsg.
+  * Making quilt build-depends versioned.
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 07 Nov 2009 17:57:55 +0100
+
 vmware-view-open-client (4.0.0-201987+dfsg-1) unstable; urgency=low
 
   * Merging upstream version 4.0.0-201987+dfsg.

@@ -179,7 +179,7 @@ RDesktop::Start(const BrokerXml::DesktopConnection &connection,   // IN
                                connection.address.c_str(),
                                connection.port).c_str());
 
-   ProcHelper::Start(RDesktopBinary, RDesktopBinary, args, connection.password + "\n");
+   ProcHelper::Start(RDesktopBinary, RDesktopBinary, args, 0, connection.password + "\n");
 }
 
 

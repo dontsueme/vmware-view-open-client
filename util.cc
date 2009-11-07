@@ -797,8 +797,6 @@ GetClientInfo(const string broker, // IN
    time_t now = time(NULL);
    struct tm tm_now;
    localtime_r(&now, &tm_now);
-   info["TimeOffset_GMT"] = Format("%.2d:%.2d", tm_now.tm_gmtoff / 3600,
-                                   abs(tm_now.tm_gmtoff) % 3600 / 60);
 
    const char *tzid = getenv("TZ");
    char *contents = NULL;

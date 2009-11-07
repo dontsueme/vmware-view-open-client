@@ -84,9 +84,14 @@ Usb::Start(const Util::string &address,       // IN
    strmPort << port;
 
    std::vector<Util::string>  args;
+   int argsMask = 0;
+
    args.push_back(USB_ADDRESS_ARG);   args.push_back(address);
    args.push_back(USB_PORT_ARG);      args.push_back(strmPort.str());
-   args.push_back(USB_TICKET_ARG);    args.push_back(channelTicket);
+   args.push_back(USB_TICKET_ARG);
+   // Don't log the ticket.
+   argsMask |= 1 << args.size();
+   args.push_back(channelTicket);
 
 #ifdef __linux__
    std::vector<Util::string> usbRedirectArgs = Prefs::GetPrefs()->GetUsbOptions();
@@ -109,13 +114,13 @@ Usb::Start(const Util::string &address,       // IN
       if (File_Exists(defaultPath.c_str())) {
          usbPath = defaultPath;
       } else {
-         Util::UserWarning(_("%s was not found; disabling USB redirection."),
+         Util::UserWarning(_("%s was not found; disabling USB redirection.\n"),
                            defaultPath.c_str());
          return false;
       }
    }
 
-   ProcHelper::Start(VMWARE_VIEW_USB, usbPath, args);
+   ProcHelper::Start(VMWARE_VIEW_USB, usbPath, args, argsMask);
    return true;
 }
 

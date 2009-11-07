@@ -74,7 +74,8 @@ Broker::Broker()
      mRefreshTimeoutSourceID(0),
      mGettingDesktops(false),
      mSmartCardPin(NULL),
-     mAuthRequestId(0)
+     mAuthRequestId(0),
+     mIdleCertAuthId(0)
 {
 }
 
@@ -123,6 +124,11 @@ Broker::Reset()
    if (mRefreshTimeoutSourceID) {
       g_source_remove(mRefreshTimeoutSourceID);
       mRefreshTimeoutSourceID = 0;
+   }
+
+   if (mIdleCertAuthId) {
+      g_source_remove(mIdleCertAuthId);
+      mIdleCertAuthId = 0;
    }
 
    /*
@@ -923,18 +929,11 @@ Broker::OnAuthInfo(BrokerXml::Result &result,     // IN
       }
       break;
    case BrokerXml::AUTH_CERT_AUTH:
-      if (mDelegate) {
-         mDelegate->SetBusy(_("Logging in..."));
+      if (mIdleCertAuthId) {
+         g_source_remove(mIdleCertAuthId);
       }
-      mXml->QueueRequests();
-      mXml->SubmitCertAuth(
-         true, mSmartCardPin, mSmartCardReader,
-         boost::bind(&Broker::OnInitialRPCAbort, this, _1, _2),
-         boost::bind(&Broker::OnAuthResult, this, _1, _2));
-      InitTunnel();
-      GetDesktops();
-      mXml->SendQueuedRequests();
-      ClearSmartCardPinAndReader();
+      Log("Queueing idle cert auth response\n");
+      mIdleCertAuthId = g_idle_add(OnIdleSubmitCertAuth, this);
       break;
    default:
       App::ShowDialog(GTK_MESSAGE_ERROR,
@@ -1640,6 +1639,50 @@ Broker::ClearSmartCardPinAndReader()
       mSmartCardPin = NULL;
    }
    mSmartCardReader.clear();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Broker::OnIdleSubmitCertAuth --
+ *
+ *      Submit a cert auth response in an idle handler.  This is
+ *      needed in the case where we don't have a disclaimer, because
+ *      the current request is the one which sets our cookie.
+ *
+ * Results:
+ *      FALSE to remove this callback.
+ *
+ * Side effects:
+ *      Accepts the cert-auth response.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+gboolean
+Broker::OnIdleSubmitCertAuth(gpointer data)
+{
+   Broker *that = reinterpret_cast<Broker *>(data);
+   ASSERT(that);
+
+   that->mIdleCertAuthId = 0;
+
+   if (that->mDelegate) {
+      that->mDelegate->SetBusy(_("Logging in..."));
+   }
+
+   that->mXml->QueueRequests();
+   that->mXml->SubmitCertAuth(
+      true, that->mSmartCardPin, that->mSmartCardReader,
+      boost::bind(&Broker::OnInitialRPCAbort, that, _1, _2),
+      boost::bind(&Broker::OnAuthResult, that, _1, _2));
+   that->InitTunnel();
+   that->GetDesktops();
+   that->mXml->SendQueuedRequests();
+   that->ClearSmartCardPinAndReader();
+
+   return false;
 }
 
 
