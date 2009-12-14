@@ -850,7 +850,7 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
 
    bool busy = desktop->GetConnectionState() != Desktop::STATE_DISCONNECTED;
 
-   item = gtk_menu_item_new_with_mnemonic(_("C_onnect"));
+   item = gtk_menu_item_new_with_mnemonic(_("Co_nnect"));
    gtk_widget_show(item);
    gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
    if (desktop->CanConnect() && !busy) {
@@ -864,7 +864,7 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
    gtk_widget_show(item);
    gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
 
-   item = gtk_menu_item_new_with_label(_("Protocols"));
+   item = gtk_menu_item_new_with_mnemonic(_("_Protocols"));
    gtk_widget_show(item);
    gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
 
@@ -881,8 +881,8 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
    std::vector<Util::string> protocols = desktop->GetProtocols();
    for (std::vector<Util::string>::reverse_iterator iter = protocols.rbegin();
         iter != protocols.rend(); iter++) {
-      item = gtk_radio_menu_item_new_with_label(
-         group, Protocols::GetLabel(*iter).c_str());
+      item = gtk_radio_menu_item_new_with_mnemonic(
+         group, Protocols::GetMnemonic(*iter).c_str());
       gtk_widget_show(item);
       gtk_menu_shell_prepend(GTK_MENU_SHELL(submenu), item);
       group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));

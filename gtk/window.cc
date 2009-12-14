@@ -677,7 +677,7 @@ Window::RequestBroker()
    Reset();
    BrokerDlg *brokerDlg = new BrokerDlg(Prefs::GetPrefs()->GetDefaultBroker());
    SetContent(brokerDlg);
-   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("C_onnect"));
+   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
 
    // Hit the Connect button if broker was supplied and we're non-interactive.
    if (brokerDlg->IsValid() &&
@@ -739,11 +739,13 @@ requestCerts:
    Cryptoki::FreeCertificates(certs);
 
    if (mCryptoki->GetHasSlots() && !mCryptoki->GetHasTokens()) {
+      SetReady();
       ScInsertPromptDlg *dlg = new ScInsertPromptDlg(mCryptoki);
       SetContent(dlg);
 
       mCanceledScDlg = false;
       gtk_main();
+      SetBusy(_("Logging in..."));
 
       if (mCanceledScDlg) {
          goto returnInfo;
@@ -759,12 +761,15 @@ requestCerts:
       break;
    default: {
       ScCertDlg *dlg = new ScCertDlg();
+      SetReady();
       SetContent(dlg);
+      Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
       dlg->SetCertificates(certs);
 
       mCanceledScDlg = false;
       StartWatchingForTokenEvents(ACTION_QUIT_MAIN_LOOP);
       gtk_main();
+      SetBusy(_("Logging in..."));
       if (HadTokenEvent()) {
          goto requestCerts;
       }
@@ -1061,7 +1066,7 @@ Window::RequestDesktop()
                                                 monitors > 1 && supported,
                                                 !GetFullscreen());
    SetContent(dlg);
-   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("C_onnect"));
+   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
    dlg->action.connect(boost::bind(&Window::DoDesktopAction, this, _1));
 
    if (Prefs::GetPrefs()->GetNonInteractive() &&
@@ -2607,8 +2612,10 @@ Window::OnScPinRequested(const Util::string &label, // IN
       mCertAuthInfo->pin = NULL;
    }
 
+   SetReady();
    ScPinDlg *dlg = new ScPinDlg();
    SetContent(dlg);
+   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
    dlg->SetTokenName(label);
    dlg->SetCertificate(x509);
 
@@ -2618,6 +2625,10 @@ Window::OnScPinRequested(const Util::string &label, // IN
    gtk_main();
 
    mCertAuthInfo->pin = mCanceledScDlg ? NULL : g_strdup(dlg->GetPin());
+
+   // Disable the OK button
+   SetBusy(_("Logging in..."));
+
    return mCertAuthInfo->pin;
 }
 

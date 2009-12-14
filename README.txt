@@ -1,5 +1,5 @@
 VMware View Open Client 4.0.0
-Build 207079, 2009-11-03
+Build 215529, 2009-12-08
 
 VMware is a registered trademark or trademark (the "Marks") of VMware, Inc.
 in the United States and/or other jurisdictions and is not licensed to you
@@ -30,7 +30,7 @@ U.S. Patent Numbers 6,075,938, 6,397,242, 6,496,847, 6,704,925,
 7,434,002, 7,447,854, 7,475,002, 7,478,173, 7,478,180, 7,478,218,
 7,478,388, 7,484,208, 7,487,313, 7,487,314, 7,490,216, 7,500,048,
 7,506,122, 7,516,453, 7,529,897, 7,555,747, 7,577,722, 7,581,064,
-7,590,982, 7,594,111, 7,603,704; patents pending.
+7,590,982, 7,594,111, 7,603,704, 7,606,868; patents pending.
 
 
 WELCOME
@@ -60,10 +60,8 @@ of which are available in the installation package.
 STATUS
 ------
 
-This is the RC release of VMware View Open Client 4.0.0.
-
-This release introduces PCoIP support.  Please carefully review the
-Known Issues for these components as certain functions are limited.
+This is the General Availability release of VMware View Open Client
+4.0.0.
 
 
 CONTACT
@@ -137,12 +135,12 @@ VMware View Open Client is distributed in the following forms:
 
 To use the binary tar gzip, simply unpack the tarball:
 
-$ tar zxf VMware-view-open-client-4.0.0-207079.tar.gz
+$ tar zxf VMware-view-open-client-4.0.0-215529.tar.gz
 
 To run, navigate to the 'bin' subdirectory and run directly from the
 command line:
 
-$ cd VMware-view-open-client-4.0.0-207079/bin
+$ cd VMware-view-open-client-4.0.0-215529/bin
 $ ./vmware-view
 
 You can also copy files from the tarball into system directories:
@@ -212,7 +210,15 @@ ISSUES RESOLVED IN THIS RELEASE
 "gc" denotes issues reported on code.google.com.
 "bz" denotes bugs filed in VMware's bugzilla.
 
-Version 4.0.0 build 207079:
+Version 4.0.0 build 215529:
+
+ * Resolved duplicate mnemonics on connection dialog (bz 490680)
+
+
+ISSUES RESOLVED IN PREVIOUS RELEASES
+------------------------------------
+
+Version 4.0.0 build 207079 (RC 1):
 
 *) Fix smart card login continuing to password screen (bz 461618)
 *) Update RDC web link to point to version 2.0.1
@@ -229,18 +235,13 @@ Version 4.0.0 build 207079:
 *) Fix a duplicate hotkey between "Connect" and "Cancel" buttons
    in smart card and PIN dialogs (bz 489093)
 
-
-ISSUES RESOLVED IN PREVIOUS RELEASES
-------------------------------------
-
-Version 4.0.0 build 201987:
+Version 4.0.0 build 201987 (Beta 2):
 
 *) README.txt updated
 *) Failed assertion after timeout (bz 475796)
 *) Fixed compilation problems on OS X 10.6 Snow Leopard
 
-
-Version 4.0.0 build 196715:
+Version 4.0.0 build 196715 (Beta 1):
 
 *) New window size UI
 *) Fixes to windowed mode keyboard focus

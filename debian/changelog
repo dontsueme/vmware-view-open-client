@@ -1,3 +1,10 @@
+vmware-view-open-client (4.0.0-215529+dfsg-1) unstable; urgency=low
+
+  * Adding explicit debian source version 1.0 until switch to 3.0.
+  * Merging upstream version 4.0.0-215529+dfsg.
+
+ -- Daniel Baumann <daniel@debian.org>  Mon, 14 Dec 2009 08:51:39 +0100
+
 vmware-view-open-client (4.0.0-207079+dfsg-1) unstable; urgency=low
 
   * Merging upstream version 4.0.0-207079+dfsg.

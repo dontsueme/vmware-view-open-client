@@ -1,6 +1,6 @@
 open_source_licenses.txt
 VMware View Open Client 4.0.0
-Build 207079, 2009-11-03
+Build 215529, 2009-12-08
 
 
 The following copyright statements and licenses apply to various open source

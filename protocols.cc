@@ -36,15 +36,19 @@
 
 #define PROTOCOL_RDP "RDP"
 #define PROTOCOL_RDP_LABEL _("Microsoft RDP")
+#define PROTOCOL_RDP_MNEMONIC _("Microsoft _RDP")
 
 #define PROTOCOL_RGS "RGS"
 #define PROTOCOL_RGS_LABEL _("HP RGS")
+#define PROTOCOL_RGS_MNEMONIC _("HP R_GS")
 
 #define PROTOCOL_PCOIP "PCOIP"
 #define PROTOCOL_PCOIP_LABEL _("PCoIP")
+#define PROTOCOL_PCOIP_MNEMONIC _("_PCoIP")
 
 #define PROTOCOL_LOCALVM "localvm"
 #define PROTOCOL_LOCALVM_LABEL _("Local")
+#define PROTOCOL_LOCALVM_MNEMONIC _("_Local")
 
 
 namespace cdk {
@@ -147,6 +151,69 @@ Protocols::GetLabel(const Util::string &name) // IN
    return proto == UNKNOWN
       ? Util::Format(_("Unknown Protocol (%s)"), name.c_str())
       : GetLabel(proto);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Protocols::GetMnemonic --
+ *
+ *      Gets a user-readable mnemonic for the protocol.
+ *
+ * Results:
+ *      A translated string, usable in a menu item, for a random example.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Util::string
+Protocols::GetMnemonic(ProtocolType proto) // IN
+{
+   switch (proto) {
+   case UNKNOWN:
+      return _("Unknown Protocol");
+   case RDP:
+      return PROTOCOL_RDP_MNEMONIC;
+   case RGS:
+      return PROTOCOL_RGS_MNEMONIC;
+   case PCOIP:
+      return PROTOCOL_PCOIP_MNEMONIC;
+   case LOCALVM:
+      return PROTOCOL_LOCALVM_MNEMONIC;
+   default:
+      NOT_REACHED();
+      return _("Invalid Protocol");
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Protocols::GetMnemonic --
+ *
+ *      Get a user-readable mnemonic based on a protocol name.
+ *
+ * Results:
+ *      A translated string, possibly indicating the protocol is unknown.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Util::string
+Protocols::GetMnemonic(const Util::string &name) // IN
+{
+   ProtocolType proto = GetProtocolFromName(name);
+   return proto == UNKNOWN
+      ? Util::Format(_("Unknown Protocol (%s)"), name.c_str())
+      : GetMnemonic(proto);
 }
 
 
