@@ -56,6 +56,9 @@ public:
    static Util::string GetLabel(ProtocolType proto);
    static Util::string GetLabel(const Util::string &name);
 
+   static Util::string GetMnemonic(ProtocolType proto);
+   static Util::string GetMnemonic(const Util::string &name);
+
    static ProtocolType GetProtocolFromName(const Util::string &name);
    static ProtocolType GetProtocolFromLabel(const Util::string &label);
 };

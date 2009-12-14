@@ -63,7 +63,7 @@ ScCertDlg::ScCertDlg()
    gtk_container_set_border_width(GTK_CONTAINER(vbox), VM_SPACING);
 
    GtkLabel *l =
-      GTK_LABEL(gtk_label_new_with_mnemonic(_("Ch_oose a certificate:")));
+      GTK_LABEL(gtk_label_new_with_mnemonic(_("Choo_se a certificate:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(l), false, true, 0);
    gtk_misc_set_alignment(GTK_MISC(l), 0.0, 0.5);
