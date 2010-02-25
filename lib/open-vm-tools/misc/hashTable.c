@@ -129,6 +129,7 @@ HashTableComputeHash(HashTable *ht,            // IN: hash table
    switch (ht->keyType) {
    case HASH_STRING_KEY: {
 	 int c;
+
 	 while ((c = (unsigned char) *s++)) {
 	    h ^= c;
 	    h = h << HASH_ROTATE | h >> (32 - HASH_ROTATE);
@@ -137,6 +138,7 @@ HashTableComputeHash(HashTable *ht,            // IN: hash table
       break;
    case HASH_ISTRING_KEY: {
 	 int c;
+
 	 while ((c = tolower((unsigned char) *s++))) {
 	    h ^= c;
 	    h = h << HASH_ROTATE | h >> (32 - HASH_ROTATE);
@@ -159,11 +161,13 @@ HashTableComputeHash(HashTable *ht,            // IN: hash table
    {
       int numBits = ht->numBits;
       uint32 mask = MASK(numBits);
+
       for (; h > mask; h = (h & mask) ^ (h >> numBits)) {
       }
    }
 
    ASSERT(h < ht->numEntries);
+
    return h;
 }
 
@@ -390,6 +394,7 @@ HashTable_Clear(HashTable *ht) // IN/OUT
 
    for (i = 0; i < ht->numEntries; i++) {
       HashTableEntry *entry;
+
       while ((entry = ENTRY(ht->buckets[i])) != NULL) {
 	 SETENTRY(ht->buckets[i], ENTRY(entry->next));
 	 if (ht->copyKey) {
@@ -471,6 +476,7 @@ HashTable_Lookup(HashTable  *ht,      // IN
    if (clientData) {
       *clientData = Atomic_ReadPtr(&entry->clientData);
    }
+
    return TRUE;
 }
 
@@ -496,6 +502,36 @@ Bool
 HashTable_Delete(HashTable  *ht,        // IN/OUT: the hash table
                  const char *keyStr)    // IN: key for the element to remove
 {
+   return HashTable_LookupAndDelete(ht, keyStr, NULL);
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * HashTable_LookupAndDelete --
+ *
+ *      Look up an element in the hash table, then delete it.
+ *
+ *	If clientData is specified, then the entry data is returned,
+ *	and the free function is not called.
+ *
+ * Results:
+ *      TRUE if the entry was found and subsequently removed
+ *      FALSE otherwise
+ *	Entry value is returned in *clientData.
+ *
+ * Side effects:
+ *	See above
+ *
+ *----------------------------------------------------------------------
+ */
+
+Bool
+HashTable_LookupAndDelete(HashTable *ht,      // IN/OUT: the hash table
+                          const char *keyStr, // IN: key for the element
+			  void **clientData)  // OUT: return data
+{
    uint32 hash = HashTableComputeHash(ht, keyStr);
    HashTableLink *linkp;
    HashTableEntry *entry;
@@ -511,13 +547,17 @@ HashTable_Delete(HashTable  *ht,        // IN/OUT: the hash table
 	 if (ht->copyKey) {
 	    free((char *) entry->keyStr);
 	 }
-         if (ht->freeEntryFn) {
+	 if (clientData != NULL) {
+            *clientData = Atomic_ReadPtr(&entry->clientData);
+	 } else if (ht->freeEntryFn) {
             ht->freeEntryFn(Atomic_ReadPtr(&entry->clientData));
          }
          free(entry);
+
          return TRUE;
       }
    }
+
    return FALSE;
 }
 
@@ -619,6 +659,7 @@ HashTable_ReplaceOrInsert(HashTable  *ht,          // IN/OUT
 #ifndef NO_ATOMIC_HASHTABLE
    if (ht->atomic && ht->freeEntryFn) {
       void *old = Atomic_ReadWritePtr(&entry->clientData, clientData);
+
       ht->freeEntryFn(old);
    } else
 #endif
@@ -628,6 +669,7 @@ HashTable_ReplaceOrInsert(HashTable  *ht,          // IN/OUT
       }
       Atomic_WritePtr(&entry->clientData, clientData);
    }
+
    return TRUE;
 }
 
@@ -720,12 +762,13 @@ again:
 
    oldEntry = HashTableLookup(ht, keyStr, hash);
    if (oldEntry != NULL) {
-      if(entry != NULL) {
+      if (entry != NULL) {
          if (ht->copyKey) {
             free((char *) entry->keyStr);
          }
          free(entry);
       }
+
       return oldEntry;
    }
 
@@ -748,6 +791,7 @@ again:
    }
 
    ht->numElements++;
+
    return NULL;
 }
 
@@ -827,6 +871,7 @@ HashTable_ToArray(const HashTable *ht,  // IN
    /* fill array */
    for (i = 0, j = 0; i < ht->numEntries; i++) {
       HashTableEntry *entry;
+
       for (entry = ENTRY(ht->buckets[i]);
 	   entry != NULL;
 	   entry = ENTRY(entry->next)) {
@@ -867,16 +912,19 @@ HashTable_ForEach(const HashTable *ht,           // IN
 
    for (i = 0; i < ht->numEntries; i++) {
       HashTableEntry *entry;
+
       for (entry = ENTRY(ht->buckets[i]);
 	   entry != NULL;
 	   entry = ENTRY(entry->next)) {
          int result = (*cb)(entry->keyStr, Atomic_ReadPtr(&entry->clientData),
 			    clientData);
+
          if (result) {
             return result;
          }
       }
    }
+
    return 0;
 }
 

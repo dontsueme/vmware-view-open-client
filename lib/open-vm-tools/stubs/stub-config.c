@@ -27,6 +27,8 @@
  *
  */
 
+#include <string.h>
+
 #include "vm_assert.h"
 #include "config.h"
 #include "preference.h"
@@ -81,3 +83,22 @@ Preference_GetPathName(const char *defaultValue,
    return (char *) defaultValue;
 }
 
+int32
+Config_GetTriState(int32 defaultValue,
+                   const char *fmt, ...)
+{
+   return defaultValue;
+}
+
+char *
+Config_GetPathName(const char *defaultValue,
+                   const char *format, ...)
+{
+   return defaultValue ? strdup(defaultValue) : NULL;
+}
+
+Bool
+Config_NotSet(const char *fmt, ...)
+{
+   return FALSE;
+}

@@ -92,6 +92,7 @@ Hostinfo_HostName(void)
 
       if (!dllHandle) {
          Warning("%s Failed to wsock32.\n", __FUNCTION__);
+
          return NULL;
       }
    }
@@ -101,12 +102,14 @@ Hostinfo_HostName(void)
    if (!GetHostNameFn) {
       Warning("%s Failed to find gethostname.\n", __FUNCTION__);
       FreeLibrary(dllHandle);
+
       return NULL;
    }
 
    if ((*GetHostNameFn)(hostName, sizeof hostName) == SOCKET_ERROR) {
       Warning("%s gethostname failed.\n", __FUNCTION__);
       FreeLibrary(dllHandle);
+
       return NULL;
    }
 
@@ -115,6 +118,7 @@ Hostinfo_HostName(void)
    if (!GetHostByNameFn) {
       Warning("%s Failed to find gethostbyname.\n", __FUNCTION__);
       FreeLibrary(dllHandle);
+
       return Unicode_Alloc(hostName, STRING_ENCODING_DEFAULT);
    }
 

@@ -145,6 +145,14 @@ UnicodeAllocInternal(const void *buffer,      // IN
  *      Otherwise, buffer must be of the specified length, but does
  *      not need to be NUL-terminated.
  *
+ *      This function should not be used for heuristic determination of
+ *      encodings.  Since the test looks for bit patterns in the buffer
+ *      that are invalid in the specified encoding, negative results
+ *      guarantee the buffer is not in the specified encoding, but positive
+ *      results are inconclusive.  Source buffers containing pure ASCII
+ *      will pass all 8-bit encodings, and all source buffers will pass 
+ *      a windows-1252 test since win-1252 maps all 256 8-bit combinations.
+ *
  * Results:
  *      TRUE if the buffer is valid, FALSE if it's not.
  *
@@ -315,13 +323,15 @@ Unicode_FreeList(Unicode *list,    // IN: the list to free
  *
  * Unicode_GetAllocList --
  *
- *      Allocates a list (actually a vector) of NUL terminated buffers from a 
- *      list (vector) of strings of specified encoding.
+ *      Given a list of Unicode strings, converts them to a list of
+ *      buffers in the specified encoding.
+ *
  *      The input list has a specified length or can be an argv-style
  *      NULL-terminated list (if length is negative).
  *
  * Results:
- *      An allocated list (vector) of NUL terminated buffers,
+ *      An allocated list (vector) of NUL terminated buffers in the specified
+ *      encoding
  *      or NULL on conversion failure.
  *      The caller is responsible to free the memory allocated by
  *      this routine.
@@ -332,12 +342,12 @@ Unicode_FreeList(Unicode *list,    // IN: the list to free
  *-----------------------------------------------------------------------------
  */
 
-Unicode *
+char **
 Unicode_GetAllocList(Unicode const srcList[], // IN: list of strings
-		     ssize_t length,          // IN: list 
-		     StringEncoding encoding) // IN:
+		     ssize_t length,          // IN: length (-1 for NULL term.)
+		     StringEncoding encoding) // IN: Encoding of returned list
 {
-   Unicode *dstList = NULL;
+   char **dstList = NULL;
    ssize_t i;
 
    ASSERT(srcList != NULL);
@@ -349,7 +359,7 @@ Unicode_GetAllocList(Unicode const srcList[], // IN: list of strings
       while (srcList[length] != NULL) {
          length++;
       }
-      
+
       /* Include the sentinel element. */
       length++;
    }

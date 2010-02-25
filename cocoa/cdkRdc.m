@@ -86,6 +86,57 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
 /*
  *-----------------------------------------------------------------------------
  *
+ * -[CdkRdc rdcPath] --
+ *
+ *      Find RDC 2 on this system.
+ *
+ * Results:
+ *      A string pointing to the RDC binary, or nil if it's not installed.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
++(NSString *)rdcPath
+{
+   NSString *rdcPath =
+      [[NSWorkspace sharedWorkspace] absolutePathForAppBundleWithIdentifier:
+                                        RDC_BUNDLE_NAME];
+   rdcPath = [rdcPath stringByAppendingPathComponents:
+                         @"Contents", @"MacOS", RDC_BINARY_NAME, nil];
+   return [[NSFileManager defaultManager] fileExistsAtPath:rdcPath]
+      ? rdcPath : nil;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkRdc protocolAvailable] --
+ *
+ *      Determines whether the user is able to display desktops using
+ *      this protocol.
+ *
+ * Results:
+ *      YES if RDC is available.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
++(BOOL)protocolAvailable
+{
+   return [CdkRdc rdcPath] != nil;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * [CdkRdc unlink] --
  *
  *      Unlink and free our tmp file.
@@ -290,18 +341,12 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
 -(void)startWithConnection:(const cdk::BrokerXml::DesktopConnection &)connection // IN
                       size:(CdkDesktopSize *)desktopSize                         // IN
 {
-   NSString *rdcPath =
-      [[NSWorkspace sharedWorkspace] absolutePathForAppBundleWithIdentifier:
-                                        RDC_BUNDLE_NAME];
+   NSString *rdcPath = [CdkRdc rdcPath];
    if (!rdcPath) {
       cdk::Util::UserWarning(_("Microsoft Remote Desktop Connection 2 could "
                                "not be found.\n"));
       return;
    }
-
-   rdcPath = [[[rdcPath stringByAppendingPathComponent:@"Contents"]
-                stringByAppendingPathComponent:@"MacOS"]
-                stringByAppendingPathComponent:RDC_BINARY_NAME];
 
    if (![self createTempFile]) {
       return;

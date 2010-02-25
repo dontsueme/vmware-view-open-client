@@ -23,6 +23,35 @@ OPTIONS:
 EOF
 }
 
+# Check whether need to copy the PCoIP log and copy logs
+# Directory name may have space, and file name have the wildcard character.
+# So if use quotes to enclose the file name, ls command won't find it, and must
+# put the file name outside of the quotes. So 4 arguments are needed.
+function cpPCoIPLog()
+{
+   local cmpLogDir="$1"
+   local cmpLogGlob="$2"
+   local destViewLogFile="$3"
+   local destTargetDir="$4"
+   # In one connection, there are maybe more than one PCoIP/mks
+   # logs and all should be collected. Use the most recently
+   # view log's first line to get the view log's create time,
+   # and then compare it with the mtime of
+   # PCoIP/mks log, if PCoIP/mks is newer, just collect it.
+
+   local destViewLogTime=$(date -d "$(head -n 1 "$destViewLogFile" | sed -e 's/: vmware-view|.*//')" "+%s")
+   for logFile in $(ls -t "$cmpLogDir"/$cmpLogGlob 2>/dev/null) ; do
+       local cmpLogTime=$(stat -c %Y "$logFile")
+       if [ $cmpLogTime -lt $destViewLogTime ] ; then
+           return
+       fi
+       if ! cp "$logFile" "$destTargetDir" ; then
+           printError "Unable to copy log file $logFile to $destTargetDir."
+           exit 1
+       fi
+   done
+}
+
 target="$DEFAULT_TARGET"
 username="$USER"
 
@@ -61,8 +90,9 @@ if [ ! -d "/tmp/vmware-$username/" ] ; then
    exit 1
 fi
 
+viewLogGlob="vmware-view-[0-9]*.log"
 # Ensure at least one log file exits.
-if [ ! ls "/tmp/vmware-$username"/vmware-view-[0-9]*.log &>/dev/null ] ; then
+if ! ls "/tmp/vmware-$username"/$viewLogGlob &>/dev/null ; then
    printError "No log found in $logDirectory."
    exit 1
 fi
@@ -80,7 +110,7 @@ if ! mkdir "$tmpdir/$targetDirectory" ; then
    exit 1
 fi
 
-fileToCp=$(ls -t "$logDirectory"/vmware-view-[0-9]*.log | head -n 1)
+fileToCp=$(ls -t "$logDirectory"/$viewLogGlob | head -n 1)
 if [ -z "$fileToCp" ] ; then
    printError "Unable to locate log file in $logDirectory."
    exit 1
@@ -89,6 +119,19 @@ if ! cp "$fileToCp" "$tmpdir/$targetDirectory" ; then
    printError "Unable to copy log file $fileToCp to $tmpdir/$targetDirectory."
    exit 1
 fi
+
+viewLogFile=$fileToCp
+
+# Move PCoIP logs to the temp directory
+pcoipLogDir="/tmp/teradici-$username"
+pcoipLogGlob="pcoip_client_*.txt*"
+mksLogGlob="mks-[0-9]*.log"
+
+# Copy the mks logs
+cpPCoIPLog "$logDirectory" "$mksLogGlob" "$viewLogFile" "$tmpdir/$targetDirectory"
+
+# Copy the pcoip_client logs
+cpPCoIPLog "$pcoipLogDir" "$pcoipLogGlob" "$viewLogFile" "$tmpdir/$targetDirectory"
 
 # Move into the temp directory to prevent tar from prepending the
 # temp directory on the target directory.

@@ -59,7 +59,8 @@ public:
    ~SecurIDDlg() { }
 
    void SetState(State state, Util::string first,
-                 Util::string message = "", bool userSelectable = true);
+                 bool userSelectable = true,
+                 Util::string message = "");
 
    Util::string GetUsername() const { return gtk_entry_get_text(mFirstEntry); }
    const char *GetPasscode() const{ return gtk_entry_get_text(mSecondEntry); }

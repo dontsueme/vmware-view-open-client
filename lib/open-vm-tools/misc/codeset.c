@@ -73,13 +73,16 @@
 #include <stdio.h>
 #include "vmware.h"
 #include "vm_product.h"
+#include "vm_atomic.h"
 #include "unicode/ucnv.h"
+#include "unicode/udata.h"
 #include "unicode/putil.h"
 #include "file.h"
 #include "util.h"
 #include "codeset.h"
 #include "codesetOld.h"
 #include "str.h"
+#include "win32util.h"
 
 /*
  * Macros
@@ -119,7 +122,6 @@
  */
 
 static Bool dontUseIcu = TRUE;
-DEBUG_ONLY(static Bool initedIcu = FALSE;)
 
 
 /*
@@ -178,6 +180,7 @@ CodeSetGetModulePath(HANDLE hModule) // IN
    return pathW;
 }
 
+
 #elif vmx86_devel // _WIN32
 
 /*
@@ -211,7 +214,7 @@ CodeSetGetModulePath(uint32 priv)
    uint32_t size;
 #else
    ssize_t size;
-   Bool isSuper = FALSE;
+   uid_t uid = -1;
 #endif
 
    if ((priv != HGMP_PRIVILEGE) && (priv != HGMP_NO_PRIVILEGE)) {
@@ -232,20 +235,21 @@ CodeSetGetModulePath(uint32 priv)
 #endif
 
    if (priv == HGMP_PRIVILEGE) {
-      isSuper = IsSuperUser();
-      SuperUser(TRUE);
+      uid = Id_BeginSuperUser();
    }
 
    size = readlink("/proc/self/exe", path, sizeof path);
    if (-1 == size) {
-      SuperUser(isSuper);
+      if (priv == HGMP_PRIVILEGE) {
+         Id_EndSuperUser(uid);
+      }
       goto exit;
    }
 
    path[size] = '\0';
 
    if (priv == HGMP_PRIVILEGE) {
-      SuperUser(isSuper);
+      Id_EndSuperUser(uid);
    }
 #endif
 
@@ -260,6 +264,53 @@ CodeSetGetModulePath(uint32 priv)
 }
 
 #endif // _WIN32
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * CodeSet_GetAltPathName --
+ *
+ *	The Unicode path is probably not compatible in the current encoding.
+ *	Try to convert the path into a short name so it may work with
+ *      local encoding.
+ *
+ *      XXX -- this function is a temporary fix. It should be removed once 
+ *             we fix the 3rd party library pathname issue.
+ *
+ * Results:
+ *      NULL, or a char string (free with free).
+ *
+ * Side effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+char *
+CodeSet_GetAltPathName(const utf16_t *pathW) // IN
+{
+   char *path = NULL;
+#if defined(_WIN32)
+   utf16_t shortPathW[_MAX_PATH];
+
+   ASSERT(pathW);
+
+   if (GetShortPathNameW(pathW, shortPathW, ARRAYSIZE(shortPathW)) == 0) {
+      goto exit;
+   }
+
+   if (!CodeSetOld_Utf16leToCurrent((const char *)shortPathW,
+                                    wcslen(shortPathW) * sizeof *shortPathW,
+                                    &path, NULL)) {
+      goto exit;
+   }
+
+  exit:
+#endif // _WIN32
+
+   return path;
+}
 
 
 /*
@@ -300,7 +351,8 @@ CodeSet_DontUseIcu(void)
  *    directory. If already inited, returns the current state (init
  *    failed/succeeded).
  *
- *    Call while single-threaded.
+ *    For Windows, CodeSet_Init is thread-safe (with critical section).
+ *    For Linux/Apple, call while single-threaded.
  *
  *    *********** WARNING ***********
  *    Do not call CodeSet_Init directly, it is called already by
@@ -319,13 +371,18 @@ CodeSet_DontUseIcu(void)
  */
 
 Bool
-CodeSet_Init(void)
+CodeSet_Init(const char *icuDataDir) // IN: ICU data file location in Current code page.
+                                     //     Default is used if NULL.
 {
    DynBuf dbpath;
 #ifdef _WIN32
    DWORD attribs;
    utf16_t *modPath = NULL;
    utf16_t *lastSlash;
+   utf16_t *wpath;
+   HANDLE hFile = INVALID_HANDLE_VALUE;
+   HANDLE hMapping = NULL;
+   void *memMappedData = NULL;
 #else
    struct stat finfo;
 #endif
@@ -333,9 +390,6 @@ CodeSet_Init(void)
    Bool ret = FALSE;
 
    DynBuf_Init(&dbpath);
-
-   DEBUG_ONLY(ASSERT(!initedIcu);)
-   DEBUG_ONLY(initedIcu = TRUE;)
 
 #ifdef USE_ICU
    /*
@@ -381,48 +435,89 @@ CodeSet_Init(void)
    }
 #endif
 
-   /*
-    * Data file must be in current module directory.
-    */
-   modPath = CodeSetGetModulePath(NULL);
-   if (!modPath) {
-      goto exit;
-   }
+   if (icuDataDir) {
+      /*
+       * Data file must be in the specified directory.
+       */
+      size_t length = strlen(icuDataDir);
 
-   lastSlash = wcsrchr(modPath, DIRSEPC_W);
-   if (!lastSlash) {
-      goto exit;
-   }
+      if (!DynBuf_Append(&dbpath, icuDataDir, length)) {
+         goto exit;
+      }
+      if (length && icuDataDir[length - 1] != DIRSEPC) {
+         if (!DynBuf_Append(&dbpath, DIRSEPS, strlen(DIRSEPS))) {
+            goto exit;
+         }
+      }
+      if (!DynBuf_Append(&dbpath, ICU_DATA_FILE, strlen(ICU_DATA_FILE)) ||
+          !DynBuf_Append(&dbpath, "\0", 1)) {
+         goto exit;
+      }
 
-   *lastSlash = L'\0';
+      /*
+       * Check for file existence.
+       */
+      attribs = GetFileAttributesA(DynBuf_Get(&dbpath));
 
-   if (!DynBuf_Append(&dbpath, modPath,
-                      wcslen(modPath) * sizeof(utf16_t)) ||
-       !DynBuf_Append(&dbpath, DIRSEPS_W,
-                      wcslen(DIRSEPS_W) * sizeof(utf16_t)) ||
-       !DynBuf_Append(&dbpath, ICU_DATA_FILE_W,
-                      wcslen(ICU_DATA_FILE_W) * sizeof(utf16_t)) ||
-       !DynBuf_Append(&dbpath, L"\0", 2)) {
-      goto exit;
-   }
+      if ((INVALID_FILE_ATTRIBUTES == attribs) ||
+          (attribs & FILE_ATTRIBUTE_DIRECTORY)) {
+         goto exit;
+      }
 
-   /*
-    * Check for file existence.
-    */
-   attribs = GetFileAttributesW((LPCWSTR) DynBuf_Get(&dbpath));
+      path = (char *) DynBuf_Detach(&dbpath);
+   } else {
+      /*
+       * Data file must be in the directory of the current module
+       * (i.e. the module that contains CodeSet_Init()).
+       */
+      HMODULE hModule = W32Util_GetModuleByAddress((void *) CodeSet_Init);
+      if (!hModule) {
+         goto exit;
+      }
 
-   if ((INVALID_FILE_ATTRIBUTES == attribs) ||
-       (attribs & FILE_ATTRIBUTE_DIRECTORY)) {
-      goto exit;
-   }
+      modPath = CodeSetGetModulePath(hModule);
+      if (!modPath) {
+         goto exit;
+      }
 
-   /*
-    * Convert path to local encoding using system APIs (old codeset).
-    */
-   if (!CodeSetOld_Utf16leToCurrent(DynBuf_Get(&dbpath),
-                                    DynBuf_GetSize(&dbpath),
-                                    &path, NULL)) {
-      goto exit;
+      lastSlash = wcsrchr(modPath, DIRSEPC_W);
+      if (!lastSlash) {
+         goto exit;
+      }
+
+      *lastSlash = L'\0';
+
+      if (!DynBuf_Append(&dbpath, modPath,
+                         wcslen(modPath) * sizeof(utf16_t)) ||
+          !DynBuf_Append(&dbpath, DIRSEPS_W,
+                         wcslen(DIRSEPS_W) * sizeof(utf16_t)) ||
+          !DynBuf_Append(&dbpath, ICU_DATA_FILE_W,
+                         wcslen(ICU_DATA_FILE_W) * sizeof(utf16_t)) ||
+          !DynBuf_Append(&dbpath, L"\0", 2)) {
+         goto exit;
+      }
+
+      /*
+       * Since u_setDataDirectory can't handle UTF-16, we would have to
+       * now convert this path to local encoding. But that fails when
+       * the module is in a path containing characters not in the
+       * local encoding (see 282524). So we'll memory-map the file
+       * instead and call udata_setCommonData() below.
+       */
+      wpath = (utf16_t *) DynBuf_Get(&dbpath);
+      hFile = CreateFileW(wpath, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0,
+                          NULL);
+      if (INVALID_HANDLE_VALUE == hFile) {
+         goto exit;
+      }
+      hMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+      if (NULL == hMapping) {
+         goto exit;
+      }
+      memMappedData = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
+      if (NULL == memMappedData) {
+         goto exit;
+      }
    }
 
 #else // } _WIN32 {
@@ -474,9 +569,12 @@ CodeSet_Init(void)
 #endif // vmx86_devel
 
    /*
-    * Data file must be in POSIX_ICU_DIR.
+    * Data file is either in POSIX_ICU_DIR or user specified dir.
     */
-   if (!DynBuf_Append(&dbpath, POSIX_ICU_DIR, strlen(POSIX_ICU_DIR)) ||
+   if (!icuDataDir) {
+      icuDataDir = POSIX_ICU_DIR;
+   }
+   if (!DynBuf_Append(&dbpath, icuDataDir, strlen(icuDataDir)) ||
        !DynBuf_Append(&dbpath, DIRSEPS, strlen(DIRSEPS)) ||
        !DynBuf_Append(&dbpath, ICU_DATA_FILE, strlen(ICU_DATA_FILE)) ||
        !DynBuf_Append(&dbpath, "\0", 1)) {
@@ -497,10 +595,28 @@ CodeSet_Init(void)
 found:
 #endif
 
-   /*
-    * Tell ICU to use this directory.
-    */
-   u_setDataDirectory(path);
+#ifdef _WIN32
+   if (memMappedData) {
+      /*
+       * Tell ICU to use this mapped data.
+       */
+      UErrorCode uerr = U_ZERO_ERROR;
+      ASSERT(memMappedData);
+
+      udata_setCommonData(memMappedData, &uerr);
+      if (uerr != U_ZERO_ERROR) {
+         UnmapViewOfFile(memMappedData);
+         goto exit;
+      }
+   } else {
+#endif
+      /*
+       * Tell ICU to use this directory.
+       */
+      u_setDataDirectory(path);
+#ifdef _WIN32
+   }
+#endif
 
    dontUseIcu = FALSE;
    ret = TRUE;
@@ -514,11 +630,21 @@ found:
       if (CODESET_CAN_FALLBACK_ON_NON_ICU) {
          ret = TRUE;
          dontUseIcu = TRUE;
+
+#ifdef _WIN32
+         OutputDebugStringW(L"CodeSet_Init: no ICU\n");
+#endif
       }
    }
 
 #ifdef _WIN32
    free(modPath);
+   if (hMapping) {
+      CloseHandle(hMapping);
+   }
+   if (hFile != INVALID_HANDLE_VALUE) {
+      CloseHandle(hFile);
+   }
 #endif
    free(path);
    DynBuf_Destroy(&dbpath);
@@ -1227,11 +1353,13 @@ CodeSet_Utf8FormDToUtf8FormC(const char *bufIn,     // IN
    }
 
 #if defined(__APPLE__)
-   DynBuf db;
-   Bool ok;
-   DynBuf_Init(&db);
-   ok = CodeSet_Utf8Normalize(bufIn, sizeIn, TRUE, &db);
-   return CodeSetDynBufFinalize(ok, &db, bufOut, sizeOut);
+   {
+      DynBuf db;
+      Bool ok;
+      DynBuf_Init(&db);
+      ok = CodeSet_Utf8Normalize(bufIn, sizeIn, TRUE, &db);
+      return CodeSetDynBufFinalize(ok, &db, bufOut, sizeOut);
+   }
 #else
    NOT_IMPLEMENTED();
 #endif
@@ -1274,11 +1402,13 @@ CodeSet_Utf8FormCToUtf8FormD(const char *bufIn,     // IN
    }
 
 #if defined(__APPLE__)
-   DynBuf db;
-   Bool ok;
-   DynBuf_Init(&db);
-   ok = CodeSet_Utf8Normalize(bufIn, sizeIn, FALSE, &db);
-   return CodeSetDynBufFinalize(ok, &db, bufOut, sizeOut);
+   {
+      DynBuf db;
+      Bool ok;
+      DynBuf_Init(&db);
+      ok = CodeSet_Utf8Normalize(bufIn, sizeIn, FALSE, &db);
+      return CodeSetDynBufFinalize(ok, &db, bufOut, sizeOut);
+   }
 #else
    NOT_IMPLEMENTED();
 #endif

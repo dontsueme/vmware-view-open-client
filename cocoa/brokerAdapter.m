@@ -111,10 +111,12 @@ BrokerAdapter::RequestDisclaimer(const Util::string &disclaimer) // IN
  */
 
 void
-BrokerAdapter::RequestPasscode(const Util::string &username)
+BrokerAdapter::RequestPasscode(const Util::string &username, // IN
+                               bool userSelectable)          // IN
 {
    [[broker delegate] broker:(CdkBroker *)broker
-          didRequestPasscode:[NSString stringWithUtilString:username]];
+          didRequestPasscode:[NSString stringWithUtilString:username]
+              userSelectable:userSelectable];
 }
 
 
@@ -369,7 +371,7 @@ BrokerAdapter::SetBusy(const Util::string &message)
  */
 
 Broker::CertAuthInfo
-BrokerAdapter::GetCertificateAndKey(SSL *ssl) // IN
+BrokerAdapter::GetCertAuthInfo(SSL *ssl) // IN
 {
    Broker::CertAuthInfo info;
    SecIdentityRef ident =

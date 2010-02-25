@@ -129,12 +129,14 @@ SecurIDDlg::SecurIDDlg()
 void
 SecurIDDlg::SetState(State state,          // IN
                      Util::string first,   // IN
-                     Util::string message, // IN/OPT
-                     bool userSelectable)  // IN/OPT
+                     bool userSelectable,  // IN/OPT
+                     Util::string message) // IN/OPT
 {
    Util::string usernameMsg = _("_Username:");
 
    gtk_entry_set_text(mFirstEntry, first.c_str());
+   userSelectable = userSelectable || first.empty();
+
    switch(state) {
    case STATE_PASSCODE:
       gtk_label_set_text(mLabel,
@@ -142,7 +144,7 @@ SecurIDDlg::SetState(State state,          // IN
 
       gtk_label_set_text_with_mnemonic(mFirstLabel, usernameMsg.c_str());
 
-      gtk_widget_set_sensitive(GTK_WIDGET(mFirstEntry), true);
+      gtk_widget_set_sensitive(GTK_WIDGET(mFirstEntry), userSelectable);
       gtk_entry_set_visibility(mFirstEntry, true);
 
       gtk_label_set_text_with_mnemonic(mSecondLabel, _("_Passcode:"));

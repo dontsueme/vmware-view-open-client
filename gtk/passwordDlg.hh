@@ -49,6 +49,7 @@ public:
 
    // Overridden from LoginDlg.
    void ClearAndFocusPassword();
+   void SetSensitive(bool sensitive);
 
 private:
    GtkEntry *mNew;

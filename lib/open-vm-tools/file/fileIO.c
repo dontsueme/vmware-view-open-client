@@ -102,7 +102,7 @@ FileIO_MsgError(FileIOResult status) // IN
        * because you don't want to display error messages after a user has
        * cancelled an operation.
        */
-      result = MSGID(fileio.cancel) "The operation was cancelled by the user";
+      result = MSGID(fileio.cancel) "The operation was canceled by the user";
       break;
 
    case FILEIO_ERROR:
@@ -277,13 +277,20 @@ FileIO_Lock(FileIODescriptor *file, // IN/OUT:
 
          /* Return a serious failure status if the locking code did */
          switch (err) {
-         case 0:             // file is currently locked
+         case 0:             // File is currently locked
+         case EROFS:         // Attempt to lock for write on RO FS
             ret = FILEIO_LOCK_FAILED;
             break;
-         case ENAMETOOLONG:  // path is too long
+         case ENAMETOOLONG:  // Path is too long
             ret = FILEIO_FILE_NAME_TOO_LONG;
             break;
-         default:            // some sort of locking error
+         case ENOENT:        // No such file or directory
+            ret = FILEIO_FILE_NOT_FOUND;
+            break;
+         case EACCES:       // Permissions issues
+            ret = FILEIO_NO_PERMISSION;
+            break;
+         default:            // Some sort of locking error
             ret = FILEIO_ERROR;
          }
       }
@@ -447,6 +454,31 @@ void
 FileIO_StatsExit(const FileIODescriptor *fd)  // IN:
 {
    ASSERT(fd);
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * FileIO_Filename --
+ *
+ *      Returns the filename that was used to open a FileIODescriptor
+ *
+ * Results:
+ *      Filename. You DON'T own the memory - use Unicode_Duplicate if
+ *      you want to keep it for yourself. In particular, if the file
+ *      gets closed the string will almost certainly become invalid.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+ConstUnicode
+FileIO_Filename(FileIODescriptor *fd) // IN
+{
+   return fd->fileName;
 }
 
 

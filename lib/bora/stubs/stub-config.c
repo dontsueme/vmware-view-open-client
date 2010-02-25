@@ -29,20 +29,3 @@ Bool Preference_Init(void)
 {
     return TRUE;
 }
-
-int32 Config_GetTriState(int32 defaultValue,
-                         const char *fmt, ...)
-{
-    return defaultValue;
-}
-
-char *Config_GetPathName(const char *defaultValue,
-                         const char *fmt, ...)
-{
-    return (char *)0;
-}
-
-Bool Config_NotSet(const char *fmt, ...)
-{
-    return TRUE;
-}

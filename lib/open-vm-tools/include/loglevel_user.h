@@ -19,7 +19,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
  *
  *********************************************************/
-  
+
 #ifndef _LOGLEVEL_USER_H_
 #define _LOGLEVEL_USER_H_
 
@@ -37,6 +37,7 @@
    LOGLEVEL_VAR(aio), \
    LOGLEVEL_VAR(passthrough), \
    LOGLEVEL_VAR(tools), \
+   LOGLEVEL_VAR(vsockLookup), \
    LOGLEVEL_VAR(license), \
    LOGLEVEL_VAR(vui), \
    LOGLEVEL_VAR(stats), \
@@ -64,6 +65,7 @@
    LOGLEVEL_VAR(hpet), \
    LOGLEVEL_VAR(extcfgdevice), \
    LOGLEVEL_VAR(flashram), \
+   LOGLEVEL_VAR(efinv), \
    LOGLEVEL_VAR(pci), \
    LOGLEVEL_VAR(pci_vide), \
    LOGLEVEL_VAR(pci_uhci), \
@@ -73,6 +75,8 @@
    LOGLEVEL_VAR(usb), \
    LOGLEVEL_VAR(vusbmouse), \
    LOGLEVEL_VAR(vusbkeyboard), \
+   LOGLEVEL_VAR(vusbhid), \
+   LOGLEVEL_VAR(vusbtablet), \
    LOGLEVEL_VAR(hidQueue), \
    LOGLEVEL_VAR(pci_1394), \
    LOGLEVEL_VAR(1394), \
@@ -92,6 +96,8 @@
    LOGLEVEL_VAR(vmxnet3), \
    LOGLEVEL_VAR(pci_vmxnet3), \
    LOGLEVEL_VAR(vcpuhotplug), \
+   LOGLEVEL_VAR(heci), \
+   LOGLEVEL_VAR(vmiopluginlib), \
    \
    /* user/disk */ \
    LOGLEVEL_VAR(aioMgr), \
@@ -120,12 +126,17 @@
    LOGLEVEL_VAR(mksHostOps), \
    LOGLEVEL_VAR(mksGLManager), \
    LOGLEVEL_VAR(mksGLShader), \
+   LOGLEVEL_VAR(vdpPlugin), \
    \
    /* user/sound */ \
    LOGLEVEL_VAR(sound), \
+   LOGLEVEL_VAR(hdaudio), \
+   LOGLEVEL_VAR(pci_hdaudio), \
+   LOGLEVEL_VAR(hdaudio_alsa), \
    \
    /* user/disklib */ \
    LOGLEVEL_VAR(disklib), \
+   LOGLEVEL_VAR(dmg), \
    LOGLEVEL_VAR(sparseChecker), \
    LOGLEVEL_VAR(dataCache), \
    /* more */ \
@@ -163,6 +174,7 @@
    LOGLEVEL_VAR(ipc), \
    LOGLEVEL_VAR(smbios), \
    LOGLEVEL_VAR(acpi), \
+   LOGLEVEL_VAR(xpmode), \
    LOGLEVEL_VAR(snapshot), \
    LOGLEVEL_VAR(asyncsocket), \
    LOGLEVEL_VAR(mainMem), \
@@ -190,13 +202,15 @@
    LOGLEVEL_VAR(worker), \
    LOGLEVEL_VAR(duiDevices), \
    LOGLEVEL_VAR(duiProxyApps), \
+   LOGLEVEL_VAR(docker), \
+   LOGLEVEL_VAR(vmIPC), \
    LOGLEVEL_VAR(uwt), /* lib/unityWindowTracker */ \
    LOGLEVEL_VAR(cui), \
    LOGLEVEL_VAR(automation), \
    LOGLEVEL_VAR(oemDevice), \
    LOGLEVEL_VAR(cptOps), \
    LOGLEVEL_VAR(VProbeExec), \
-   LOGLEVEL_VAR(VProbeVP), \
+   LOGLEVEL_VAR(VP), \
    LOGLEVEL_VAR(device), \
    LOGLEVEL_VAR(devicePowerOn), \
    LOGLEVEL_VAR(vmxvmdbCallbacks), \
@@ -204,7 +218,18 @@
    LOGLEVEL_VAR(migrateVM), \
    LOGLEVEL_VAR(vmUpsellController), \
    LOGLEVEL_VAR(objc), /* lib/objc */ \
+   LOGLEVEL_VAR(blit), /* lib/blit */ \
+   LOGLEVEL_VAR(vmnetBridge), \
+   LOGLEVEL_VAR(wifi), /* macWireless and wpa_supplicant */ \
+   LOGLEVEL_VAR(pvfslib), \
+   LOGLEVEL_VAR(brtalk), /* macWireless and wpa_supplicant */ \
+   LOGLEVEL_VAR(button), \
+   LOGLEVEL_VAR(util), \
+   LOGLEVEL_VAR(win32util), \
+   LOGLEVEL_VAR(largepage), \
+   LOGLEVEL_VAR(guestAppMonitor), \
+   LOGLEVEL_VAR(syncWaitQ), \
 
 LOGLEVEL_EXTENSION_DECLARE(LOGLEVEL_USER);
 
-#endif /* _LOGLEVEL_USER_H_ */ 
+#endif /* _LOGLEVEL_USER_H_ */

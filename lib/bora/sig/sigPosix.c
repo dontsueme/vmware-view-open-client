@@ -32,7 +32,7 @@
 #  define _GNU_SOURCE // _GNU_SOURCE maps to __USE_GNU
 
 /* And, the REG_foo definitions conflict with our own in x86.h */
-#  if __x86_64__
+#  if defined(__x86_64__)
 #    define REG_RAX GNU_REG_RAX
 #    define REG_RBX GNU_REG_RBX
 #    define REG_RCX GNU_REG_RCX
@@ -50,7 +50,7 @@
 #    define REG_R13 GNU_REG_R13
 #    define REG_R14 GNU_REG_R14
 #    define REG_R15 GNU_REG_R15
-#  else
+#  elif defined(__i386__)
 #    if GLIBC_VERSION_22
 #       define REG_EAX GNU_REG_EAX
 #       define REG_EBX GNU_REG_EBX
@@ -102,7 +102,7 @@
 #endif
 
 #if __linux__
-#  if __x86_64__
+#  if defined(__x86_64__)
 #    undef REG_RAX
 #    undef REG_RBX
 #    undef REG_RCX
@@ -120,7 +120,7 @@
 #    undef REG_R13
 #    undef REG_R14
 #    undef REG_R15
-#  else
+#  elif defined(__i386__)
 #    if GLIBC_VERSION_22
 #       undef REG_EAX
 #       undef REG_EBX
@@ -1072,17 +1072,23 @@ SigNoHandler(int s,           // IN
              ucontext_t *cp)  // IN
 {
    sigset_t mask;
-   Bool su;
+   Bool su = Id_IsSuperUser();
 
-   su = IsSuperUser();
-   SuperUser(FALSE);
+   if (su) {
+      Id_EndSuperUser(getuid());  // Drop from root to user
+   }
 
    switch (sig.loopCount++) {
    case 0:
       break;
    case 1:
+#if defined(__x86_64__) || defined(__i386__) // no SC_EIP on non-x86*
       Panic("Loop on signal %d -- tid %lu at 0x%08lx.\n",
 	    s, (unsigned long)Util_GetCurrentThreadId(), SC_EIP(cp));
+#else
+      Panic("Loop on signal %d -- tid %lu.\n",
+	    s, (unsigned long)Util_GetCurrentThreadId());
+#endif
    default:
       VThread_ExitThread(FALSE);
    }
@@ -1097,17 +1103,21 @@ SigNoHandler(int s,           // IN
    sig.ucontext = *cp;
 
    if (s == SIGHUP || s == SIGINT || s == SIGTERM || s == SIGTSTP) {
+#if defined(__x86_64__) || defined(__i386__) // no SC_EIP on non-x86*
       Warning("Caught signal %d -- tid %lu (eip 0x%08lx)\n",
 	      s, (unsigned long)Util_GetCurrentThreadId(), SC_EIP(cp));
+#else
+      Warning("Caught signal %d -- tid %lu\n",
+	      s, (unsigned long)Util_GetCurrentThreadId());
+#endif
    } else {
-      int i;
-
       /*
        * Make sure signal backtrace gets logged
        */
       Log_DisableThrottling();
 
       Warning("Caught signal %d -- tid %lu\n", s, (unsigned long)Util_GetCurrentThreadId());
+#if defined(__x86_64__) || defined(__i386__) // registers different on non-x86*
       Log("SIGNAL: eip 0x%lx esp 0x%lx ebp 0x%lx\n",
 	  SC_EIP(cp), SC_ESP(cp), SC_EBP(cp));
       Log("SIGNAL: eax 0x%lx ebx 0x%lx ecx 0x%lx edx 0x%lx esi 0x%lx "
@@ -1120,11 +1130,16 @@ SigNoHandler(int s,           // IN
           SC_R8(cp), SC_R9(cp), SC_R10(cp), SC_R11(cp), SC_R12(cp),
           SC_R13(cp), SC_R14(cp), SC_R15(cp));
 #endif
-      for (i = 0; i < 8; i++) {
-         uint32 *x = (uint32 *)(SC_ESP(cp) + i*4*4);
-         Log("SIGNAL: stack %p : 0x%08x 0x%08x 0x%08x 0x%08x\n",
-             x, x[0],x[1],x[2],x[3]);
+      {
+         int i;
+
+         for (i = 0; i < 8; i++) {
+            uint32 *x = (uint32 *)(SC_ESP(cp) + i*4*4);
+            Log("SIGNAL: stack %p : 0x%08x 0x%08x 0x%08x 0x%08x\n",
+                x, x[0],x[1],x[2],x[3]);
+         }
       }
+#endif // x86*
       Util_Backtrace(0);
    }
 
@@ -1139,7 +1154,9 @@ SigNoHandler(int s,           // IN
    case SIGTERM:
    case SIGTSTP:
       Sig_ForceSig(s);
-      SuperUser(su);
+      if (su) {
+         Id_BeginSuperUser();  // Transition from user back to root
+      }
       sig.loopCount = 0;
       return;
    }
@@ -1531,7 +1548,7 @@ __vmware_fork(void)
     * the fact that pthread_kill works correctly on Mac OS.
     */
 
-   Bool su;
+   uid_t uid;
    pid_t result;
 
    /*
@@ -1539,8 +1556,7 @@ __vmware_fork(void)
     * parent thread has that ability.
     */
 
-   su = IsSuperUser();
-   SuperUser(TRUE);
+   uid = Id_BeginSuperUser();
 
    /*
     * XXXMACOS The Linux trick does not work, so for now do a regular fork(2),
@@ -1548,7 +1564,7 @@ __vmware_fork(void)
     */
    result = fork();
 
-   SuperUser(su);
+   Id_EndSuperUser(uid);
 
    return result;
 #else
@@ -2198,7 +2214,7 @@ SigCoreDumpViaChild()
     * one thread) to that of the unprivileged user. Was bug 229195.
     */
 
-   SuperUser(TRUE);
+   Id_BeginSuperUser();
    setuid(getuid());
 #else
    /*
@@ -2206,7 +2222,7 @@ SigCoreDumpViaChild()
     * (normal process without setuid, for example).
     */
 
-   SuperUser(FALSE);
+   Id_EndSuperUser(getuid()); // Drop from root to user
 #   ifdef VMX86_VMX
    VMMon_AllowCoreDump();
 #   endif

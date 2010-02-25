@@ -44,9 +44,10 @@
 #if defined(__linux__)
 #ifndef GLIBC_VERSION_21
 /*
- * SYS_ constants for glibc 2.0, some of which may already be defined on some of those
- * older systems.
+ * SYS_ constants for glibc 2.0, some of which may already be defined on
+ * some of those older systems.
  */
+
 #ifndef SYS_setresuid
 #define SYS_setresuid          164
 #endif
@@ -166,17 +167,20 @@ Id_SetGid(gid_t egid)		// IN: new egid
 {
 #if defined(__APPLE__)
    Warning("XXXMACOS: implement %s\n", __func__);
+
    return -1;
 #elif defined(sun) || defined(__FreeBSD__)
    return setgid(egid);
 #else
    if (uid32) {
       int r = syscall(SYS_setgid32, egid);
+
       if (r != -1 || errno != ENOSYS) {
          return r;
       }
       uid32 = 0;
    }
+
    return syscall(SYS_setgid, egid);
 #endif
 }
@@ -209,14 +213,17 @@ Id_SetRESUid(uid_t uid,		// IN: new uid
 #elif defined(linux)
    if (uid32) {
       int r = syscall(SYS_setresuid32, uid, euid, suid);
+
       if (r != -1 || errno != ENOSYS) {
          return r;
       }
       uid32 = 0;
    }
+
    return syscall(SYS_setresuid, uid, euid, suid);
 #else
    Warning("XXX: implement %s\n", __func__);
+
    return -1;
 #endif
 }
@@ -250,14 +257,17 @@ Id_SetRESGid(gid_t gid,		// IN: new gid
 #elif defined(linux)
    if (uid32) {
       int r = syscall(SYS_setresgid32, gid, egid, sgid);
+
       if (r != -1 || errno != ENOSYS) {
          return r;
       }
       uid32 = 0;
    }
+
    return syscall(SYS_setresgid, gid, egid, sgid);
 #else
    Warning("XXX: implement %s\n", __func__);
+
    return -1;
 #endif
 }
@@ -295,11 +305,13 @@ Id_SetREUid(uid_t uid,		// IN: new uid
 #else
    if (uid32) {
       int r = syscall(SYS_setreuid32, uid, euid);
+
       if (r != -1 || errno != ENOSYS) {
          return r;
       }
       uid32 = 0;
    }
+
    return syscall(SYS_setreuid, uid, euid);
 #endif
 }
@@ -334,11 +346,13 @@ Id_SetREGid(gid_t gid,		// IN: new gid
 #else
    if (uid32) {
       int r = syscall(SYS_setregid32, gid, egid);
+
       if (r != -1 || errno != ENOSYS) {
          return r;
       }
       uid32 = 0;
    }
+
    return syscall(SYS_setregid, gid, egid);
 #endif
 }
@@ -348,42 +362,6 @@ Id_SetREGid(gid_t gid,		// IN: new gid
 #if defined(__APPLE__)
 /*
  *----------------------------------------------------------------------------
- *
- * Id_SetSuperUser --
- *
- *      If the calling process does not have euid root, do nothing.
- *      If the calling process has euid root, make the calling thread acquire
- *      or release euid root.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *----------------------------------------------------------------------------
- */
-
-void
-Id_SetSuperUser(Bool yes) // IN: TRUE to acquire super user, FALSE to release
-{
-   if (!IsSuperUser() == !yes) {
-      // settid(2) fails on spurious transitions.
-      return;
-   }
-
-   if (yes) {
-      syscall(SYS_settid, KAUTH_UID_NONE, KAUTH_GID_NONE /* Ignored. */);
-   } else {
-      if (syscall(SYS_settid, getuid(), getgid()) == -1) {
-         Log("Failed to release super user privileges.\n");
-      }
-   }
-}
-
-
-/*
- *-----------------------------------------------------------------------------
  *
  * IdAuthCreate --
  *
@@ -401,7 +379,7 @@ Id_SetSuperUser(Bool yes) // IN: TRUE to acquire super user, FALSE to release
  * Side effects:
  *      See IdAuthCreateWithFork.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 static AuthorizationRef
@@ -422,6 +400,7 @@ IdAuthCreate(void)
     * euid or gid != egid?  Some callers may expect us to check
     * against euid, others may expect us to check against uid.
     */
+
    uid_t thread_uid;
    gid_t thread_gid;
    int ret;
@@ -433,26 +412,28 @@ IdAuthCreate(void)
        * We have per-thread UIDs in use, so Apple's authorization
        * APIs don't work.  Fork so we can use them.
        */
+
       return IdAuthCreateWithFork();
    } else {
       if (errno != ESRCH) {
-         Warning("%s: gettid failed, error %d.\n", __FUNCTION__, errno);
+         Warning("%s: gettid failed, error %d.\n", __func__, errno);
+
          return NULL;
       } else {
           // Per-thread identities are not in use in this thread.
          AuthorizationRef auth;
          OSStatus ret;
 
-         ret = AuthorizationCreate(NULL,
-                                   kAuthorizationEmptyEnvironment,
-                                   kAuthorizationFlagDefaults,
-                                   &auth);
+         ret = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment,
+                                   kAuthorizationFlagDefaults, &auth);
 
          if (ret == errAuthorizationSuccess) {
             return auth;
          } else {
-            Warning("%s: AuthorizationCreate failed, error %ld.\n",
-                    __FUNCTION__, ret);
+            ASSERT_ON_COMPILE(sizeof ret == sizeof (int32));
+            Warning("%s: AuthorizationCreate failed, error %d.\n",
+                    __func__, (int32)ret);
+
             return NULL;
          }
       }
@@ -461,7 +442,7 @@ IdAuthCreate(void)
 
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * IdAuthCreateWithFork --
  *
@@ -479,7 +460,7 @@ IdAuthCreate(void)
  * Side effects:
  *      The current process is forked.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 static AuthorizationRef
@@ -577,10 +558,10 @@ IdAuthCreateWithFork(void)
           * Wait until the child can destroy its process ref to the auth
           * session.
           */
-         for (;;) {
-            ssize_t actual;
 
-            actual = read(fds[1], &buf, sizeof buf);
+         for (;;) {
+            ssize_t actual = read(fds[1], &buf, sizeof buf);
+
             ASSERT(actual <= sizeof buf);
             if (actual) {
                break;
@@ -593,6 +574,7 @@ IdAuthCreateWithFork(void)
        * o Destroys the child process ref to the Authorization session.
        * o Closes fds[0] and fds[1]
        */
+
       exit(0);
    }
 
@@ -608,7 +590,7 @@ static Atomic_Ptr procAuth = { 0 };
 
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * IdAuthGet --
  *
@@ -622,7 +604,7 @@ static Atomic_Ptr procAuth = { 0 };
  *      If the process' Authorization session does not exist yet, it is
  *      created.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 static AuthorizationRef
@@ -631,9 +613,7 @@ IdAuthGet(void)
    if (UNLIKELY(Atomic_ReadPtr(&procAuth) == NULL)) {
       AuthorizationRef newProcAuth = IdAuthCreate();
 
-      if (Atomic_ReadIfEqualWritePtr(&procAuth,
-                                     NULL,
-                                     newProcAuth)) {
+      if (Atomic_ReadIfEqualWritePtr(&procAuth, NULL, newProcAuth)) {
          // Someone else snuck in before we did.  Free the new authorization.
          AuthorizationFree(newProcAuth, kAuthorizationFlagDefaults);
       }
@@ -646,7 +626,7 @@ IdAuthGet(void)
 
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * Id_AuthGetLocal --
  *
@@ -660,7 +640,7 @@ IdAuthGet(void)
  *      If the process' Authorization session does not exist yet, it is
  *      created.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 void *
@@ -671,7 +651,7 @@ Id_AuthGetLocal(void)
 
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * Id_AuthGetExternal --
  *
@@ -684,7 +664,7 @@ Id_AuthGetLocal(void)
  * Side effects:
  *      None
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 void *
@@ -701,22 +681,25 @@ Id_AuthGetExternal(size_t *size) // OUT
    ext = malloc(sizeof *ext);
    if (!ext) {
       Warning("Unable to allocate an AuthorizationExternalForm.\n");
+
       return NULL;
    }
 
    if (AuthorizationMakeExternalForm(auth, ext) != errAuthorizationSuccess) {
       Warning("AuthorizationMakeExternalForm() failed.\n");
       free(ext);
+
       return NULL;
    }
 
    *size = sizeof *ext;
+
    return ext;
 }
 
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * Id_AuthSet --
  *
@@ -730,7 +713,7 @@ Id_AuthGetExternal(size_t *size) // OUT
  * Side effects:
  *      None
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 Bool
@@ -740,28 +723,29 @@ Id_AuthSet(void const *buf, // IN
    AuthorizationRef newProcAuth;
 
    AuthorizationExternalForm const *ext =
-      (AuthorizationExternalForm const *)buf;
+                                      (AuthorizationExternalForm const *)buf;
 
    if (!buf || size != sizeof *ext) {
       Warning("%s: Invalid argument.\n", __func__);
+
       return FALSE;
    }
 
    ASSERT(!Atomic_ReadPtr(&procAuth));
-   if (AuthorizationCreateFromExternalForm(ext, &newProcAuth)
-       != errAuthorizationSuccess) {
+   if (AuthorizationCreateFromExternalForm(ext,
+                                   &newProcAuth) != errAuthorizationSuccess) {
       Warning("AuthorizationCreateFromExternalForm failed.\n");
+
       return FALSE;
    }
 
-   if (Atomic_ReadIfEqualWritePtr(&procAuth,
-                                  NULL,
-                                  newProcAuth)) {
+   if (Atomic_ReadIfEqualWritePtr(&procAuth, NULL, newProcAuth)) {
       /*
        * This is meant to be called very early on in the life of the
        * process.  If someone else has snuck in an authorization,
        * we're toast.
        */
+
       NOT_IMPLEMENTED();
    }
 
@@ -770,7 +754,7 @@ Id_AuthSet(void const *buf, // IN
 
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * Id_AuthCheck --
  *
@@ -781,19 +765,22 @@ Id_AuthSet(void const *buf, // IN
  * Results:
  *      TRUE if the right was granted, FALSE if the user cancelled,
  *      entered the wrong password three times in a row, or if an
- *      error was encountered.
+ *      error was encountered, or if the Authorization session is 
+ *      invalid or has not been granted the 'right'.
  *
  * Side effects:
- *      Displays a dialog to the user.  The dialog grabs keyboard
- *      focus if Id_AuthSet() was previously called with a
- *      cross-process ref to a GUI process.
+ *      If showDialogIfNeeded is set and the specified Authorization session
+ *      does not have the required privilege, displays a dialog to the user.
+ *      The dialog grabs keyboard focus if Id_AuthSet() was previously called
+ *      with a cross-process ref to a GUI process.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 Bool
 Id_AuthCheck(char const *right,                // IN
-             char const *localizedDescription) // IN: UTF-8
+             char const *localizedDescription, // IN: UTF-8
+             Bool showDialogIfNeeded)          // IN
 {
    AuthorizationRef auth;
    AuthorizationItem rightsItems[1] = { { 0 } };
@@ -801,7 +788,7 @@ Id_AuthCheck(char const *right,                // IN
    AuthorizationItem environmentItems[1] = { { 0 } };
    AuthorizationEnvironment environmentWithDescription = { 0 };
    const AuthorizationEnvironment *environment =
-      kAuthorizationEmptyEnvironment;
+                                              kAuthorizationEmptyEnvironment;
 
    auth = IdAuthGet();
    if (!auth) {
@@ -820,6 +807,7 @@ Id_AuthCheck(char const *right,                // IN
     * If the localized description is present, the API uses that
     * description and appends a space followed by the above string.
     */
+
    if (localizedDescription) {
       environmentItems[0].name = kAuthorizationEnvironmentPrompt;
       environmentItems[0].valueLength = strlen(localizedDescription);
@@ -834,12 +822,88 @@ Id_AuthCheck(char const *right,                // IN
     * the same AuthorizationRef?  Apple's documentation doesn't
     * actually say whether it is or is not.
     */
-   return AuthorizationCopyRights(auth, &rights,
-             environment,
-             kAuthorizationFlagDefaults |
-             kAuthorizationFlagInteractionAllowed |
+
+   return AuthorizationCopyRights(auth, &rights, environment,
+             (showDialogIfNeeded ? kAuthorizationFlagInteractionAllowed |
+                                   kAuthorizationFlagDefaults :
+                                   kAuthorizationFlagDefaults) |
              kAuthorizationFlagExtendRights,
              NULL) == errAuthorizationSuccess;
 }
+#endif
 
+#if !defined(_WIN32)
+/*
+ *----------------------------------------------------------------------------
+ *
+ * Id_BeginSuperUser --
+ *
+ *      Transition the calling thread from whatever its current effective
+ *      user is to effectively root.
+ *
+ * Results:
+ *      Returns the uid of the effective user from before the transition to
+ *      effectively root. A "-1" is used to indicate that the thread was
+ *      already root when this routine was called.
+ *
+ * Side effects:
+ *      None
+ *
+ *----------------------------------------------------------------------------
+ */
+
+uid_t
+Id_BeginSuperUser(void)
+{
+   uid_t uid = Id_GetEUid();
+
+   ASSERT_NOT_IMPLEMENTED(uid != (uid_t) -1);
+
+   if (uid == 0) {
+      uid = (uid_t) -1; // already root; nothing to do
+   } else {
+#if defined(__APPLE__)
+      syscall(SYS_settid, KAUTH_UID_NONE, KAUTH_GID_NONE /* Ignored. */);
+#else
+      Id_SetRESUid((uid_t) -1, (uid_t) 0, (uid_t) -1); // effectively root
+#endif
+   }
+
+   return uid;
+}
+
+
+/*
+ *----------------------------------------------------------------------------
+ *
+ * Id_EndSuperUser --
+ *
+ *      Transition the calling thread from effective root user to
+ *      another user.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      When transitioning from being effectively root to the specified
+ *      user (uid) the effective gid of the calling thread may be lost.
+ *
+ *----------------------------------------------------------------------------
+ */
+
+void
+Id_EndSuperUser(uid_t uid)  // IN:
+{
+   if ((uid != (uid_t) -1) && (uid != Id_GetEUid())) {
+      ASSERT(uid != 0);  // Don't allow cheating like this
+
+#if defined(__APPLE__)
+      if (syscall(SYS_settid, uid, getgid()) == -1) {
+         Log("Failed to release super user privileges.\n");
+      }
+#else
+      Id_SetRESUid((uid_t) -1, uid, (uid_t) -1); // revert to uid
+#endif
+   }
+}
 #endif

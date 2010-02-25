@@ -229,7 +229,7 @@ debs: VMware-view-open-client.control deb-stage
 	$(MKDIR_P) $(DEB_STAGE_ROOT)/DEBIAN
 	$(INSTALL_DATA) -T $< $(DEB_STAGE_ROOT)/DEBIAN/control
 	$(FAKEROOT) $(DPKG_DEB) --build $(DEB_STAGE_ROOT)
-	mv $(DEB_STAGE_ROOT).deb $(PACKAGING_NAME)_$(VERSION)_$(RPM_ARCH).deb
+	mv $(DEB_STAGE_ROOT).deb $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb
 	-rm -rf $(DEB_STAGE_ROOT)
 
 rpm-stage: all-am
@@ -259,7 +259,7 @@ rpms: VMware-view-open-client.spec rpm-stage
 	cp $(RPM_OUTPUT_DIR)/RPMS/$(RPM_ARCH)/* .
 	-rm -rf $(RPM_OUTPUT_DIR) $(RPM_STAGE_ROOT)
 
-TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION)
+TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION).$(RPM_ARCH)
 
 # Make the locale stuff in the tar stage dir. Note the .. since we're entering
 # po/ and want the stage dir to be in the directory above it.
@@ -317,8 +317,10 @@ DELIVERABLES += debs
 @ENDIF@
 
 ifeq ($(PACKAGING_NAME),VMware-view-open-client)
+ifeq ($(host_cpu),i686)
 # XXX: dist should be distcheck
 DELIVERABLES += dist
+@ENDIF@
 @ENDIF@
 endif # VIEW_GTK
 
@@ -345,13 +347,13 @@ ifneq ($(MKSQUASHFS),)
 @ENDIF@ # MKSQUASHFS
 @ENDIF@ # RPMBUILD
 ifneq ($(DPKG_DEB),)
-	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(RPM_ARCH).deb \
+	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb \
 		$(PUBLISH_DIR)
 @ENDIF@ # DPKG_DEB
 endif # VIEW_GTK
 if VIEW_COCOA
-ifeq ($(build_os), darwin)
+ifeq ($(findstring darwin,$(build_os)),darwin)
 	$(INSTALL_DATA) $(appdmg) $(PUBLISH_DIR)
-@ENDIF@ # HDIUTIL
+@ENDIF@
 endif # VIEW_COCOA
 @ENDIF@ # PUBLISH_DIR

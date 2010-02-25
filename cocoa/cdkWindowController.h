@@ -32,6 +32,7 @@
 
 
 #import "cdkBroker.h"
+#import "cdkProcHelper.h"
 
 
 namespace cdk {
@@ -44,7 +45,9 @@ namespace cdk {
 @class CdkViewController;
 
 
-@interface CdkWindowController : NSWindowController <CdkBrokerDelegate>
+@interface CdkWindowController
+   : NSWindowController <CdkBrokerDelegate,
+                         CdkProcHelperDelegate>
 {
    NSMutableArray *viewControllers;
    CdkViewController *viewController;
@@ -55,6 +58,10 @@ namespace cdk {
    IBOutlet NSBox *box;
    IBOutlet NSButton *goBackButton;
    IBOutlet NSImageView *banner;
+   IBOutlet NSMenuItem *aboutMenu;
+   IBOutlet NSMenuItem *hideMenu;
+   IBOutlet NSMenuItem *quitMenu;
+   IBOutlet NSMenuItem *helpMenu;
 
    CdkBroker *broker;
    CdkDesktop *desktop;

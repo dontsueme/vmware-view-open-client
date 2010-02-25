@@ -494,7 +494,38 @@
    VMW_SSL_FUNC(crypto, int, MD5_Update, (MD5_CTX *c, const void *data, \
                 size_t len), (c, data, len)) \
    VMW_SSL_FUNC(crypto, int, MD4_Update, (MD4_CTX *c, const void *data, \
-                size_t len), (c, data, len))
+                size_t len), (c, data, len)) \
+   VMW_SSL_FUNC(crypto, int, X509_NAME_print_ex, (BIO *out, X509_NAME *nm, \
+                int indent, unsigned long flags), (out, nm, indent, flags)) \
+   VMW_SSL_FUNC(crypto, int, i2t_ASN1_OBJECT, (char *buf, int buf_len, \
+                ASN1_OBJECT *a), (buf, buf_len, a)) \
+   VMW_SSL_FUNC(ssl, STACK_OF(X509) *, SSL_get_peer_cert_chain, \
+                (const SSL *s), (s)) \
+   VMW_SSL_FUNC(crypto, ASN1_INTEGER *, X509_get_serialNumber, \
+                (X509 *x), (x)) \
+   VMW_SSL_FUNC(crypto, ASN1_OBJECT *, X509_EXTENSION_get_object, \
+                (X509_EXTENSION *ex), (ex)) \
+   VMW_SSL_FUNC(crypto, int, X509_EXTENSION_get_critical, \
+                (X509_EXTENSION *ex), (ex)) \
+   VMW_SSL_FUNC(crypto, int, X509V3_EXT_print, (BIO *out, \
+                X509_EXTENSION *ext, unsigned long flag, int indent), \
+                (out, ext, flag, indent)) \
+   VMW_SSL_FUNC(crypto, int, ASN1_STRING_print, (BIO *bp, ASN1_STRING *v), \
+                (bp, v)) \
+   VMW_SSL_FUNC(crypto, long, ASN1_INTEGER_get, (ASN1_INTEGER *a), (a)) \
+   VMW_SSL_FUNC(crypto, int,  BN_num_bits, (const BIGNUM *a), (a)) \
+   VMW_SSL_FUNC(crypto, X509_LOOKUP_METHOD *, X509_LOOKUP_file, (void), ()) \
+   VMW_SSL_FUNC(crypto, int, X509_load_crl_file, (X509_LOOKUP *ctx, \
+                const char *file, int type), (ctx, file, type)) \
+   VMW_SSL_FUNC(crypto, int, X509_STORE_set_flags, (X509_STORE *ctx, \
+                unsigned long flags), (ctx, flags)) \
+   VMW_SSL_FUNC(ssl, int, SSL_CTX_add_client_CA, (SSL_CTX *ctx, X509 *x), \
+                (ctx, x)) \
+   VMW_SSL_FUNC(crypto, int, X509_check_issued, (X509 *issuer, X509 *subject), \
+                (issuer, subject)) \
+   VMW_SSL_FUNC(crypto, X509 *, PEM_read_X509, (FILE *fp, X509 **x, \
+                pem_password_cb *cb, void *u), (fp, x, cb, u)) \
+   VMW_SSL_FUNC(crypto, int, PEM_write_bio_X509, (BIO *bp, X509 *x), (bp, x))
 #else
 #define VMW_SSL_RET_FUNCTIONS_LIBCURL_VERSION_SPECIFIC \
    VMW_SSL_FUNC(ssl, long, SSL_CTX_callback_ctrl, \

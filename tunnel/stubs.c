@@ -262,15 +262,6 @@ Util_GetCurrentThreadId(void)
 }
 
 
-int
-Id_SetRESUid(uid_t uid,  // IN
-             uid_t euid, // IN
-             uid_t suid) // IN
-{
-   NOT_IMPLEMENTED();
-}
-
-
 Unicode
 Unicode_AllocWithLength(const void *buffer,      // IN
                         ssize_t lengthInBytes,   // IN

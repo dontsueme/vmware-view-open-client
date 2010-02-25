@@ -50,6 +50,7 @@ dist_noinst_HEADERS += lib/bora/include/sslFunctionList.h
 dist_noinst_HEADERS += lib/bora/include/sslPRNG.h
 dist_noinst_HEADERS += lib/bora/include/sslWrapper.h
 dist_noinst_HEADERS += lib/bora/include/syncRecMutex.h
+dist_noinst_HEADERS += lib/bora/include/sysSocket.h
 dist_noinst_HEADERS += lib/bora/include/url.h
 dist_noinst_HEADERS += lib/bora/include/urlAppend.h
 dist_noinst_HEADERS += lib/bora/include/urlTable.h

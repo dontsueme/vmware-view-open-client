@@ -30,25 +30,19 @@
 #include "vmware.h"
 #include <string.h>
 
+#if defined(__i386__) || defined(__x86_64__)
 #include "cpuid_info.h"
+#endif
 #include "hostinfo.h"
+#include "util.h"
 
 #define LOGLEVEL_MODULE hostinfo
 #include "loglevel_user.h"
 
 #define LGPFX "HOSTINFO:"
 
-static Bool
-HostInfoGetIntelCPUCount(CPUIDSummary *cpuid,
-                         uint32 *numCoresPerPCPU,
-                         uint32 *numThreadsPerCore);
 
-static Bool
-HostInfoGetAMDCPUCount(CPUIDSummary *cpuid,
-                       uint32 *numCoresPerPCPU,
-                       uint32 *numThreadsPerCore);
-
-
+#if defined(__i386__) || defined(__x86_64__)
 /*
  *----------------------------------------------------------------------
  *
@@ -75,6 +69,7 @@ HostInfoGetIntelCPUCount(CPUIDSummary *cpuid,       // IN
 {
    *numCoresPerPCPU = CPUIDSummary_IntelCoresPerPackage(cpuid,
                                                         numThreadsPerCore);
+
    return TRUE;
 }
 
@@ -105,8 +100,10 @@ HostInfoGetAMDCPUCount(CPUIDSummary *cpuid,       // IN
 {
    *numCoresPerPCPU = CPUIDSummary_AMDCoresPerPackage(cpuid,
                                                       numThreadsPerCore);
+
    return TRUE;
 }
+#endif // defined(__i386__) || defined(__x86_64__)
 
 
 /*
@@ -131,6 +128,7 @@ HostInfoGetAMDCPUCount(CPUIDSummary *cpuid,       // IN
 Bool
 Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
 {
+#if defined(__i386__) || defined(__x86_64__)
    CPUIDSummary cpuid;
    CPUIDRegs id0;
    uint32 numCoresPerPCPU, numThreadsPerCore;
@@ -152,6 +150,7 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
 
    if (0 == cpuid.id0.numEntries) {
       Warning(LGPFX" No CPUID information available.\n");
+
       return FALSE;
    }
 
@@ -175,6 +174,7 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
       if (!HostInfoGetIntelCPUCount(&cpuid, &numCoresPerPCPU,
                                     &numThreadsPerCore)) {
          Warning(LGPFX" Failed to get Intel CPU count.\n");
+
          return FALSE;
       }
 
@@ -185,6 +185,7 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
       if (!HostInfoGetAMDCPUCount(&cpuid, &numCoresPerPCPU,
                                   &numThreadsPerCore)) {
          Warning(LGPFX" Failed to get AMD CPU count.\n");
+
          return FALSE;
       }
 
@@ -198,23 +199,27 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
       numThreadsPerCore = 1;
 
       Log(LGPFX" Unknown CPU vendor \"%s\" seen, assuming one core per CPU "
-          "and one thread per core.\n", cpuid.id0.name);
+               "and one thread per core.\n", cpuid.id0.name);
    }
 
    info->numLogCPUs = Hostinfo_NumCPUs();
 
    if (-1 == info->numLogCPUs) {
       Warning(LGPFX" Failed to get logical CPU count.\n");
+
       return FALSE;
    }
 
 #ifdef VMX86_SERVER
-   /* The host can avoid scheduling hypertwins, regardless of the CPU supporting it
-    * or hyperthreading being enabled in the BIOS.  This leads to numThreadsPerCore 
-    * set to 2 when it should be 1.
+   /*
+    * The host can avoid scheduling hypertwins, regardless of the CPU
+    * supporting it or hyperthreading being enabled in the BIOS. This leads
+    * to numThreadsPerCore set to 2 when it should be 1.
     */
+
    if (Hostinfo_HTDisabled()) {
-      Log(LGPFX" hyperthreading disabled, setting number of threads per core to 1.\n");
+      Log(LGPFX" hyperthreading disabled, setting number of threads per core "
+               "to 1.\n");
       numThreadsPerCore = 1;
    } 
 #endif
@@ -237,7 +242,7 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
    }
 
    Log(LGPFX" This machine has %u physical CPUS, %u total cores, and %u "
-       "logical CPUs.\n", info->numPhysCPUs, info->numCores,
+            "logical CPUs.\n", info->numPhysCPUs, info->numCores,
        info->numLogCPUs);
 
    /*
@@ -254,6 +259,61 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
    info->features = cpuid.id1.edxFeatures;
 
    return TRUE;
+#else // defined(__i386__) || defined(__x86_64__)
+   return FALSE;
+#endif // defined(__i386__) || defined(__x86_64__)
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ *  Hostinfo_HypervisorCPUIDSig --
+ *
+ *      Get the hypervisor signature string from CPUID.
+ *
+ * Results:
+ *      Unqualified 16 byte nul-terminated hypervisor string
+ *	String may contain garbage and caller must free
+ *
+ * Side effects:
+ *	None
+ *
+ *----------------------------------------------------------------------
+ */
+
+char *
+Hostinfo_HypervisorCPUIDSig(void)
+{
+   uint32 *name = NULL;
+#if defined(__i386__) || defined(__x86_64__)
+   CPUIDRegs regs;
+
+   __GET_CPUID(1, &regs);
+   if (!(regs.ecx & CPUID_FEATURE_COMMON_ID1ECX_HYPERVISOR)) {
+      return NULL;
+   }
+
+   regs.ebx = 0;
+   regs.ecx = 0;
+   regs.edx = 0;
+
+   __GET_CPUID(0x40000000, &regs);
+
+   if (regs.eax < 0x40000000) {
+      Log(LGPFX" CPUID hypervisor bit is set, but no "
+          "hypervisor vendor signature is present\n");
+   }
+
+   name = Util_SafeMalloc(4 * sizeof *name);
+
+   name[0] = regs.ebx;
+   name[1] = regs.ecx;
+   name[2] = regs.edx;
+   name[3] = 0;
+#endif // defined(__i386__) || defined(__x86_64__)
+
+   return (char *)name;
 }
 
 
@@ -264,8 +324,9 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
  *
  *      Check for Xen.
  *
- *      Official way is to check CPUID function 0x4000 0000, which
- *         returns a hypervisor string.  See PR156185,
+ *      Official way is to call Hostinfo_HypervisorCPUIDSig(), which
+ *         returns a hypervisor string.  This is a secondary check
+ *	   that guards against a backdoor failure.  See PR156185,
  *         http://xenbits.xensource.com/xen-unstable.hg?file/6a383beedf83/tools/misc/xen-detect.c
  *      (Canonical way is /proc/xen, but CPUID is better).
  *
@@ -287,31 +348,17 @@ Hostinfo_GetCpuid(HostinfoCpuIdInfo *info) // OUT
 Bool
 Hostinfo_TouchXen(void)
 {
+#if defined(linux) && (defined(__i386__) || defined(__x86_64__))
 #define XEN_CPUID 0x40000000
-#define XEN_STRING "XenVMMXenVMM"
    CPUIDRegs regs;
    uint32 name[4];
 
-   /* 
-    * HVM mode: simple cpuid instr 
-    * Xen hypervisor traps CPUID and adds information leaf(s)
-    * at CPUID leaf XEN_CPUID and higher.
-    */
-   __GET_CPUID(XEN_CPUID, &regs);
-   name[0] = regs.ebx;
-   name[1] = regs.ecx;
-   name[2] = regs.edx;
-   name[3] = 0;
-   if (0 == strcmp(XEN_STRING, (const char*)name)) {
-      return TRUE;
-   }
-
-#ifdef linux
    /* 
     * PV mode: ud2a "xen" cpuid (faults on native hardware).
     * (Only Linux can run PV, so skip others here).
     * Since PV cannot trap CPUID, this is a Xen hook.
     */
+
    regs.eax = XEN_CPUID;
    __asm__ __volatile__(
       "xchgl %%ebx, %0"  "\n\t"
@@ -320,11 +367,13 @@ Hostinfo_TouchXen(void)
       : "=&r" (regs.ebx), "=&c" (regs.ecx), "=&d" (regs.edx)
       : "a" (regs.eax)
    );
+
    name[0] = regs.ebx;
    name[1] = regs.ecx;
    name[2] = regs.edx;
    name[3] = 0;
-   if (0 == strcmp(XEN_STRING, (const char*)name)) {
+
+   if (0 == strcmp(CPUID_XEN_HYPERVISOR_VENDOR_STRING, (const char*)name)) {
       return TRUE;
    }
 

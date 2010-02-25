@@ -85,7 +85,7 @@ public:
    ConnectionState GetConnectionState() const { return mConnectionState; }
 
    void Connect(Util::AbortSlot onAbort, Util::DoneSlot onDone,
-                Util::ClientInfoMap &info);
+                const Util::ClientInfoMap &info);
    void Disconnect();
 
    bool CanConnect() const;

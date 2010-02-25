@@ -46,11 +46,14 @@ extern "C" {
 
 @interface CdkDesktop (Private)
 -(cdk::Desktop *)adaptedDesktop;
+-(BOOL)busy;
 @end // @interface CdkDesktop (Private)
 
 
 static NSString *const KEY_PATH_CAN_CONNECT = @"canConnect";
-
+static NSString *const KEY_PATH_HAS_SESSION = @"hasSession";
+static NSString *const KEY_PATH_CAN_RESET = @"canReset";
+static NSString *const KEY_PATH_CHECKED_OUT = @"checkedOut";
 
 /*
  *-----------------------------------------------------------------------------
@@ -72,8 +75,17 @@ static NSString *const KEY_PATH_CAN_CONNECT = @"canConnect";
 static void
 OnDesktopStateChanged(CdkDesktop *self)
 {
-   [self willChangeValueForKey:KEY_PATH_CAN_CONNECT];
-   [self didChangeValueForKey:KEY_PATH_CAN_CONNECT];
+   NSString *keys[] = {
+      KEY_PATH_CAN_CONNECT,
+      KEY_PATH_HAS_SESSION,
+      KEY_PATH_CAN_RESET,
+      KEY_PATH_CHECKED_OUT,
+      nil
+   };
+   for (NSString **key = keys; *key; key++) {
+      [self willChangeValueForKey:*key];
+      [self didChangeValueForKey:*key];
+   }
 }
 
 
@@ -248,6 +260,29 @@ OnDesktopStateChanged(CdkDesktop *self)
 /*
  *-----------------------------------------------------------------------------
  *
+ * -[CdkDesktop busy] --
+ *
+ *      Gets whether the desktop is busy (their state is something
+ *      other than disconnected).
+ *
+ * Results:
+ *      YES the desktop is "busy."
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(BOOL)busy
+{
+   return mDesktop->GetConnectionState() != cdk::Desktop::STATE_DISCONNECTED;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * -[CdkDesktop canConnect] --
  *
  *      Getter for canConnect property.
@@ -286,7 +321,7 @@ OnDesktopStateChanged(CdkDesktop *self)
 
 -(BOOL)hasSession
 {
-   return !mDesktop->GetSessionID().empty();
+   return ![self busy] && !mDesktop->GetSessionID().empty();
 }
 
 
@@ -308,7 +343,8 @@ OnDesktopStateChanged(CdkDesktop *self)
 
 -(BOOL)canReset
 {
-   return mDesktop->CanReset() && mDesktop->CanResetSession();
+   return ![self busy] && mDesktop->CanReset()
+      && mDesktop->CanResetSession();
 }
 
 
@@ -330,7 +366,8 @@ OnDesktopStateChanged(CdkDesktop *self)
 
 -(BOOL)checkedOut
 {
-   return mDesktop->GetOfflineState() == cdk::BrokerXml::OFFLINE_CHECKED_OUT;
+   return ![self busy] &&
+      mDesktop->GetOfflineState() == cdk::BrokerXml::OFFLINE_CHECKED_OUT;
 }
 
 

@@ -196,6 +196,8 @@ BaseApp::Init(int argc,     // IN
    bind_textdomain_codeset(VMWARE_VIEW, "UTF-8");
    textdomain(VMWARE_VIEW);
 
+   setlocale(LC_ALL, "");
+
    printf(_("Using log file %s\n"), Log_GetFileName());
 
    InitPoll();

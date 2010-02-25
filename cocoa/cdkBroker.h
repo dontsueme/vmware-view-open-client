@@ -52,7 +52,8 @@ namespace cdk {
 -(void)brokerDidRequestBroker:(CdkBroker *)broker;
 
 -(void)broker:(CdkBroker *)broker
-didRequestPasscode:(NSString *)username;
+didRequestPasscode:(NSString *)username
+userSelectable:(BOOL)userSelectable;
 
 -(void)broker:(CdkBroker *)broker
 didRequestNextTokencode:(NSString *)username;
@@ -112,6 +113,7 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs;
           defaultDomain:(NSString *)defaultDomain;
 
 -(int)cancelRequests;
+-(void)setCookieFile:(NSString *)cookieFile;
 
 -(void)reset;
 -(void)acceptDisclaimer;

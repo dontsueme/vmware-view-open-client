@@ -236,9 +236,9 @@ Protocols::GetMnemonic(const Util::string &name) // IN
 Protocols::ProtocolType
 Protocols::GetProtocolFromName(const Util::string &name) // IN
 {
-#define CHECK_PROTO(proto)                      \
-   if (name == PROTOCOL_##proto) {              \
-      return proto;                             \
+#define CHECK_PROTO(proto)                                        \
+   if (Util::Utf8Casecmp (name.c_str(), PROTOCOL_##proto) == 0) { \
+      return proto;                                               \
    }
 
    CHECK_PROTO(RDP);

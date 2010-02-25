@@ -24,6 +24,18 @@
  * str.c --
  *
  *    User level string wrappers
+ *
+ * WARNING:
+ *    Do not call any variadic functions - those that use "..." repeatedly
+ *    with the same va_list or memory corruption and/or crashes will occur.
+ *    The suggested way deal with repeated calls is to use a va_copy:
+ *
+ *    va_list tmpArgs;
+ *
+ *    va_copy(tmpArgs, ap);
+ *    // Call the variadic function
+ *    va_end(tmpArgs);
+ *
  */
 
 #ifdef _WIN32
@@ -97,7 +109,7 @@ Str_Sprintf(char *buf,       // OUT
    va_list args;
    int i;
    
-   va_start(args,fmt);
+   va_start(args, fmt);
    i = Str_Vsnprintf(buf, maxSize, fmt, args);
    va_end(args);
    if (i < 0) {
@@ -123,6 +135,8 @@ Str_Sprintf(char *buf,       // OUT
  *	NB: on overflow the buffer WILL be null terminated at the last
  *	UTF-8 code point boundary within the buffer's bounds.
  *
+ * WARNING: See warning at the top of this file.
+ *
  * Side effects:
  *	None
  *
@@ -140,18 +154,10 @@ Str_Vsnprintf(char *str,          // OUT
    ASSERT(str != NULL);
    ASSERT(format != NULL);
 
-#ifndef HAS_BSD_PRINTF
-   retval = vsnprintf(str, size, format, ap);
-#elif defined __linux__
-   {
-      va_list aq;
-
-      va_copy(aq, ap);
-      retval = bsd_vsnprintf(&str, size, format, aq);
-      va_end(aq);
-   }
-#else
+#ifdef HAS_BSD_PRINTF
    retval = bsd_vsnprintf(&str, size, format, ap);
+#else
+   retval = vsnprintf(str, size, format, ap);
 #endif
 
    /*
@@ -213,6 +219,7 @@ Str_Snprintf(char *str,          // OUT
    va_start(args, format);
    retval = Str_Vsnprintf(str, size, format, args);
    va_end(args);
+
    return retval;
 }
 
@@ -251,6 +258,41 @@ Str_Strcpy(char *buf,       // OUT
    }
    return memcpy(buf, src, len + 1);
 }
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Str_Strlen --
+ *
+ *      Calculate length of the string.
+ *
+ * Results:
+ *      Length of s not including the terminating '\0' character. 
+ *      If there is no '\0' for first maxLen bytes, then it
+ *      returns maxLen.
+ *
+ * Side Effects:
+ *      None
+ *
+ *----------------------------------------------------------------------
+ */
+
+size_t
+Str_Strlen(const char *s,  	// IN 
+	   size_t maxLen)     	// IN
+
+{
+   const char *end;
+
+   ASSERT(s != NULL);
+
+   if ((end = memchr(s, '\0', maxLen)) == NULL) {
+      return maxLen;
+   } 
+   return end - s;
+}
+
 
 /*
  *----------------------------------------------------------------------
@@ -469,7 +511,7 @@ Str_SafeAsprintf(size_t *length,       // OUT
 /*
  *-----------------------------------------------------------------------------
  *
- * StrVasprintf_Internal --
+ * StrVasprintfInternal --
  *
  *    Allocate and format a string, using the GNU libc way to specify the
  *    format (i.e. optionally allow the use of positional parameters)
@@ -482,6 +524,8 @@ Str_SafeAsprintf(size_t *length,       // OUT
  *    ASSERTs or returns NULL on failure, depending on the value of
  *    'assertOnFailure'.
  *
+ * WARNING: See warning at the top of this file.
+ *
  * Side effects:
  *    None
  *
@@ -489,25 +533,16 @@ Str_SafeAsprintf(size_t *length,       // OUT
  */
 
 static char *
-StrVasprintf_Internal(size_t *length,       // OUT
-                      const char *format,   // IN
-                      va_list arguments,    // IN
-                      Bool assertOnFailure) // IN
+StrVasprintfInternal(size_t *length,       // OUT:
+                     const char *format,   // IN:
+                     va_list arguments,    // IN:
+                     Bool assertOnFailure) // IN:
 {
    char *buf = NULL;
    int ret;
 
 #ifdef HAS_BSD_PRINTF
-   #ifdef __linux__
-      {
-	 va_list aq;
-	 va_copy(aq, arguments);
-	 ret = bsd_vsnprintf(&buf, 0, format, aq);
-	 va_end(aq);
-      }
-   #else
-      ret = bsd_vsnprintf(&buf, 0, format, arguments);
-   #endif
+   ret = bsd_vsnprintf(&buf, 0, format, arguments);
 
 #elif !defined sun && !defined STR_NO_WIN32_LIBS
    ret = vasprintf(&buf, format, arguments);
@@ -526,7 +561,9 @@ StrVasprintf_Internal(size_t *length,       // OUT
        * XXX Yes, this could overflow and spin forever when you get near 2GB
        *     allocations. I don't care. --rrdharan
        */
+
       char *newBuf;
+      va_list tmpArgs;
 
       bufSize *= 2;
       newBuf = realloc(buf, bufSize);
@@ -537,7 +574,10 @@ StrVasprintf_Internal(size_t *length,       // OUT
       }
 
       buf = newBuf;
-      ret = Str_Vsnprintf(buf, bufSize, format, arguments);
+
+      va_copy(tmpArgs, arguments);
+      ret = Str_Vsnprintf(buf, bufSize, format, tmpArgs);
+      va_end(tmpArgs);
    } while (ret < 0);
 #endif
 
@@ -562,15 +602,15 @@ StrVasprintf_Internal(size_t *length,       // OUT
  *
  * Str_Vasprintf --
  *
- *    See StrVasprintf_Internal.
+ *    See StrVasprintfInternal.
  *
  * Results:
- *    See StrVasprintf_Internal.
  *    Returns NULL on failure.
+ *
+ * WARNING: See warning at the top of this file.
  *
  * Side effects:
  *    None
- *
  *-----------------------------------------------------------------------------
  */
 
@@ -579,7 +619,7 @@ Str_Vasprintf(size_t *length,       // OUT
               const char *format,   // IN
               va_list arguments)    // IN
 {
-   return StrVasprintf_Internal(length, format, arguments, FALSE);
+   return StrVasprintfInternal(length, format, arguments, FALSE);
 }
 
 
@@ -588,11 +628,12 @@ Str_Vasprintf(size_t *length,       // OUT
  *
  * Str_SafeVasprintf --
  *
- *    See StrVasprintf_Internal.
+ *    See StrVasprintfInternal.
  *
  * Results:
- *    See StrVasprintf_Internal.
  *    Calls ASSERT_NOT_IMPLEMENTED on failure.
+ *
+ * WARNING: See warning at the top of this file.
  *
  * Side effects:
  *    None
@@ -605,7 +646,7 @@ Str_SafeVasprintf(size_t *length,       // OUT
                   const char *format,   // IN
                   va_list arguments)    // IN
 {
-   return StrVasprintf_Internal(length, format, arguments, TRUE);
+   return StrVasprintfInternal(length, format, arguments, TRUE);
 }
 
 #if defined(_WIN32) || defined(GLIBC_VERSION_22)
@@ -661,6 +702,8 @@ Str_Swprintf(wchar_t *buf,       // OUT
  *
  *	NB: on overflow the buffer WILL be null terminated
  *
+ * WARNING: See warning at the top of this file.
+ *
  * Side effects:
  *	None
  *
@@ -680,11 +723,7 @@ Str_Vsnwprintf(wchar_t *str,          // OUT
 #elif defined(_WIN32)
    retval = _vsnwprintf(str, size, format, ap);
 #else
-   va_list aq;
-
-   va_copy(aq, ap);
-   retval = vswprintf(str, size, format, aq);
-   va_end(aq);
+   retval = vswprintf(str, size, format, ap);
 #endif
 
    /*
@@ -951,7 +990,7 @@ Str_Mbscat(char *buf,                // IN-OUT
 /*
  *-----------------------------------------------------------------------------
  *
- * StrVaswprintf_Internal --
+ * StrVaswprintfInternal --
  *
  *    Allocate and format a string.
  *
@@ -962,6 +1001,8 @@ Str_Mbscat(char *buf,                // IN-OUT
  *    ASSERTs or returns NULL on failure, depending on the value of
  *    'assertOnFailure'.
  *
+ * WARNING: See warning at the top of this file.
+ *
  * Side effects:
  *    None
  *
@@ -969,10 +1010,10 @@ Str_Mbscat(char *buf,                // IN-OUT
  */
 
 static wchar_t *
-StrVaswprintf_Internal(size_t *length,         // OUT
-                       const wchar_t *format,  // IN
-                       va_list arguments,      // IN
-                       Bool assertOnFailure)   // IN
+StrVaswprintfInternal(size_t *length,         // OUT:
+                      const wchar_t *format,  // IN:
+                      va_list arguments,      // IN
+                      Bool assertOnFailure)   // IN
 {
    size_t bufSize;
    wchar_t *buf = NULL;
@@ -986,10 +1027,12 @@ StrVaswprintf_Internal(size_t *length,         // OUT
        * XXX Yes, this could overflow and spin forever when you get near 2GB
        *     allocations. I don't care. --rrdharan
        */
+
+      va_list tmpArgs;
       wchar_t *newBuf;
 
       bufSize *= 2;
-      newBuf = realloc(buf, bufSize*sizeof(wchar_t));
+      newBuf = realloc(buf, bufSize * sizeof(wchar_t));
       if (!newBuf) {
          free(buf);
          buf = NULL;
@@ -997,8 +1040,10 @@ StrVaswprintf_Internal(size_t *length,         // OUT
       }
 
       buf = newBuf;
-      retval = Str_Vsnwprintf(buf, bufSize, format, arguments);
 
+      va_copy(tmpArgs, arguments);
+      retval = Str_Vsnwprintf(buf, bufSize, format, tmpArgs);
+      va_end(tmpArgs);
    } while (retval == -1);
 
    if (length) {
@@ -1054,11 +1099,12 @@ Str_Aswprintf(size_t *length,         // OUT
  *
  * Str_Vaswprintf --
  *
- *    See StrVaswprintf_Internal.
+ *    See StrVaswprintfInternal.
  *
  * Results:
- *    See StrVaswprintf_Internal.
  *    Returns NULL on failure.
+ *
+ * WARNING: See warning at the top of this file.
  *
  * Side effects:
  *    None
@@ -1071,7 +1117,7 @@ Str_Vaswprintf(size_t *length,         // OUT
                const wchar_t *format,  // IN
                va_list arguments)      // IN
 {
-   return StrVaswprintf_Internal(length, format, arguments, FALSE);
+   return StrVaswprintfInternal(length, format, arguments, FALSE);
 }
 
 
@@ -1112,11 +1158,12 @@ Str_SafeAswprintf(size_t *length,         // OUT
  *
  * Str_SafeVaswprintf --
  *
- *    See StrVaswprintf_Internal.
+ *    See StrVaswprintfInternal.
  *
  * Results:
- *    See StrVaswprintf_Internal.
  *    Calls ASSERT_NOT_IMPLEMENTED on failure.
+ *
+ * WARNING: See warning at the top of this file.
  *
  * Side effects:
  *    None
@@ -1129,7 +1176,7 @@ Str_SafeVaswprintf(size_t *length,         // OUT
                    const wchar_t *format,  // IN
                    va_list arguments)      // IN
 {
-   return StrVaswprintf_Internal(length, format, arguments, TRUE);
+   return StrVaswprintfInternal(length, format, arguments, TRUE);
 }
 
 #endif // defined(_WIN32) || defined(GLIBC_VERSION_22)
@@ -1217,25 +1264,30 @@ static Bool bCompare;
    } while (0);
 
 static void
-PrintAndCheck(char *fmt, ...)
+PrintAndCheck(char *fmt,  // IN:
+              ...)        // IN:
 {
    char buf1[1024], buf2[1024];
    int count;
    va_list args;
    
    va_start(args, fmt);
-   count = Str_Vsnprintf(buf1, 1024, fmt, args);
+   count = Str_Vsnprintf(buf1, sizeof buf1, fmt, args);
+   va_end(args);
 
    if (count < 0) {
       FAIL("PrintAndCheck new code count off");
    }
 
    va_start(args, fmt);
+
 #ifdef _WIN32
-   count = _vsnprintf(buf2, 1024, fmt, args);
+   count = _vsnprintf(buf2, sizeof buf2, fmt, args);
 #else
-   count = vsnprintf(buf2, 1024, fmt, args);
+   count = vsnprintf(buf2, sizeof buf2, fmt, args);
 #endif
+
+   va_end(args);
 
    if (count < 0) {
       FAIL("PrintAndCheck old code count off");
@@ -1250,8 +1302,6 @@ PrintAndCheck(char *fmt, ...)
    }
 
    printf(buf1);
-
-   va_end(args);
 }
 
 static void
@@ -1262,18 +1312,22 @@ PrintAndCheckW(wchar_t *fmt, ...)
    va_list args;
    
    va_start(args, fmt);
-   count = Str_Vsnwprintf(buf1, 1024, fmt, args);
+   count = Str_Vsnwprintf(buf1, sizeof buf1, fmt, args);
+   va_end(args);
 
    if (count < 0) {
       FAIL("PrintAndCheckW new code count off");
    }
 
    va_start(args, fmt);
+
 #ifdef _WIN32
-   count = _vsnwprintf(buf2, 1024, fmt, args);
+   count = _vsnwprintf(buf2, sizeof buf2, fmt, args);
 #else
-   count = vswprintf(buf2, 1024, fmt, args);
+   count = vswprintf(buf2, sizeof buf2, fmt, args);
 #endif
+
+   va_end(args);
 
    if (count < 0) {
       FAIL("PrintAndCheckW old code count off");
@@ -1290,8 +1344,6 @@ PrintAndCheckW(wchar_t *fmt, ...)
 #ifndef _WIN32
    printf("%S", buf1);
 #endif // _WIN32
-
-   va_end(args);
 }
 
 void

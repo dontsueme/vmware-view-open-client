@@ -843,12 +843,13 @@ Window::RequestDisclaimer(const Util::string &disclaimer) // IN
  */
 
 void
-Window::RequestPasscode(const Util::string &username) // IN
+Window::RequestPasscode(const Util::string &username, // IN
+                        bool userSelectable)          // IN
 {
    SecurIDDlg *dlg = new SecurIDDlg();
    SetContent(dlg);
    Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("_Authenticate"));
-   dlg->SetState(SecurIDDlg::STATE_PASSCODE, username);
+   dlg->SetState(SecurIDDlg::STATE_PASSCODE, username, userSelectable);
    dlg->authenticate.connect(boost::bind(&Window::DoSubmitPasscode, this));
 }
 
@@ -904,7 +905,7 @@ Window::RequestPinChange(const Util::string &pin,     // IN
    SecurIDDlg *dlg = new SecurIDDlg();
    SetContent(dlg);
    Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("_Authenticate"));
-   dlg->SetState(SecurIDDlg::STATE_SET_PIN, pin, message, userSelectable);
+   dlg->SetState(SecurIDDlg::STATE_SET_PIN, pin, userSelectable, message);
    dlg->authenticate.connect(boost::bind(&Window::DoSubmitPins, this));
 }
 
@@ -1146,26 +1147,9 @@ Window::SetCookieFile(const Util::string &brokerUrl) // IN
       Log("Failed to b64-encode url: %s; using default cookie file.\n", brokerUrl.c_str());
    }
    char *cookieFile = Util_ExpandString(tmpName.c_str());
-   if (cookieFile && *cookieFile) {
-      bool cookieFileOk = false;
-      if (0 == chmod(cookieFile, COOKIE_FILE_MODE)) {
-         cookieFileOk = true;
-      } else if (errno == ENOENT) {
-         int fd = open(cookieFile, O_CREAT, COOKIE_FILE_MODE);
-         if (fd != -1) {
-            cookieFileOk = true;
-            close(fd);
-         } else  {
-            Warning(_("Cookie file '%s' could not be created: %s\n"),
-                    cookieFile, strerror(errno));
-         }
-      } else {
-         Warning(_("Could not change status of cookie file '%s': %s\n"),
-                 cookieFile, strerror(errno));
-      }
-      if (cookieFileOk) {
-         mBroker->SetCookieFile(cookieFile);
-      }
+   if (cookieFile && *cookieFile &&
+       Util::EnsureFilePermissions(cookieFile, COOKIE_FILE_MODE)) {
+      mBroker->SetCookieFile(cookieFile);
    }
    free(cookieFile);
 }

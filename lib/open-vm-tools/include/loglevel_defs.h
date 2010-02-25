@@ -68,7 +68,7 @@
  */
 
 #define LOGLEVEL_BYEXTNAME(_ext, _mod) \
-        (*LogLevel_LookUpVar(XSTR(_ext), XSTR(_mod)))
+        ((signed char) *LogLevel_LookUpVar(XSTR(_ext), XSTR(_mod)))
 
 #define LOGLEVEL_BYEXTNAME_SET(_ext, _mod, _val) \
 	LogLevel_Set(XSTR(_ext), XSTR(_mod), _val)
@@ -87,8 +87,8 @@ int LogLevel_Set(const char *extension, const char *module, int val);
  */
 
 #define LOGLEVEL_BYNAME(_mod) \
-        logLevelPtr[LOGLEVEL_EXTOFFSET(LOGLEVEL_EXTENSION) + \
-		    LOGLEVEL_MODULEVAR(_mod)]
+        (signed char) logLevelPtr[LOGLEVEL_EXTOFFSET(LOGLEVEL_EXTENSION) + \
+		                  LOGLEVEL_MODULEVAR(_mod)]
 
 #ifdef VMM
 #define LOGLEVEL_BYNAME_SET(_mod, _val) do { \

@@ -85,31 +85,7 @@ DynBuf_Destroy(DynBuf *b) // IN
 
    free(b->data);
    b->data = NULL;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * DynBuf_Get --
- *
- *      Retrieve a pointer to the data contained in a dynamic buffer --hpreg
- *
- * Results:
- *      The pointer to the data
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void *
-DynBuf_Get(DynBuf const *b) // IN
-{
-   ASSERT(b);
-
-   return b->data;
+   b->allocated = 0;
 }
 
 
@@ -168,6 +144,7 @@ DynBuf_Attach(DynBuf *b,    // IN
               void *data)   // IN
 {
    ASSERT(b);
+   ASSERT((size == 0) == (data == NULL));
 
    free(b->data);
    b->data = data;
@@ -201,6 +178,7 @@ DynBuf_Detach(DynBuf *b) // IN
 
    data = b->data;
    b->data = NULL;
+   b->allocated = 0;
 
    return data;
 }
@@ -231,10 +209,24 @@ DynBufRealloc(DynBuf *b,            // IN
 
    ASSERT(b);
 
-   new_data = realloc(b->data, new_allocated);
-   if (new_data == NULL) {
-      /* Not enough memory */
-      return FALSE;
+   if (b->data != NULL && new_allocated != 0) {
+      new_data = realloc(b->data, new_allocated);
+      if (new_data == NULL) {
+         /* Not enough memory */
+         return FALSE;
+      }
+   } else {
+      free(b->data);
+      if (new_allocated != 0) {
+         new_data = malloc(new_allocated);
+         if (new_data == NULL) {
+            /* Not enough memory */
+            return FALSE;
+         }
+      } else {
+         /* We now have no buffer. */
+         new_data = NULL;
+      }
    }
 
    b->data = new_data;
@@ -327,7 +319,7 @@ DynBuf_Append(DynBuf *b,        // IN
               size_t size)      // IN
 {
    size_t new_size;
-   
+
    ASSERT(b);
 
    if (size <= 0) {
@@ -354,6 +346,38 @@ DynBuf_Append(DynBuf *b,        // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * DynBuf_SafeInternalAppend --
+ *
+ *      Append data at the end of a dynamic buffer. Memory allocation failure
+ *      are handled the same way as Util_SafeMalloc, that is to say, with a
+ *      Panic.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DynBuf_SafeInternalAppend(DynBuf *b,            // IN
+                          void const *data,     // IN
+                          size_t size,          // IN
+                          char const *file,     // IN
+                          unsigned int lineno)  // IN
+{
+   if (!DynBuf_Append(b, data, size)) {
+      Panic("Unrecoverable memory allocation failure at %s:%u\n",
+            file, lineno);
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * DynBuf_Trim --
  *
  *      Reallocate a dynamic buffer to the exact size it occupies --hpreg
@@ -374,83 +398,6 @@ DynBuf_Trim(DynBuf *b) // IN
    ASSERT(b);
 
    return DynBufRealloc(b, b->size);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * DynBuf_GetSize --
- *
- *      Returns the current size of the dynamic buffer --hpreg
- *
- * Results:
- *      The current size of the dynamic buffer
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-size_t
-DynBuf_GetSize(DynBuf const *b) // IN
-{
-   ASSERT(b);
-
-   return b->size;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * DynBuf_SetSize --
- *
- *      Set the current size of a dynamic buffer --hpreg
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-DynBuf_SetSize(DynBuf *b,   // IN
-               size_t size) // IN
-{
-   ASSERT(b);
-   ASSERT(size <= b->allocated);
-
-   b->size = size;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * DynBuf_GetAllocatedSize --
- *
- *      Returns the current allocated size of the dynamic buffer --hpreg
- *
- * Results:
- *      The current allocated size of the dynamic buffer
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-size_t
-DynBuf_GetAllocatedSize(DynBuf const *b) // IN
-{
-   ASSERT(b);
-
-   return b->allocated;
 }
 
 
@@ -490,6 +437,6 @@ DynBuf_Copy(DynBuf *src,   // IN
    }
 
    memcpy(dest->data, src->data, src->size);
-   
+
    return TRUE;
 }

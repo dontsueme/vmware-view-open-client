@@ -46,6 +46,8 @@
 #define TUNNEL_ERROR "TUNNEL ERROR: "
 
 #define SOCKET_ERROR "SOCKET "
+// lib/bora/asyncsocket/asyncsocket.c:864
+#define SOCKET_ERROR_FAILED_TO_RESOLVE SOCKET_ERROR "Failed to resolve address '"
 
 
 namespace cdk {
@@ -242,6 +244,11 @@ Tunnel::OnErr(Util::string line) // IN: this
       const char *err = _(Util::string(line, strlen(TUNNEL_ERROR)).c_str());
       Log("Tunnel error message: %s\n", err);
       App::ShowDialog(GTK_MESSAGE_ERROR, _("Error from View Server: %s"), err);
+   } else if (line.find(SOCKET_ERROR_FAILED_TO_RESOLVE, 0,
+                        strlen(SOCKET_ERROR_FAILED_TO_RESOLVE)) == 0) {
+      mDisconnectReason =
+         Util::Format(_("Couldn't resolve tunnel address '%s'"),
+                      GetTunnelUrl().c_str());
    } else if (line.find(SOCKET_ERROR, 0, strlen(SOCKET_ERROR)) == 0) {
       mDisconnectReason = Util::string(line, strlen(SOCKET_ERROR));
    }

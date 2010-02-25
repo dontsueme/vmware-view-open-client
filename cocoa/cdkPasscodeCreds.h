@@ -36,6 +36,7 @@
 
 @property(copy) NSString *username;
 @property(copy) NSString *secret;
+@property BOOL userSelectable;
 
 
 @end // @protocol CdkPasscodeCreds

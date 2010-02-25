@@ -191,4 +191,29 @@ PasswordDlg::ClearAndFocusPassword()
 }
 
 
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::PasswordDlg::SetSensitive --
+ *
+ *      Overrides LoginDlg::SetSensitive() to ensure that mDomain is
+ *      never sensitive.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+PasswordDlg::SetSensitive(bool sensitive) // IN
+{
+   LoginDlg::SetSensitive(sensitive);
+   gtk_widget_set_sensitive(GTK_WIDGET(mDomain), false);
+}
+
+
 } // namespace cdk

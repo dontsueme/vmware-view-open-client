@@ -1,0 +1,113 @@
+<span underline="double">VMware View Client 帮助</span>
+
+借助 VMware View Client，您可以连接到可供使用的虚拟桌面。
+
+如需了解有关您的虚拟桌面及其所装软件的更多信息，请联系您的 View 管理员。
+
+<span underline="single">连接到 View Connection Server</span>
+
+View Client 可作为连接到 View Connection Server 的本地 Linux 应用程序运行。您必须先连接到 View Connection Server，才能登录并连接虚拟桌面。
+
+注意：View Client 每次只能连接一个 View Connection Server 实例。要建立连接，您必须提供服务器的主机名或 IP 地址。
+
+要连接到 View Connection Server，请执行以下操作：
+1. 按照 View 管理员的指示启动 View Client。
+2. 从<b>地址</b>列表中选择您的 View Connection Server，或者输入服务器的主机名或 IP 地址。
+3. 单击<b>选项</b>，显示或隐藏用于连接所选服务器的选项。请在 View 管理员的指导下配置选项。这些选项包括：
+
+<b>端口</b> - 此端口项被设为 View Connection Server 的默认端口。
+<b>SSL</b> - 使用安全 (SSL) 连接来保护敏感的企业信息，并确保所有连接均被完全加密。您的 View 管理员可能已将 View Connection Server 配置为始终使用安全连接，即使您设置了非安全连接最终也将以安全方式进行连接。
+
+注意：您也可以在地址字段中直接键入端口和 SSL 选项。对于非 SSL 连接，请键入：http://&lt;URL&gt;[:端口号]。对于 SSL 连接，请键入：https://&lt;URL&gt;[:端口号]。
+
+<b>自动连接</b> - 在启动 View Client 时直接连接到当前的 View Connection Server 实例。如果您希望始终连接到同一个 View Connection Server，请选择此选项。如果不选择此选项，则在启动 View Client 时系统会提示您选择 View Connection Server。
+
+注意：如果连接失败，您将返回到服务器选择对话框。如果连接成功，单击连接时出现的第一个对话框中的<b>取消</b>按钮，即可返回到服务器选择对话框。
+
+4. 单击<b>连接</b>。
+
+<span underline="single">登录到 View Connection Server</span>
+
+在您连接到 View Connection Server 后，系统提示您使用 View 管理员提供的用户名和密码登录。您还能使用 RSA SecurID 或支持的智能卡进行远程登录，具体取决于您的系统配置。有关如何使用上述方法进行登录的详细说明，请联系您的 View 管理员。
+
+要登录，请执行以下操作：
+1. 连接到 View Connection Server。
+2. 在登录窗口中，输入您的用户名和密码。
+3. 从列表中选择合适的域。
+4. 单击<b>登录</b>。
+
+随后将列出您有权使用的虚拟桌面。
+
+<span underline="single">连接到桌面</span>
+
+在您连接到 View Connection Server 并成功登录后，便可以连接到虚拟桌面。View Client 窗口将显示您有权使用的桌面列表，以及每个桌面的当前状态。
+
+要连接到桌面，请执行以下操作：
+1. 从 View Client 窗口显示的列表中选择一个桌面。
+2. 在列表中双击桌面，然后单击<b>连接</b>，或单击向下箭头并选择<b>连接</b>。
+
+<span underline="single">将桌面设置为通过多显示器显示</span>
+
+在您连接到虚拟桌面时，您可以将其设置为在多个显示器中以全屏模式显示。仅当 View 管理员事先启用该功能，并且系统已正确配置，您才能使用这项功能。
+
+要设置多显示器显示，请执行以下操作：
+1. 从 View Client 窗口显示的列表中选择一个桌面。
+2. 选择<b>使用全部显示器</b>。
+3. 在列表中双击桌面，然后单击<b>连接</b>，或单击向下箭头并选择<b>连接</b>。
+
+您所做的选择已保存为首选项，并将在下一次连接时应用。
+
+<span underline="single">回滚桌面</span>
+
+您可以回滚在其他主机上检出的虚拟桌面。回滚检出的桌面时，用户对桌面所做的任何更改以及未备份到服务器的任何数据都将丢失。
+
+要回滚桌面，请执行以下操作：
+1. 单击要回滚的检出桌面旁边的向下箭头。
+2. 选择<b>回滚</b>。
+
+远程主机上的检出操作已取消，您现在可以在本地主机上登录该桌面。
+
+<span underline="single">从桌面断开</span>
+
+当您从虚拟桌面上断开时，您还会保持登录状态。桌面中运行的任何程序都会保持运行状态。您可以随时重新连接到此桌面，并恢复您的会话。
+
+要在桌面内断开连接，请执行以下操作：
+1. 保存桌面中任何已打开的文件。
+2. 在桌面的<b>开始</b>菜单中选择<b>断开</b>，或按下 <b>Ctrl+Alt+Del</b> 键并单击<b>断开</b>。
+
+<span underline="single">从桌面注销</span>
+
+当您注销虚拟桌面时，当前会话便会结束，所有程序都将关闭，任何未保存的数据也会丢失。您可以在桌面内或 View Client 窗口中注销。
+
+要从桌面内注销，请执行以下操作：
+1. 保存桌面中任何已打开的文件。
+2. 在<b>开始</b>菜单中选择<b>注销</b>。
+3. 在确认对话框中单击<b>注销</b>。
+如果您没有保存所有已打开的文件，系统会提示您执行此操作。
+
+要从 View Client 窗口内注销，请执行以下操作：
+1. 单击要回滚的检出桌面旁边的向下箭头。
+2. 选择<b>注销</b>。
+
+<span underline="single">重置桌面</span>
+
+在您重置桌面时，桌面会关闭并重新启动，任何未保存的数据都会丢失。您必须登录到桌面以进行重置。
+
+您可以在 View Client 窗口或桌面内重置桌面。
+
+要在 View Client 窗口内重置桌面，请执行以下操作：
+1. 在 View Client 窗口中，单击要重置的桌面旁边的向下箭头。
+2. 选择<b>重置</b>。
+3. 单击<b>重置</b>确认。
+
+要在桌面内重置桌面，请执行以下操作：
+1. 按 <b>Ctrl+Alt+Del</b> 组合键。
+2. 单击<b>重置</b>。
+
+<span underline="single">刷新桌面列表</span>
+
+刷新桌面列表，即可显示自上一次从 View Connection Server 检索列表后所做的更改。按 <b>F5</b> 键即可刷新列表。
+
+-------------------
+
+版权所有 © 2009 - 2010 VMware, Inc.，保留所有权利。本产品受美国和国际版权及知识产权法律保护。VMware 软件产品受 http://www.vmware.com/go/patents-cn 上列出的若干项专利保护

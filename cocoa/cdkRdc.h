@@ -42,9 +42,9 @@
 
 
 +(CdkRdc *)rdc;
++(BOOL)protocolAvailable;
 
 -(void)startWithConnection:(const cdk::BrokerXml::DesktopConnection &)connection
                       size:(CdkDesktopSize *)desktopSize;
-
 
 @end // @interface CdkRdc

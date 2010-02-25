@@ -67,6 +67,32 @@ extern "C" {
 /*
  *-----------------------------------------------------------------------------
  *
+ * +[NSString (CdkString) stringWithUTF8Format:] --
+ *
+ *      Create an NSString from a C formatting string.
+ *
+ * Results:
+ *      A new NSString
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
++(NSString *)stringWithUTF8Format:(const char *)format, ... // IN
+{
+   va_list args;
+   va_start(args, format);
+   cdk::Util::string ret = cdk::Util::FormatV(format, args);
+   va_end(args);
+   return [NSString stringWithUTF8String:ret.c_str()];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * -[CdkString initWithUtilString] --
  *
  *      Initialize a string with the contents of a cdk::Util::string.
@@ -105,6 +131,36 @@ extern "C" {
 -(cdk::Util::string)utilString
 {
    return [self UTF8String];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkString stringByAppendingPathComponents:] --
+ *
+ *      Appends multiple path components to a string.
+ *
+ * Results:
+ *      A new string.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(NSString *)stringByAppendingPathComponents:(NSString *)component, ... // IN
+{
+   NSString *ret = [[self copy] autorelease];
+   va_list args;
+   va_start(args, component);
+   while (component) {
+      ret = [ret stringByAppendingPathComponent:component];
+      component = va_arg(args, NSString *);
+   }
+   va_end(args);
+   return ret;
 }
 
 

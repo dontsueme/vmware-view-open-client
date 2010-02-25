@@ -30,11 +30,14 @@
 
 extern "C" {
 #include "vm_basic_types.h"
+#include "base64.h"
 #define _UINT64
 }
 
 
 #import <SecurityInterface/SFChooseIdentityPanel.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 #import "app.hh"
@@ -70,6 +73,10 @@ extern "C" {
 #import "restartMonitor.hh"
 
 
+#define COOKIE_DIR_MODE (S_IRWXU)
+#define COOKIE_FILE_MODE (S_IRUSR | S_IWUSR)
+
+
 // For now, show the cert dialog for debug builds.
 #ifndef VMX86_DEBUG
 #define AUTO_SELECT_SINGLE_CERT 1
@@ -88,6 +95,11 @@ extern "C" {
 @property(readwrite, retain) CdkBroker *broker;
 @property(readwrite, retain) CdkRdc *rdc;
 @end // @interface CdkWindowController ()
+
+
+@interface CdkWindowController (Private)
+-(void)setCookieFile:(NSString *)brokerUrl;
+@end // @interface CdkWindowController (Private)
 
 
 static int const MINIMUM_VIEW_WIDTH = 480;
@@ -207,6 +219,7 @@ enum {
    [viewControllers release];
    [self setBroker:nil];
    [self setDesktop:nil];
+   [rdc setDelegate:nil];
    [self setRdc:nil];
    delete mRdcMonitor;
    [super dealloc];
@@ -231,6 +244,14 @@ enum {
 
 -(void)awakeFromNib
 {
+   [aboutMenu setTitle:[NSString stringWithUTF8Format:_("About %s"),
+                                 _(PRODUCT_VIEW_CLIENT_NAME)]];
+   [hideMenu setTitle:[NSString stringWithUTF8Format:_("Hide %s"),
+                                _(PRODUCT_VIEW_CLIENT_NAME)]];
+   [quitMenu setTitle:[NSString stringWithUTF8Format:_("Quit %s"),
+                                _(PRODUCT_VIEW_CLIENT_NAME)]];
+   [helpMenu setTitle:[NSString stringWithUTF8Format:_("%s Help"),
+                                _(PRODUCT_VIEW_CLIENT_NAME)]];
    [banner setImageAlignment:NSImageAlignLeft];
    [self brokerDidRequestBroker:broker];
    [[self window] center];
@@ -255,12 +276,13 @@ enum {
 
 -(IBAction)onContinue:(id)sender // IN
 {
-   Log("Continue!");
+   Log("Continue!\n");
    switch ([viewControllers indexOfObject:viewController]) {
    case SERVER_VIEW: {
       CdkBrokerAddress *server =
 	 [(CdkBrokerViewController *)viewController brokerAddress];
       Log("Connecting to %s...\n", [[server description] UTF8String]);
+      [self setCookieFile:[server label]];
       [broker connectToAddress:server
                    defaultUser:[[CdkPrefs sharedPrefs] user]
                  defaultDomain:[[CdkPrefs sharedPrefs] domain]];
@@ -313,7 +335,7 @@ enum {
       break;
    }
    default:
-      Log("Bad view index: %d",
+      Log("Bad view index: %d\n",
 	    [viewControllers indexOfObject:viewController]);
       NOT_REACHED();
       break;
@@ -571,7 +593,7 @@ didRequestDisclaimer:(NSString *)disclaimer // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * -[CdkWindowController broker:didRequestPasscode:] --
+ * -[CdkWindowController broker:didRequestPasscode:userSelectable:] --
  *
  *      Present the user with the SecurID dialog.
  *
@@ -584,14 +606,16 @@ didRequestDisclaimer:(NSString *)disclaimer // IN
  *-----------------------------------------------------------------------------
  */
 
--(void)broker:(CdkBroker *)aBroker       // IN/UNUSED
+-(void)broker:(CdkBroker *)aBroker      // IN/UNUSED
 didRequestPasscode:(NSString *)username // IN
+userSelectable:(BOOL)userSelectable     // IN
 {
    CdkPasscodeCredsViewController *vc =
       [viewControllers objectAtIndex:PASSCODE_CREDS_VIEW];
    id<CdkPasscodeCreds> passcodeCreds = [vc representedObject];
    [passcodeCreds setUsername:username];
    [passcodeCreds setSecret:@""];
+   [passcodeCreds setUserSelectable:userSelectable];
    [self setViewController:vc];
 }
 
@@ -703,6 +727,7 @@ suggestedDomain:(NSString *)domain      // IN
    [winCreds setUsername:username];
    [winCreds setSecret:@""];
    [winCreds setDomains:domains];
+   [winCreds setUserSelectable:!readOnly];
    if ([domain length] && [domains indexOfObject:domain] != NSNotFound) {
       [winCreds setDomain:domain];
    }
@@ -809,7 +834,7 @@ didRequestPasswordChange:(NSString *)username // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * -[CdkWindowController onDesktopUiExit:]
+ * -[CdkWindowController procHelper:didExitWithStatus:] --
  *
  *      Notification callback for RDC exiting.  If it exited "cleanly"
  *      we exit, otherwise print an error and go back to the desktops
@@ -827,6 +852,7 @@ didRequestPasswordChange:(NSString *)username // IN
 -(void)procHelper:(CdkProcHelper *)procHelper // IN
 didExitWithStatus:(int)status                 // IN
 {
+   [rdc setDelegate:nil];
    [self setRdc:nil];
    if (!status) {
       // Just exit when the desktop cleanly exits.
@@ -841,6 +867,28 @@ didExitWithStatus:(int)status                 // IN
       [self setDesktop:nil];
       [self setViewController:[viewControllers objectAtIndex:DESKTOPS_VIEW]];
    }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkWindowController procHelper:didWriteError:] --
+ *
+ *      Implements CdkProcHelperDelegate.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)procHelper:(CdkProcHelper *)procHelper // IN
+    didWriteError:(NSString *)error           // IN
+{
 }
 
 
@@ -905,6 +953,7 @@ didRequestLaunchDesktop:(CdkDesktop *)aDesktop // IN
    switch (cdk::Protocols::GetProtocolFromName([[desktop protocol] utilString])) {
    case cdk::Protocols::RDP:
       [self setRdc:[CdkRdc rdc]];
+      [rdc setDelegate:self];
       [[self rdc] startWithConnection:[desktop adaptedDesktop]->GetConnection()
                                  size:size];
       break;
@@ -1060,6 +1109,82 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs // IN
    CFRelease(identities);
 
    return identity;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkWindowController setCookieFile:] --
+ *
+ *      This sets the cookie file for our broker object based on the
+ *      passed-in URL.  We base64-encode that url, and append that to
+ *      our base cookie file.  This lets us use a separate cookie file
+ *      per-broker, to allow multiple instances to work.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Cookie file is created and set on broker.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)setCookieFile:(NSString *)brokerUrl // IN
+{
+   NSArray *paths = NSSearchPathForDirectoriesInDomains(
+      NSApplicationSupportDirectory, NSUserDomainMask, YES);
+
+   if ([paths count] <= 0) {
+      Warning("Could not find application support directory to store "
+              "cookies.\n");
+      return;
+   }
+
+   NSString *cookiesPath =
+      [[paths objectAtIndex:0]
+         stringByAppendingPathComponents:@"VMware View", @"Cookies", nil];
+
+   NSDictionary *attrs;
+   {
+      NSArray *keys = [NSArray arrayWithObjects:NSFilePosixPermissions, nil];
+      NSArray *objs = [NSArray arrayWithObjects:
+                        [NSNumber numberWithInt:COOKIE_DIR_MODE], nil];
+      attrs = [NSDictionary dictionaryWithObjects:objs forKeys:keys];
+   }
+
+   NSError *error = NULL;
+   if (![[NSFileManager defaultManager] createDirectoryAtPath:cookiesPath
+                                  withIntermediateDirectories:YES
+                                                   attributes:attrs
+                                                        error:&error]) {
+      Warning("Failed to create cookies directory '%s': %s\n",
+              [cookiesPath UTF8String],
+              [[error localizedDescription] UTF8String]);
+      return;
+   }
+
+   char *encUrl = NULL;
+   if (Base64_EasyEncode(
+          (const uint8 *)[brokerUrl UTF8String],
+          [brokerUrl lengthOfBytesUsingEncoding:NSUTF8StringEncoding],
+          &encUrl)) {
+      cookiesPath =
+         [cookiesPath stringByAppendingPathComponent:
+                      [NSString stringWithUTF8String:encUrl]];
+      cookiesPath = [cookiesPath stringByAppendingPathExtension:@"txt"];
+      free(encUrl);
+   } else {
+      Log("Failed to b64-encode url: %s; using default cookie file.\n",
+          [brokerUrl UTF8String]);
+      cookiesPath = [cookiesPath stringByAppendingPathComponent:@"cookies.txt"];
+   }
+
+   if (cdk::Util::EnsureFilePermissions([cookiesPath UTF8String],
+                                        COOKIE_FILE_MODE)) {
+      [broker setCookieFile:cookiesPath];
+   }
 }
 
 

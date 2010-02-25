@@ -49,9 +49,9 @@ exit 0
 
 %files
 %defattr(-, root, root, -)
-%attr(0555, root, root) "/usr/bin/vmware-view"
-%attr(0555, root, root) "/usr/bin/vmware-view-tunnel"
-%attr(0555, root, root) "/usr/bin/vmware-view-log-collector"
+%attr(0755, root, root) "/usr/bin/vmware-view"
+%attr(0755, root, root) "/usr/bin/vmware-view-tunnel"
+%attr(0755, root, root) "/usr/bin/vmware-view-log-collector"
 %dir "/usr/share/doc/@PACKAGING_NAME@"
 %doc "/usr/share/doc/@PACKAGING_NAME@/README.txt"
 %doc "/usr/share/doc/@PACKAGING_NAME@/open_source_licenses.txt"
@@ -63,7 +63,7 @@ exit 0
 %doc "/usr/share/man/man1/vmware-view-tunnel.1.gz"
 %attr(0444, root, root) "/usr/share/pixmaps/vmware-view.png"
 %attr(0444, root, root) "/usr/share/applications/vmware-view.desktop"
-#%attr(0444, root, root) "/usr/share/locale/*/*/*"
+%attr(0444, root, root) "/usr/share/locale/*/*/*"
 
 %if @BUILD_THINCLIENT_RPM@
 %files -n @PACKAGING_NAME@-lite

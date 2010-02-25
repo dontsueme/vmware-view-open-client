@@ -35,9 +35,14 @@ AC_CANONICAL_HOST
 
 # Quote the regular expressions
 RPM_ARCH="$host_cpu"
+DEB_ARCH="$host_cpu"
 case "$host_cpu" in
    [i[3456]86])
       RPM_ARCH="i386"
+      DEB_ARCH="i386"
+      ;;
+   x86_64)
+      DEB_ARCH="amd64"
       ;;
 esac
 
@@ -121,29 +126,69 @@ if test "$TCROOT" ; then
    case "$host_cpu-$host_os" in
       [i[3456]86-linux*])
 	 binutilsversion="2.17.50.0.15-1"
+	 boostlib="gcc41-mt-1_34_1"
+	 boostversion="1.34.1"
+	 cairoversion="1.2.4"
          ccflavor="i686-linux"
 	 ccversion="4.1.2-7"
          # -march=i586 is required to run on some VIA C3 chips
          CFLAGS="$CFLAGS -march=i586"
+	 curlversion="7.18.0"
+	 fontconfigversion="2.2.3"
+	 freetypeversion="2.1.9"
 	 glibversion="2.6.6"
 	 gtkversion="2.4.14"
+	 opensslversion="0.9.8l"
 	 pangoversion="1.4.1"
+	 xmlversion="2.6.30"
+	 xorgversion="7.1"
          HOST_TCROOT="$TCROOT/lin32"
 	 ;;
       [x86_64-linux*])
 	 binutilsversion="2.17.50.0.15-1"
+	 boostlib="gcc41-mt-1_34_1"
+	 boostversion="1.34.1"
+	 cairoversion="1.2.4"
          ccflavor="x86_64-linux"
 	 ccversion="4.1.2-7"
+	 curlversion="7.18.0"
 	 glibversion="2.16.4"
 	 gtkversion="2.12.11"
+	 fontconfigversion="2.2.3"
+	 freetypeversion="2.1.9"
+	 opensslversion="0.9.8l"
 	 pangoversion="1.20.5"
+	 xmlversion="2.6.30"
+	 xorgversion="7.1"
 	 HOST_TCROOT="$TCROOT/lin64"
 	 ;;
+      [arm-linux*])
+         binutilsversion="2007q3-51"
+	 boostlib="gcc-mt-1_39"
+	 boostversion="1.39.0"
+	 cairoversion="1.6.4"
+         ccflavor="arm-none-linux-gnueabi"
+         ccversion="$binutilsversion"
+	 curlversion="7.19.5-1"
+	 glibversion="2.16.4"
+	 gtkversion="2.12.11"
+	 fontconfigversion="2.6.0"
+	 freetypeversion="2.3.7"
+	 opensslversion="0.9.8k"
+	 pangoversion="1.20.5"
+	 xmlversion="2.6.32"
+	 xorgversion="7.3"
+         HOST_TCROOT="$TCROOT/arm-linux"
+         ;;
       [i[3456]86-darwin*])
          binutilsversion="2.17.50.0.15"
+	 boostlib="mt-1_34_1"
+	 boostversion="1.34.1"
          ccflavor="i686-apple-darwin9"
          ccversion="5465"
+	 curlversion="7.19.5-4"
 	 glibversion="2.6.6"
+	 xmlversion="2.6.30"
          HOST_TCROOT="$TCROOT/mac32"
          ;;
       [*])
@@ -158,7 +203,15 @@ if test "$TCROOT" ; then
          CFLAGS="$CFLAGS -O0 -g3"
          ;;
       [release|beta|*])
-         CFLAGS="$CFLAGS -Os -g3"
+         case "$host_cpu-$host_os" in
+            [arm-linux*])
+               # ARM 2007 compiler seems to have a buggy -Os
+               CFLAGS="$CFLAGS -O2 -g3"
+               ;;
+            [*])
+               CFLAGS="$CFLAGS -Os -g3"
+               ;;
+         esac
          ;;
    esac
    CXXFLAGS="$CFLAGS"
@@ -193,10 +246,10 @@ if test "$TCROOT" ; then
    ICU_CPPFLAGS="-I$HOST_TCROOT/icu4c-$icuversion/include"
    ICU_LIBS="-L$HOST_TCROOT/icu4c-$icuversion/lib"
 
-   XML_CFLAGS="-I$HOST_TCROOT/libxml2-2.6.30/include/libxml2"
-   XML_LIBS="-L$HOST_TCROOT/libxml2-2.6.30/lib -lxml2"
+   XML_CFLAGS="-I$HOST_TCROOT/libxml2-$xmlversion/include/libxml2"
+   XML_LIBS="-L$HOST_TCROOT/libxml2-$xmlversion/lib -lxml2"
 
-   BOOST_CPPFLAGS="-I$HOST_TCROOT/boost-1.34.1/include"
+   BOOST_CPPFLAGS="-I$HOST_TCROOT/boost-$boostversion/include"
 
    GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/include/glib-2.0"
    GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/lib/glib-2.0/include"
@@ -205,23 +258,24 @@ if test "$TCROOT" ; then
    case "$host_os" in
       [linux*])
 	 AR="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ar"
-	 if test -x /usr/bin/gdk-pixbuf-csource ; then
-	    GDK_PIXBUF_CSOURCE="/usr/bin/gdk-pixbuf-csource"
-  	 else
-	    GDK_PIXBUF_CSOURCE="$BUILD_TCROOT/gtk+-$buildgtkversion/bin/gdk-pixbuf-csource"
-	 fi
+	 for csource in /usr/bin/gdk-pixbuf-csource $BUILD_TCROOT/gtk+-$buildgtkversion/bin/gdk-pixbuf-csource ; do
+	    if test -x  $csource; then
+	       GDK_PIXBUF_CSOURCE="$csource"
+               break
+	    fi
+         done
 	 LDFLAGS="$LDFLAGS -Wl,-rpath-link -Wl,$HOST_TCROOT/gcc-$ccversion/lib"
 	 RANLIB="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ranlib"
 	 STRIP="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-strip"
 	 GTK_LIBS="$GTK_LIBS $GLIB_LIBS"
 	 GTK_CFLAGS="$GTK_CFLAGS $GLIB_CFLAGS"
          for dir in \
-      	    xorg-7.1/include \
-	    zlib-1.2.3-3/include \
+            xorg-$xorgversion/include \
+            zlib-1.2.3-3/include \
             libpng-1.2.22/include \
-            fontconfig-2.2.3/include \
-            freetype-2.1.9/include/freetype2 \
-            cairo-1.2.4/include/cairo \
+            fontconfig-$fontconfigversion/include \
+            freetype-$freetypeversion/include/freetype2 \
+            cairo-$cairoversion/include/cairo \
             pango-$pangoversion/include/pango-1.0 \
             atk-1.9.0/include/atk-1.0 \
             gtk+-$gtkversion/include/gtk-2.0 \
@@ -231,13 +285,13 @@ if test "$TCROOT" ; then
          done
 
          for dir in \
-            xorg-7.1/lib \
+            xorg-$xorgversion/lib \
             zlib-1.2.3-3/lib \
             libpng-1.2.22/lib \
-            fontconfig-2.2.3/lib \
-            freetype-2.1.9/lib \
+            fontconfig-$fontconfigversion/lib \
+            freetype-$freetypeversion/lib \
             expat-1.95.8/lib \
-            cairo-1.2.4/lib \
+            cairo-$cairoversion/lib \
             pango-$pangoversion/lib \
             atk-1.9.0/lib \
             gtk+-$gtkversion/lib \
@@ -245,9 +299,12 @@ if test "$TCROOT" ; then
 	    GTK_LIBS="$GTK_LIBS -Wl,-rpath-link -Wl,$HOST_TCROOT/$dir"
             GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/$dir"
          done
-         GTK_LIBS="$GTK_LIBS -latk-1.0 -lgtk-x11-2.0 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lpng"
-	 SSL_CFLAGS="$SSL_CFLAGS -I$HOST_TCROOT/openssl-0.9.8h/include"
-         SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"$HOST_TCROOT/openssl-0.9.8h/lib\\\""
+         GTK_LIBS="$GTK_LIBS -latk-1.0 -lgtk-x11-2.0 -lgdk-x11-2.0 -lgdk_pixbuf-2.0"
+	 if test "$host_cpu" = "arm" ; then
+	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/pixman-0.15.2/lib -lpixman-1"
+	 fi
+	 SSL_CFLAGS="$SSL_CFLAGS -I$HOST_TCROOT/openssl-$opensslversion/include"
+         SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"$HOST_TCROOT/openssl-$opensslversion/lib\\\""
          SSL_VERSION_NUM="0.9.8"
          SSL_LIBS="-ldl"
          SSL_LIBS="$SSL_LIBS -ldl"
@@ -260,13 +317,17 @@ if test "$TCROOT" ; then
                SSL_LIBS="$SSL_LIBS -Wl,--wrap -Wl,$sym"
             done
          else
-            SSL_LIBS="$SSL_LIBS -ldl -L$HOST_TCROOT/openssl-0.9.8h/lib -Wl,-Bstatic -lssl -lcrypto -Wl,-Bdynamic"
+            SSL_LIBS="$SSL_LIBS -ldl -L$HOST_TCROOT/openssl-$opensslversion/lib -Wl,-Bstatic -lssl -lcrypto -Wl,-Bdynamic"
             AC_DEFINE(BORA_LINK_SSL_DIRECTLY)
          fi
-	 CURL_CFLAGS="-I$HOST_TCROOT/curl-7.18.0/include"
-         CURL_LIBS="-L$HOST_TCROOT/curl-7.18.0/lib -Wl,-Bstatic -lcurl -Wl,-Bdynamic"
-         BOOST_LDFLAGS="-Wl,-rpath-link -Wl,$HOST_TCROOT/boost-1.34.1/lib -L$HOST_TCROOT/boost-1.34.1/lib"
-         BOOST_LDFLAGS="$BOOST_LDFLAGS -Wl,-Bstatic -lboost_signals-gcc41-mt-1_34_1 -Wl,-Bdynamic"
+	 CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
+         CURL_LIBS="-L$HOST_TCROOT/curl-$curlversion/lib -Wl,-Bstatic -lcurl -Wl,-Bdynamic"
+	 if test "$host_cpu" = "arm" ; then
+	    # for clock_gettime
+	    CURL_LIBS="$CURL_LIBS -lrt"
+	 fi
+         BOOST_LDFLAGS="-Wl,-rpath-link -Wl,$HOST_TCROOT/boost-$boostversion/lib -L$HOST_TCROOT/boost-$boostversion/lib"
+         BOOST_LDFLAGS="$BOOST_LDFLAGS -Wl,-Bstatic -lboost_signals-$boostlib -Wl,-Bdynamic"
 	 ;;
       [darwin*])
 	 AR="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ar"
@@ -275,8 +336,9 @@ if test "$TCROOT" ; then
 	 STRIP="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/strip"
          SSL_VERSION_NUM="0.9.7"
          SSL_LIBS="-lssl -lcrypto"
-         CURL_LIBS="-lcurl"
-         BOOST_LDFLAGS="-L$HOST_TCROOT/boost-1.34.1/lib -lboost_signals-mt-1_34_1"
+	 CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
+         CURL_LIBS="$HOST_TCROOT/curl-$curlversion/lib/libcurl.a -lz"
+         BOOST_LDFLAGS="-L$HOST_TCROOT/boost-$boostversion/lib -lboost_signals-$boostlib"
 	 GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/gettext-0.17/include"
          GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/gettext-0.17/lib -lintl"
          ;;
@@ -375,8 +437,7 @@ AC_PROG_INTLTOOL([0.21])
 GETTEXT_PACKAGE="vmware-view"
 AC_SUBST(GETTEXT_PACKAGE)
 # Change this when [language].po files are added to cdk/po/.
-#ALL_LINGUAS="de fr ja"
-ALL_LINGUAS=""
+ALL_LINGUAS="de fr ja zh_CN"
 AC_SUBST(ALL_LINGUAS)
 AM_GLIB_GNU_GETTEXT
 
@@ -509,7 +570,7 @@ case "$host_os" in
                 Security SecurityInterface SystemConfiguration ; do
 	 VIEW_FRAMEWORKS="$VIEW_FRAMEWORKS -Wl,-framework -Wl,$fw"
       done
-      for fw in CoreServices SystemConfiguration ; do
+      for fw in CoreServices Security SystemConfiguration ; do
          TUNNEL_FRAMEWORKS="$TUNNEL_FRAMEWORKS -Wl,-framework -Wl,$fw"
       done
       GENCCODE_ASM_TARGET="gcc-darwin"
@@ -715,6 +776,7 @@ AC_SUBST(DATE_R)
 AC_SUBST(RPM_STAGE_ROOT)
 AC_SUBST(RPM_OUTPUT_DIR)
 AC_SUBST(RPM_ARCH)
+AC_SUBST(DEB_ARCH)
 
 AC_SUBST(ELSE)
 AC_SUBST(ENDIF)
@@ -737,3 +799,5 @@ vmware-view.desktop.in
 ])
 
 AC_OUTPUT
+
+dnl  LocalWords:  boostversion

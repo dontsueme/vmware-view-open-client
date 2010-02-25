@@ -173,21 +173,35 @@ HelpSupportDlg::ReadHelpFile()
    if (locale.empty() || locale == "C" || locale == "POSIX") {
       locale = "en";
    }
-   size_t index = locale.find("_");
 
-   if (index != Util::string::npos) {
+   /*
+    * This has some progressive fallback for locales.  For example,
+    * fr_CA.UTF-8 will be tried as that, then fr_CA, then fr, finally
+    * defaulting to en.  If that fails, we just use the error text for
+    * the dialog.
+    */
+   while (!GetHelpContents(helpDir.c_str(), locale.c_str(), &fileContents)) {
+      size_t index = locale.find(".");
+      if (index == Util::string::npos) {
+         index = locale.find("_");
+         if (index == Util::string::npos) {
+            if (locale != "en") {
+               g_free(fileContents);
+               fileContents = NULL;
+               // Try to load the en one as a last-gasp effort.
+               GetHelpContents(helpDir.c_str(), "en", &fileContents);
+            }
+            break;
+         }
+      }
+      g_free(fileContents);
+      fileContents = NULL;
       locale = locale.substr(0, index);
    }
 
-   if (!GetHelpContents(helpDir.c_str(), locale.c_str(), &fileContents) &&
-       locale != "en") {
-      // No help file for this locale; try "en"
-      g_free(fileContents);
-      fileContents = NULL;
-      GetHelpContents(helpDir.c_str(), "en", &fileContents);
-   }
-
-   return fileContents;
+   Util::string ret = fileContents;
+   g_free(fileContents);
+   return ret;
 }
 
 
