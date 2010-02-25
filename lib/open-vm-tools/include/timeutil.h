@@ -44,13 +44,14 @@
 struct timeval;
 
 
+/* Similar to a struct tm but with slightly less weird semantics. */
 typedef struct TimeUtil_Date {
-   unsigned int year;
-   unsigned int month;
-   unsigned int day;
-   unsigned int hour;
-   unsigned int minute;
-   unsigned int second;
+   unsigned int year;   /* e.g. 1970 */
+   unsigned int month;  /* [1, 12] */
+   unsigned int day;    /* [1, 31] */
+   unsigned int hour;   /* [0, 23] */
+   unsigned int minute; /* [0, 59] */
+   unsigned int second; /* [0, 61] (for leap seconds) */
 } TimeUtil_Date;
 
 
@@ -79,14 +80,16 @@ typedef struct TimeUtil_Expiration {
 } TimeUtil_Expiration;
 
 
+EXTERN time_t TimeUtil_MakeTime(const TimeUtil_Date *d);
+
 EXTERN Bool TimeUtil_StringToDate(TimeUtil_Date *d,    // IN/OUT
-                                  const char *date);   // IN: 'YYYYMMDD' or 'YYYY/MM/DD' or 'YYYY-MM-DD'
+                                  char const *date);   // IN: 'YYYYMMDD' or 'YYYY/MM/DD' or 'YYYY-MM-DD'
 
-EXTERN Bool TimeUtil_DaysSubstract(TimeUtil_Date *d,  // IN/OUT
-                                   unsigned int nr);  // IN
+EXTERN Bool TimeUtil_DaysSubtract(TimeUtil_Date *d,  // IN/OUT
+                                  unsigned int nr);  // IN
 
-EXTERN int TimeUtil_DeltaDays(TimeUtil_Date *left,   // IN
-                              TimeUtil_Date *right); // IN
+EXTERN int TimeUtil_DeltaDays(TimeUtil_Date const *left,   // IN
+                              TimeUtil_Date const *right); // IN
 
 EXTERN void TimeUtil_DaysAdd(TimeUtil_Date *d, // IN/OUT
                              unsigned int nr); // IN
@@ -120,6 +123,6 @@ EXTERN Bool TimeUtil_UTCTimeToSystemTime(const __time64_t utcTime,    // IN
                                          SYSTEMTIME *systemTime);     // OUT
 #endif
 
-EXTERN int TimeUtil_GetLocalWindowsTimeZoneIndex(void);
+EXTERN int TimeUtil_GetLocalWindowsTimeZoneIndexAndName(char **ptzName);
 
 #endif // _TIMEUTIL_H_

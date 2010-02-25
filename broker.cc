@@ -71,11 +71,10 @@ Broker::Broker()
      mTunnel(NULL),
      mDesktop(NULL),
      mCertState(CERT_NOT_REQUESTED),
-     mRefreshTimeoutSourceID(0),
+     mTunnelState(TUNNEL_DOWN),
      mGettingDesktops(false),
      mSmartCardPin(NULL),
-     mAuthRequestId(0),
-     mIdleCertAuthId(0)
+     mAuthRequestId(0)
 {
 }
 
@@ -121,15 +120,10 @@ Broker::~Broker()
 void
 Broker::Reset()
 {
-   if (mRefreshTimeoutSourceID) {
-      g_source_remove(mRefreshTimeoutSourceID);
-      mRefreshTimeoutSourceID = 0;
-   }
-
-   if (mIdleCertAuthId) {
-      g_source_remove(mIdleCertAuthId);
-      mIdleCertAuthId = 0;
-   }
+   Poll_CallbackRemove(POLL_CS_MAIN, 0, OnIdleSubmitCertAuth, this,
+                       POLL_REALTIME);
+   Poll_CallbackRemove(POLL_CS_MAIN, 0, RefreshDesktopsTimeout, this,
+                       POLL_REALTIME);
 
    /*
     * The abort handlers here could access Desktops, so cancel them
@@ -486,16 +480,22 @@ Broker::ConnectDesktop(Desktop *desktop) // IN
    if (mDelegate) {
       mDelegate->RequestTransition(_("Connecting to the desktop..."));
    }
-   if (GetTunnelReady()) {
-      Util::ClientInfoMap clientInfo = Util::GetClientInfo(mXml->GetHostname(),
-                                                           mXml->GetPort());
+   switch (mTunnelState) {
+   case TUNNEL_RUNNING:
       /*
        * Connecting to the desktop before the tunnel is connected
        * results in DESKTOP_NOT_AVAILABLE.
        */
       desktop->Connect(boost::bind(&Broker::OnAbort, this, _1, _2),
                        boost::bind(&Broker::MaybeLaunchDesktop, this),
-                       clientInfo);
+                       Util::GetClientInfo(mXml->GetHostname(),
+                                           mXml->GetPort()));
+      break;
+   case TUNNEL_DOWN:
+      InitTunnel();
+      break;
+   default:
+      break;
    }
 }
 
@@ -637,7 +637,7 @@ Broker::RollbackDesktop(Desktop *desktop) // IN
  *      None
  *
  * Side effects:
- *      get-desktops request sent 
+ *      get-desktops request sent.
  *
  *-----------------------------------------------------------------------------
  */
@@ -665,11 +665,10 @@ Broker::OnDesktopOpDone(Desktop *desktop,   // IN
        * If we don't do that, temporary Desktop ConnectionState values will
        * get cleared by the refresh before they should.
        */
-      if (mRefreshTimeoutSourceID) {
-         g_source_remove(mRefreshTimeoutSourceID);
-      }
-      mRefreshTimeoutSourceID =
-         g_timeout_add(10000, RefreshDesktopsTimeout, this);
+      Poll_CallbackRemove(POLL_CS_MAIN, 0, RefreshDesktopsTimeout, this,
+                          POLL_REALTIME);
+      Poll_Callback(POLL_CS_MAIN, 0, RefreshDesktopsTimeout, this,
+                    POLL_REALTIME, 10 * 1000 * 1000, NULL);
    } else {
       GetDesktops(true);
    }
@@ -693,16 +692,13 @@ Broker::OnDesktopOpDone(Desktop *desktop,   // IN
  *-----------------------------------------------------------------------------
  */
 
-gboolean
-Broker::RefreshDesktopsTimeout(gpointer data) // IN
+void
+Broker::RefreshDesktopsTimeout(void *data) // IN
 {
    Broker *that = reinterpret_cast<Broker *>(data);
    ASSERT(that);
 
    that->GetDesktops(true);
-
-   that->mRefreshTimeoutSourceID = 0;
-   return false;
 }
 
 
@@ -855,6 +851,13 @@ Broker::OnAuthInfo(BrokerXml::Result &result,     // IN
       return;
    }
 
+  /*
+   * Reset the tunnel here because at this point, we were not authenticated
+   * by the broker and the following notexecuted response to get-tunnel-connection
+   * will simply be ignored.
+   */
+   ResetTunnel();
+
    if (mDelegate) {
       mDelegate->SetReady();
    }
@@ -892,7 +895,12 @@ Broker::OnAuthInfo(BrokerXml::Result &result,     // IN
       break;
    case BrokerXml::AUTH_SECURID_PASSCODE:
       if (mDelegate) {
-         mDelegate->RequestPasscode(mUsername);
+         bool readOnly = false;
+         Util::string username = authInfo.GetUsername(&readOnly);
+         if (!username.empty()) {
+            mUsername = username;
+         }
+         mDelegate->RequestPasscode(mUsername, !readOnly);
       }
       break;
    case BrokerXml::AUTH_SECURID_NEXTTOKENCODE:
@@ -910,7 +918,7 @@ Broker::OnAuthInfo(BrokerXml::Result &result,     // IN
                         "Please wait for the next tokencode to appear"
                         " on your RSA SecurID token, then continue."));
       if (mDelegate) {
-         mDelegate->RequestPasscode(mUsername);
+         mDelegate->RequestPasscode(mUsername, false);
       }
       break;
    case BrokerXml::AUTH_WINDOWS_PASSWORD: {
@@ -929,11 +937,11 @@ Broker::OnAuthInfo(BrokerXml::Result &result,     // IN
       }
       break;
    case BrokerXml::AUTH_CERT_AUTH:
-      if (mIdleCertAuthId) {
-         g_source_remove(mIdleCertAuthId);
-      }
       Log("Queueing idle cert auth response\n");
-      mIdleCertAuthId = g_idle_add(OnIdleSubmitCertAuth, this);
+      Poll_CallbackRemove(POLL_CS_MAIN, 0, OnIdleSubmitCertAuth, this,
+                          POLL_REALTIME);
+      Poll_Callback(POLL_CS_MAIN, 0, OnIdleSubmitCertAuth, this,
+                    POLL_REALTIME, 0, NULL);
       break;
    default:
       App::ShowDialog(GTK_MESSAGE_ERROR,
@@ -1048,9 +1056,8 @@ Broker::InitTunnel()
    /*
     * Ensure we have a clean state for the tunnel.
     */
-   if (mTunnel) {
-      ResetTunnel();
-   }
+   ResetTunnel();
+   mTunnelState = TUNNEL_GETTING_INFO;
    mXml->GetTunnelConnection(
       boost::bind(&Broker::OnAbort, this, _1, _2),
       boost::bind(&Broker::OnGetTunnelConnectionDone, this, _2));
@@ -1076,6 +1083,7 @@ Broker::InitTunnel()
 void
 Broker::ResetTunnel()
 {
+   mTunnelState = TUNNEL_DOWN;
    mTunnelDisconnectCnx.disconnect();
    delete mTunnel;
    mTunnel = NULL;
@@ -1106,6 +1114,8 @@ Broker::OnGetTunnelConnectionDone(BrokerXml::Tunnel &tunnel) // IN
    mTunnelDisconnectCnx.disconnect();
    delete mTunnel;
 
+   ASSERT(mTunnelState == TUNNEL_GETTING_INFO);
+   mTunnelState = TUNNEL_CONNECTING;
    mTunnel = new Tunnel();
    mTunnel->onReady.connect(boost::bind(&Broker::OnTunnelConnected, this));
    mTunnelDisconnectCnx = mTunnel->onDisconnect.connect(
@@ -1134,6 +1144,8 @@ Broker::OnGetTunnelConnectionDone(BrokerXml::Tunnel &tunnel) // IN
 void
 Broker::OnTunnelConnected()
 {
+   ASSERT(mTunnelState == TUNNEL_CONNECTING);
+   mTunnelState = TUNNEL_RUNNING;
    ASSERT(GetTunnelReady());
    if (mDesktop) {
       switch (mDesktop->GetConnectionState()) {
@@ -1409,7 +1421,7 @@ Broker::OnAbort(bool cancelled,      // IN
          // This probably means we have out-of-date information; refresh.
          GetDesktops(true);
       }
-      App::ShowDialog(GTK_MESSAGE_ERROR, "%s", err.what());
+      App::ShowDialog(GTK_MESSAGE_ERROR, "%s", _(err.what()));
    }
 }
 
@@ -1660,13 +1672,11 @@ Broker::ClearSmartCardPinAndReader()
  *-----------------------------------------------------------------------------
  */
 
-gboolean
-Broker::OnIdleSubmitCertAuth(gpointer data)
+void
+Broker::OnIdleSubmitCertAuth(void *data) // IN
 {
    Broker *that = reinterpret_cast<Broker *>(data);
    ASSERT(that);
-
-   that->mIdleCertAuthId = 0;
 
    if (that->mDelegate) {
       that->mDelegate->SetBusy(_("Logging in..."));
@@ -1681,8 +1691,6 @@ Broker::OnIdleSubmitCertAuth(gpointer data)
    that->GetDesktops();
    that->mXml->SendQueuedRequests();
    that->ClearSmartCardPinAndReader();
-
-   return false;
 }
 
 

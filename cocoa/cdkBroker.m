@@ -240,6 +240,28 @@ extern "C" {
 /*
  *-----------------------------------------------------------------------------
  *
+ * -[CdkBroker setCookieFile:] --
+ *
+ *      Sets the cookie file for this broker to use.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)setCookieFile:(NSString *)cookieFile // IN
+{
+   mBroker->SetCookieFile([cookieFile utilString]);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * -[CdkBroker reset] --
  *
  *      Reset the broker.  Erases all state and allows the user to

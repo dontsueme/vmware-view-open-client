@@ -46,3 +46,4 @@ N_("Session timed out");
 N_("Logout request by system");
 N_("Client disconnected following no activity");
 N_("Could not connect to server");
+N_("tunnel session not created");

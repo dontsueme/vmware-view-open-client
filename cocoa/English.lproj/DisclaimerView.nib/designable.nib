@@ -2,9 +2,9 @@
 <archive type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="7.03">
 	<data>
 		<int key="IBDocument.SystemTarget">1050</int>
-		<string key="IBDocument.SystemVersion">9J61</string>
+		<string key="IBDocument.SystemVersion">9L30</string>
 		<string key="IBDocument.InterfaceBuilderVersion">677</string>
-		<string key="IBDocument.AppKitVersion">949.46</string>
+		<string key="IBDocument.AppKitVersion">949.54</string>
 		<string key="IBDocument.HIToolboxVersion">353.00</string>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -379,22 +379,6 @@
 				</object>
 				<object class="IBConnectionRecord">
 					<object class="IBBindingConnection" key="connection">
-						<string key="label">value: selection.disclaimer</string>
-						<reference key="source" ref="448670026"/>
-						<reference key="destination" ref="1022419099"/>
-						<object class="NSNibBindingConnector" key="connector">
-							<reference key="NSSource" ref="448670026"/>
-							<reference key="NSDestination" ref="1022419099"/>
-							<string key="NSLabel">value: selection.disclaimer</string>
-							<string key="NSBinding">value</string>
-							<string key="NSKeyPath">selection.disclaimer</string>
-							<int key="NSNibBindingConnectorVersion">2</int>
-						</object>
-					</object>
-					<int key="connectionID">17</int>
-				</object>
-				<object class="IBConnectionRecord">
-					<object class="IBBindingConnection" key="connection">
 						<string key="label">contentObject: representedObject</string>
 						<reference key="source" ref="1022419099"/>
 						<reference key="destination" ref="656788215"/>
@@ -408,6 +392,26 @@
 						</object>
 					</object>
 					<int key="connectionID">24</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: selection.disclaimer</string>
+						<reference key="source" ref="448670026"/>
+						<reference key="destination" ref="1022419099"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="448670026"/>
+							<reference key="NSDestination" ref="1022419099"/>
+							<string key="NSLabel">value: selection.disclaimer</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">selection.disclaimer</string>
+							<object class="NSDictionary" key="NSOptions">
+								<string key="NS.key.0">NSConditionallySetsEditable</string>
+								<boolean value="NO" key="NS.object.0"/>
+							</object>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">25</int>
 				</object>
 			</object>
 			<object class="IBMutableOrderedSet" key="objectRecords">
@@ -548,7 +552,7 @@
 				</object>
 			</object>
 			<nil key="sourceID"/>
-			<int key="maxID">24</int>
+			<int key="maxID">25</int>
 		</object>
 		<object class="IBClassDescriber" key="IBDocument.Classes">
 			<object class="NSMutableArray" key="referencedPartialClassDescriptions">

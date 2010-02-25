@@ -40,6 +40,8 @@
 #include <gtk/gtklabel.h>
 #include <gtk/gtkstock.h>
 #endif
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <libxml/uri.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -54,7 +56,18 @@
 #endif
 
 #if defined(__APPLE__)
+#include <sys/types.h>
+/*
+ * From getifaddrs(3):
+ *
+ * If both <net/if.h> and <ifaddrs.h> are being included, <net/if.h>
+ * must be included before <ifaddrs.h>.
+ */
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <ifaddrs.h>
 #include <mach-o/dyld.h>
+#include <sys/sysctl.h>
 #endif
 
 extern "C" {
@@ -829,7 +842,7 @@ GetClientInfo(const string broker, // IN
             "exit 0\n"
          };
 
-         char *bash[] = { "/bin/bash", NULL };
+         char *bash[] = { (char *)"/bin/bash", NULL };
          GPid pid = -1;
          int std_in = -1;
          int std_out = -1;
@@ -884,6 +897,159 @@ GetClientInfo(const string broker, // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Util::GetMacAddr --
+ *
+ *      Linux implementation of GetMacAddr.
+ *
+ * Results:
+ *      The mac address of the given IPv4 address.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef __linux__
+string
+GetMacAddr(int sock,                 // IN
+           struct sockaddr_in *addr) // IN
+{
+   struct ifreq ifr;
+   int i = 0;
+   while (++i) {
+      ifr.ifr_ifindex = i;
+      /*
+       * First, fetch the device's name. If the device does not exist,
+       * ioctl() will return -1 and the loop will end.
+       */
+      if (ioctl(sock, SIOCGIFNAME, &ifr) < 0 ) {
+         break;
+      }
+      /*
+       * Then, fetch the device's IP address.  If it does not have an IP,
+       * go on to the next device.
+       */
+      if (ioctl(sock, SIOCGIFADDR, &ifr) < 0) {
+         continue;
+      }
+
+      /*
+       * Compare this IP address to the one obtained from getsockname().
+       * If they match, then we use ioctl again to obtain the MAC
+       * address of that device.
+       */
+      if (ifr.ifr_addr.sa_family != addr->sin_family) {
+         continue;
+      }
+      struct sockaddr_in *ifraddr = (struct sockaddr_in *)&ifr.ifr_addr;
+      if (!memcmp(&addr->sin_addr, &ifraddr->sin_addr,
+                  sizeof(addr->sin_addr))) {
+         // Get the MAC Address of the network card.
+         if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
+             Warning("ioctl() failed to get the local MAC address while "
+                     "collecting client info: %s\n", strerror(errno));
+             break;
+         }
+         return Format("%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+                       (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[0],
+                       (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[1],
+                       (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[2],
+                       (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[3],
+                       (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[4],
+                       (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[5]);
+      }
+   }
+   return "";
+}
+#endif // __linux__
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util::GetMacAddr --
+ *
+ *      Mac/BSD Implementation of GetMacAddr.
+ *
+ * Results:
+ *      The Mac address for the given IPv4 address.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef __APPLE__
+string
+GetMacAddr(int sock,                 // IN
+           struct sockaddr_in *addr) // IN
+{
+   string ret;
+   struct ifaddrs *addrs = NULL;
+   if (getifaddrs(&addrs)) {
+      Warning("GetMacAddr: getifaddrs failed: %s\n", strerror(errno));
+      return ret;
+   }
+
+   for (struct ifaddrs *i = addrs; i; i = i->ifa_next) {
+      // Only handle IPv4 addresses.
+      if (!i->ifa_addr || i->ifa_addr->sa_family != addr->sin_family) {
+         continue;
+      }
+
+      // This interface has the same address as our socket.
+      struct sockaddr_in *i_addr = (struct sockaddr_in *)i->ifa_addr;
+      if (memcmp(&i_addr->sin_addr, &addr->sin_addr, sizeof(addr->sin_addr))) {
+         continue;
+      }
+
+      /*
+       * Well, this is the interface we want; if any of these fail, we
+       * should just bail out of this loop anyway.
+       */
+      int mib[6] = { CTL_NET, AF_ROUTE, 0, AF_LINK, NET_RT_IFLIST };
+      size_t len;
+      mib[5] = if_nametoindex(i->ifa_name);
+      if (mib[5] == 0) {
+         Warning("GetMacAddr: if_nametoindex failed: %s\n", strerror(errno));
+         break;
+      }
+      if (sysctl(mib, 6, NULL, &len, NULL, 0) < 0) {
+         Warning("GetMacAddr: sysctl 1 failed: %s\n", strerror(errno));
+         break;
+      }
+      char *buf = (char *)g_malloc(len);
+      if (sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
+         Warning("GetMacAddr: sysctl 2 failed: %s\n", strerror(errno));
+         break;
+      }
+
+      struct if_msghdr *ifm = (struct if_msghdr *)buf;
+      struct sockaddr_dl *sdl = (struct sockaddr_dl *)(ifm + 1);
+      unsigned char *ptr = (unsigned char *)LLADDR(sdl);
+
+      ret = Format("%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+                   (unsigned int)(unsigned char)ptr[0],
+                   (unsigned int)(unsigned char)ptr[1],
+                   (unsigned int)(unsigned char)ptr[2],
+                   (unsigned int)(unsigned char)ptr[3],
+                   (unsigned int)(unsigned char)ptr[4],
+                   (unsigned int)(unsigned char)ptr[5]);
+
+      g_free(buf);
+      break;
+   }
+   freeifaddrs(addrs);
+   return ret;
+}
+#endif // __APPLE__
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Util::GetNICInfo --
  *      Gets the IP and MAC address of the active network card and adds them
  *      to info.
@@ -911,16 +1077,27 @@ GetNICInfo(const string broker, // IN
       return info;
    }
 
-   int sock = socket(AF_INET, SOCK_STREAM, 0);
+   if (serverInfo->h_addrtype != AF_INET) {
+      Warning("Skipping NIC info for non-IPv4 address of type %d\n",
+              serverInfo->h_addrtype);
+      return info;
+   }
+
+   struct sockaddr_in server;
+   if ((size_t)serverInfo->h_length > sizeof(server.sin_addr.s_addr)) {
+      Warning("Server address is larger than expected socket address\n");
+      return info;
+   }
+
+   int sock = socket(serverInfo->h_addrtype, SOCK_STREAM, 0);
    if (sock < 0) {
       Warning("socket() failed while compiling client info: %s\n",
               strerror(errno));
       return info;
    }
 
-   struct sockaddr_in server;
    memcpy(&server.sin_addr.s_addr, serverInfo->h_addr, serverInfo->h_length);
-   server.sin_family = AF_INET;
+   server.sin_family = serverInfo->h_addrtype;
    server.sin_port = htons(port);
 
    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
@@ -930,70 +1107,113 @@ GetNICInfo(const string broker, // IN
       return info;
    }
 
-   struct sockaddr local;
-   socklen_t addrSize = sizeof(local);
-   if (getsockname(sock, &local, &addrSize) < 0) {
-      Warning("getsockname() failed to get the local IP address while "
-              "compiling client info: %s\n", strerror(errno));
-      close(sock);
-      return info;
+   struct sockaddr_in local;
+   {
+      struct sockaddr local_sa;
+      socklen_t addrSize = sizeof(local_sa);
+      if (getsockname(sock, &local_sa, &addrSize) < 0) {
+         Warning("getsockname() failed to get the local IP address while "
+                 "compiling client info: %s\n", strerror(errno));
+         close(sock);
+         return info;
+      }
+      memcpy(&local, &local_sa, sizeof(local));
    }
 
-   char buffer[256];
-   if (inet_ntop(local.sa_family, &local.sa_data[2], buffer,
-                 sizeof(buffer)) == NULL) {
-      Warning("inet_ntop() failed to format the local IP address while "
-              "compiling client info: %s\n", strerror(errno));
-      close(sock);
-      return info;
+   {
+      char buffer[256];
+      if (inet_ntop(local.sin_family, &local.sin_addr, buffer,
+                    sizeof(buffer)) == NULL) {
+         Warning("inet_ntop() failed to format the local IP address while "
+                 "compiling client info: %s\n", strerror(errno));
+         close(sock);
+         return info;
+      }
+      info["IP_Address"] = buffer;
    }
-   info["IP_Address"] = buffer;
 
-#ifdef __linux__
-   struct ifreq ifr;
-   int i = 0;
-   while (++i) {
-      ifr.ifr_ifindex = i;
-      /*
-       * First, fetch the device's name. If the device does not exist,
-       * ioctl() will return -1 and the loop will end.
-       */
-      if (ioctl(sock, SIOCGIFNAME, &ifr) < 0 ) {
-         break;
-      }
-      /*
-       * Then, fetch the device's IP address.  If it does not have an IP,
-       * go on to the next device.
-       */
-      if (ioctl(sock, SIOCGIFADDR, &ifr) < 0) {
-         continue;
-      }
-      /*
-       * Compare this IP address to the one obtained from getsockname().
-       * If they match, then we use ioctl again to obtain the MAC
-       * address of that device.
-       */
-      if (memcmp(&local.sa_data[2], &ifr.ifr_addr.sa_data[2],
-          4 * sizeof(local.sa_data[2])) == 0) {
-         // Get the MAC Address of the network card.
-         if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
-             Warning("ioctl() failed to get the local MAC address while "
-                     "compiling client info: %s\n", strerror(errno));
-         } else {
-            info["MAC_Address"] = Format("%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
-                      (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[0],
-                      (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[1],
-                      (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[2],
-                      (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[3],
-                      (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[4],
-                      (unsigned int)(unsigned char)ifr.ifr_hwaddr.sa_data[5]);
-         }
-         break;
-      }
-   }
-#endif
+   info["MAC_Address"] = GetMacAddr(sock, &local);
+
    close(sock);
    return info;
+}
+
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util::EnsureFilePermissions --
+ *
+ *      Create the file path with the given mode, or ensure the
+ *      existing file has the given mode.
+ *
+ * Results:
+ *      true if file was OK.
+ *
+ * Side effects:
+ *      Creates path.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+EnsureFilePermissions(const char *path, // IN
+                      int mode)         // IN
+{
+   bool fileOk = false;
+   if (0 == chmod(path, mode)) {
+      fileOk = true;
+   } else if (errno == ENOENT) {
+      int fd = open(path, O_CREAT, mode);
+      if (fd != -1) {
+         fileOk = true;
+         close(fd);
+      } else  {
+            Warning(_("File '%s' could not be created: %s\n"),
+                    path, strerror(errno));
+      }
+   } else {
+      Warning(_("Could not change mode of file '%s': %s\n"),
+              path, strerror(errno));
+   }
+   return fileOk;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util:Utf8Casecmp: --
+ *
+ *      Compare two UTF-8 strings, ignoring case.
+ *
+ * Results:
+ *      An int less than, greater than, or equal to zero if s1 is less
+ *      than, greater than, or equal to s2.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+int
+Utf8Casecmp(const char *s1, // IN
+            const char *s2) // IN
+{
+   ASSERT(s1);
+   ASSERT(s2);
+
+   char *folded1 = g_utf8_casefold(s1, -1);
+   char *folded2 = g_utf8_casefold(s2, -1);
+
+   int ret = g_utf8_collate (folded1, folded2);
+
+   g_free(folded1);
+   g_free(folded2);
+
+   return ret;
 }
 
 

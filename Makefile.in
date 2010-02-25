@@ -818,10 +818,11 @@ DIST_COMMON = $(am__configure_deps) $(am__dist_bin_SCRIPTS_DIST) \
 @VIEW_COCOA_TRUE@	cocoa/cdkWindowController.h \
 @VIEW_COCOA_TRUE@	cocoa/cdkWindowController.m cocoa/main.m
 @VIEW_COCOA_TRUE@am__append_19 = app
-#dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
-#dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
-#dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
-@VIEW_EULAS_TRUE@am__append_20 = doc/$(PACKAGING_NAME)-EULA-en.txt
+@VIEW_EULAS_TRUE@am__append_20 = doc/$(PACKAGING_NAME)-EULA-en.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-de.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-fr.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-ja.txt \
+@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-zh_CN.txt
 @VIEW_GTK_TRUE@am__append_21 = gtk/app.cc gtk/app.hh gtk/brokerDlg.cc \
 @VIEW_GTK_TRUE@	gtk/brokerDlg.hh gtk/certViewer.hh \
 @VIEW_GTK_TRUE@	gtk/cryptoki.cc gtk/cryptoki.hh \
@@ -917,6 +918,8 @@ am_libMisc_a_OBJECTS =  \
 	lib/open-vm-tools/misc/libMisc_a-dynbuf.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-escape.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-hashTable.$(OBJEXT) \
+	lib/open-vm-tools/misc/libMisc_a-hostinfo.$(OBJEXT) \
+	lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-hostinfo_misc.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-hostname.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-idLinux.$(OBJEXT) \
@@ -926,10 +929,11 @@ am_libMisc_a_OBJECTS =  \
 	lib/open-vm-tools/misc/libMisc_a-posixDlopen.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-posixPosix.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-random.$(OBJEXT) \
+	lib/open-vm-tools/misc/libMisc_a-strutil.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-timeutil.$(OBJEXT) \
+	lib/open-vm-tools/misc/libMisc_a-utilMem.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-util_misc.$(OBJEXT) \
 	lib/open-vm-tools/misc/libMisc_a-vmstdio.$(OBJEXT) \
-	lib/open-vm-tools/misc/libMisc_a-strutil.$(OBJEXT) \
 	lib/bora/misc/libMisc_a-loglevel_tools.$(OBJEXT) \
 	lib/bora/misc/libMisc_a-msgfmt.$(OBJEXT) \
 	lib/bora/misc/libMisc_a-url.$(OBJEXT)
@@ -945,7 +949,7 @@ libPanic_a_OBJECTS = $(am_libPanic_a_OBJECTS)
 libPanicDefault_a_AR = $(AR) $(ARFLAGS)
 libPanicDefault_a_LIBADD =
 am_libPanicDefault_a_OBJECTS =  \
-	lib/open-vm-tools/panicDefault/panic.$(OBJEXT)
+	lib/open-vm-tools/panicDefault/panicDefault.$(OBJEXT)
 libPanicDefault_a_OBJECTS = $(am_libPanicDefault_a_OBJECTS)
 libPoll_a_AR = $(AR) $(ARFLAGS)
 libPoll_a_LIBADD =
@@ -1008,8 +1012,6 @@ libUnicode_a_OBJECTS = $(am_libUnicode_a_OBJECTS)
 libUser_a_AR = $(AR) $(ARFLAGS)
 libUser_a_LIBADD =
 am_libUser_a_OBJECTS =  \
-	lib/open-vm-tools/user/libUser_a-hostinfo.$(OBJEXT) \
-	lib/open-vm-tools/user/libUser_a-hostinfoPosix.$(OBJEXT) \
 	lib/open-vm-tools/user/libUser_a-util.$(OBJEXT) \
 	lib/open-vm-tools/user/libUser_a-utilPosix.$(OBJEXT) \
 	lib/bora/user/libUser_a-dictionary.$(OBJEXT) \
@@ -1158,11 +1160,15 @@ vmware_view_DEPENDENCIES = libFile.a libPanicDefault.a libPanic.a \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
-am_vmware_view_tunnel_OBJECTS = tunnel/stubs.$(OBJEXT) \
-	tunnel/tunnelMain.$(OBJEXT) tunnel/tunnelProxy.$(OBJEXT) \
-	lib/open-vm-tools/misc/base64.$(OBJEXT) \
-	lib/open-vm-tools/misc/dynbuf.$(OBJEXT) \
-	lib/open-vm-tools/misc/strutil.$(OBJEXT)
+am_vmware_view_tunnel_OBJECTS =  \
+	tunnel/vmware_view_tunnel-stubs.$(OBJEXT) \
+	tunnel/vmware_view_tunnel-tunnelMain.$(OBJEXT) \
+	tunnel/vmware_view_tunnel-tunnelProxy.$(OBJEXT) \
+	lib/open-vm-tools/misc/vmware_view_tunnel-base64.$(OBJEXT) \
+	lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.$(OBJEXT) \
+	lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.$(OBJEXT) \
+	lib/open-vm-tools/misc/vmware_view_tunnel-strutil.$(OBJEXT) \
+	lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.$(OBJEXT)
 vmware_view_tunnel_OBJECTS = $(am_vmware_view_tunnel_OBJECTS)
 vmware_view_tunnel_DEPENDENCIES = libAsyncSocket.a libPollDefault.a \
 	libPoll.a libProxy.a libSsl.a libString.a \
@@ -1286,6 +1292,7 @@ CYGPATH_W = @CYGPATH_W@
 DATADIRNAME = @DATADIRNAME@
 DATE = @DATE@
 DATE_R = @DATE_R@
+DEB_ARCH = @DEB_ARCH@
 DEB_CONFLICTS = @DEB_CONFLICTS@
 DEB_PACKAGING_NAME = @DEB_PACKAGING_NAME@
 DEB_REPLACES = @DEB_REPLACES@
@@ -1487,11 +1494,12 @@ bin_SCRIPTS :=
 desktop_in_files := vmware-view.desktop.in
 dist_bin_SCRIPTS := $(am__append_5)
 doc_DATA := $(am__append_20)
-#doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt
-#doc_DATA += doc/$(PACKAGING_NAME)-EULA-fr.txt
-#doc_DATA += doc/$(PACKAGING_NAME)-EULA-ja.txt
 dist_doc_DATA := README.txt doc/open_source_licenses.txt
-dist_help_DATA := doc/help/integrated_help-en.txt
+dist_help_DATA := doc/help/integrated_help-en.txt \
+	doc/help/integrated_help-de.txt \
+	doc/help/integrated_help-fr.txt \
+	doc/help/integrated_help-ja.txt \
+	doc/help/integrated_help-zh_CN.txt
 man_MANS := doc/vmware-view.1 doc/vmware-view-tunnel.1
 dist_noinst_DATA = lib/bora/user/dictType.c lib/libp11/COPYING \
 	lib/gtm/COPYING icudata/NamePrepProfile.txt \
@@ -1512,6 +1520,7 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/open-vm-tools/include/bsdfmt.h \
 	lib/open-vm-tools/include/circList.h \
 	lib/open-vm-tools/include/codeset.h \
+	lib/open-vm-tools/include/community_source.h \
 	lib/open-vm-tools/include/compat/compat_stdarg.h \
 	lib/open-vm-tools/include/config.h \
 	lib/open-vm-tools/include/cpuid_info.h \
@@ -1526,6 +1535,7 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/open-vm-tools/include/fileIO.h \
 	lib/open-vm-tools/include/fileLock.h \
 	lib/open-vm-tools/include/file_extensions.h \
+	lib/open-vm-tools/include/guest_os.h \
 	lib/open-vm-tools/include/hashTable.h \
 	lib/open-vm-tools/include/hostType.h \
 	lib/open-vm-tools/include/hostinfo.h \
@@ -1534,6 +1544,7 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/open-vm-tools/include/localconfig.h \
 	lib/open-vm-tools/include/loglevel_defs.h \
 	lib/open-vm-tools/include/loglevel_user.h \
+	lib/open-vm-tools/include/memaligned.h \
 	lib/open-vm-tools/include/msg.h \
 	lib/open-vm-tools/include/msgfmt.h \
 	lib/open-vm-tools/include/msgid.h \
@@ -1576,7 +1587,9 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/open-vm-tools/include/vmware_pack_begin.h \
 	lib/open-vm-tools/include/vmware_pack_end.h \
 	lib/open-vm-tools/include/vmware_pack_init.h \
+	lib/open-vm-tools/include/win32util.h \
 	lib/open-vm-tools/include/x86cpuid.h \
+	lib/open-vm-tools/include/x86cpuid_asm.h \
 	lib/bora/include/asyncsocket.h lib/bora/include/basicHttp.h \
 	lib/bora/include/crypto.h lib/bora/include/cryptoBuffer.h \
 	lib/bora/include/cryptoCipher.h lib/bora/include/cryptoDict.h \
@@ -1593,13 +1606,17 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/bora/include/sigPosix.h lib/bora/include/ssl.h \
 	lib/bora/include/sslFunctionList.h lib/bora/include/sslPRNG.h \
 	lib/bora/include/sslWrapper.h lib/bora/include/syncRecMutex.h \
-	lib/bora/include/url.h lib/bora/include/urlAppend.h \
-	lib/bora/include/urlTable.h lib/bora/include/vcpuid.h \
-	lib/bora/include/vmlocale.h lib/bora/include/vthread.h \
-	lib/bora/include/vthreadBase.h lib/libp11/include/pkcs11.h \
-	extraTranslations.hh
+	lib/bora/include/sysSocket.h lib/bora/include/url.h \
+	lib/bora/include/urlAppend.h lib/bora/include/urlTable.h \
+	lib/bora/include/vcpuid.h lib/bora/include/vmlocale.h \
+	lib/bora/include/vthread.h lib/bora/include/vthreadBase.h \
+	lib/libp11/include/pkcs11.h extraTranslations.hh
 dist_noinst_SCRIPTS := cocoa/pkg-dmg
-dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
+dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf \
+	doc/View_Client_Admin_Guide-de.pdf \
+	doc/View_Client_Admin_Guide-fr.pdf \
+	doc/View_Client_Admin_Guide-ja.pdf \
+	doc/View_Client_Admin_Guide-zh_CN.pdf
 noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
 	libPanicDefault.a libString.a libStubs.a libUnicode.a \
 	libUser.a libAsyncSocket.a libBasicHttp.a $(am__append_1) \
@@ -1633,6 +1650,8 @@ libMisc_a_SOURCES = lib/open-vm-tools/misc/atomic.c \
 	lib/open-vm-tools/misc/dynbuf.c \
 	lib/open-vm-tools/misc/escape.c \
 	lib/open-vm-tools/misc/hashTable.c \
+	lib/open-vm-tools/misc/hostinfo.c \
+	lib/open-vm-tools/misc/hostinfoPosix.c \
 	lib/open-vm-tools/misc/hostinfo_misc.c \
 	lib/open-vm-tools/misc/hostname.c \
 	lib/open-vm-tools/misc/idLinux.c \
@@ -1643,16 +1662,18 @@ libMisc_a_SOURCES = lib/open-vm-tools/misc/atomic.c \
 	lib/open-vm-tools/misc/posixInt.h \
 	lib/open-vm-tools/misc/posixPosix.c \
 	lib/open-vm-tools/misc/random.c \
+	lib/open-vm-tools/misc/strutil.c \
 	lib/open-vm-tools/misc/timeutil.c \
+	lib/open-vm-tools/misc/utilMem.c \
 	lib/open-vm-tools/misc/util_misc.c \
 	lib/open-vm-tools/misc/vmstdio.c \
-	lib/open-vm-tools/misc/strutil.c \
 	lib/bora/misc/loglevel_tools.c lib/bora/misc/msgfmt.c \
 	lib/bora/misc/url.c
 libMisc_a_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS) \
 	$(ICU_CPPFLAGS)
 libPanic_a_SOURCES = lib/open-vm-tools/panic/panic.c
-libPanicDefault_a_SOURCES = lib/open-vm-tools/panicDefault/panic.c
+libPanicDefault_a_SOURCES =  \
+	lib/open-vm-tools/panicDefault/panicDefault.c
 libString_a_SOURCES = lib/open-vm-tools/string/bsd_output_int.h \
 	lib/open-vm-tools/string/bsd_output_shared.c \
 	lib/open-vm-tools/string/bsd_vsnprintf.c \
@@ -1671,9 +1692,7 @@ libUnicode_a_SOURCES = lib/open-vm-tools/unicode/unicodeCommon.c \
 	lib/open-vm-tools/unicode/unicodeSimpleOperations.c \
 	lib/open-vm-tools/unicode/unicodeSimpleTransforms.c \
 	lib/open-vm-tools/unicode/unicodeStatic.c
-libUser_a_SOURCES = lib/open-vm-tools/user/hostinfo.c \
-	lib/open-vm-tools/user/hostinfoPosix.c \
-	lib/open-vm-tools/user/util.c \
+libUser_a_SOURCES = lib/open-vm-tools/user/util.c \
 	lib/open-vm-tools/user/utilPosix.c lib/bora/user/dictionary.c \
 	lib/bora/user/localePosix.c lib/bora/user/msg.c
 libUser_a_CFLAGS = @LIB_USER_CPPFLAGS@
@@ -1730,7 +1749,7 @@ vmware_view_LDADD := libFile.a libPanicDefault.a libPanic.a \
 	$(BOOST_LDFLAGS) $(BOOST_SIGNALS_LIB) $(ICU_LIBS) \
 	$(VIEW_FRAMEWORKS)
 DEB_STAGE_ROOT = $(shell pwd)/deb-stage
-TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION)
+TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION).$(RPM_ARCH)
 DELIVERABLES := $(am__append_16) $(am__append_17)
 nibs := BrokerView.nib ChangePinCredsView.nib ChangeWinCredsView.nib \
 	ConfirmPinCredsView.nib DesktopSizesWindow.nib \
@@ -1744,11 +1763,15 @@ appname := "$(PRODUCT_VIEW_CLIENT_NAME)"
 appdir := $(appname).app
 appdmg := $(subst $(space),$(dash),$(appname))-$(VERSION).dmg
 stagedir := $(top_builddir)/dmg-stage
+@VIEW_EULAS_TRUE@dmgeula := "--license $(stagedir)/$(PACKAGING_NAME)-EULA-en.txt"
 vmware_view_tunnel_SOURCES := tunnel/stubs.c tunnel/tunnelMain.c \
 	tunnel/tunnelProxy.c tunnel/tunnelProxy.h \
 	lib/open-vm-tools/misc/base64.c \
 	lib/open-vm-tools/misc/dynbuf.c \
-	lib/open-vm-tools/misc/strutil.c
+	lib/open-vm-tools/misc/idLinux.c \
+	lib/open-vm-tools/misc/strutil.c \
+	lib/open-vm-tools/misc/utilMem.c
+vmware_view_tunnel_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS)
 vmware_view_tunnel_LDADD := libAsyncSocket.a libPollDefault.a \
 	libPoll.a libProxy.a libSsl.a libString.a $(SSL_LIBS) \
 	$(am__append_22)
@@ -1974,6 +1997,12 @@ lib/open-vm-tools/misc/libMisc_a-escape.$(OBJEXT):  \
 lib/open-vm-tools/misc/libMisc_a-hashTable.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/libMisc_a-hostinfo.$(OBJEXT):  \
+	lib/open-vm-tools/misc/$(am__dirstamp) \
+	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.$(OBJEXT):  \
+	lib/open-vm-tools/misc/$(am__dirstamp) \
+	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
 lib/open-vm-tools/misc/libMisc_a-hostinfo_misc.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
@@ -2001,16 +2030,19 @@ lib/open-vm-tools/misc/libMisc_a-posixPosix.$(OBJEXT):  \
 lib/open-vm-tools/misc/libMisc_a-random.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/libMisc_a-strutil.$(OBJEXT):  \
+	lib/open-vm-tools/misc/$(am__dirstamp) \
+	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
 lib/open-vm-tools/misc/libMisc_a-timeutil.$(OBJEXT):  \
+	lib/open-vm-tools/misc/$(am__dirstamp) \
+	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/libMisc_a-utilMem.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
 lib/open-vm-tools/misc/libMisc_a-util_misc.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
 lib/open-vm-tools/misc/libMisc_a-vmstdio.$(OBJEXT):  \
-	lib/open-vm-tools/misc/$(am__dirstamp) \
-	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/misc/libMisc_a-strutil.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
 lib/bora/misc/$(am__dirstamp):
@@ -2063,7 +2095,7 @@ lib/open-vm-tools/panicDefault/$(am__dirstamp):
 lib/open-vm-tools/panicDefault/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/open-vm-tools/panicDefault/$(DEPDIR)
 	@: > lib/open-vm-tools/panicDefault/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/panicDefault/panic.$(OBJEXT):  \
+lib/open-vm-tools/panicDefault/panicDefault.$(OBJEXT):  \
 	lib/open-vm-tools/panicDefault/$(am__dirstamp) \
 	lib/open-vm-tools/panicDefault/$(DEPDIR)/$(am__dirstamp)
 libPanicDefault.a: $(libPanicDefault_a_OBJECTS) $(libPanicDefault_a_DEPENDENCIES) 
@@ -2233,12 +2265,6 @@ lib/open-vm-tools/user/$(am__dirstamp):
 lib/open-vm-tools/user/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) lib/open-vm-tools/user/$(DEPDIR)
 	@: > lib/open-vm-tools/user/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/user/libUser_a-hostinfo.$(OBJEXT):  \
-	lib/open-vm-tools/user/$(am__dirstamp) \
-	lib/open-vm-tools/user/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/user/libUser_a-hostinfoPosix.$(OBJEXT):  \
-	lib/open-vm-tools/user/$(am__dirstamp) \
-	lib/open-vm-tools/user/$(DEPDIR)/$(am__dirstamp)
 lib/open-vm-tools/user/libUser_a-util.$(OBJEXT):  \
 	lib/open-vm-tools/user/$(am__dirstamp) \
 	lib/open-vm-tools/user/$(DEPDIR)/$(am__dirstamp)
@@ -2412,19 +2438,25 @@ tunnel/$(am__dirstamp):
 tunnel/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) tunnel/$(DEPDIR)
 	@: > tunnel/$(DEPDIR)/$(am__dirstamp)
-tunnel/stubs.$(OBJEXT): tunnel/$(am__dirstamp) \
+tunnel/vmware_view_tunnel-stubs.$(OBJEXT): tunnel/$(am__dirstamp) \
 	tunnel/$(DEPDIR)/$(am__dirstamp)
-tunnel/tunnelMain.$(OBJEXT): tunnel/$(am__dirstamp) \
-	tunnel/$(DEPDIR)/$(am__dirstamp)
-tunnel/tunnelProxy.$(OBJEXT): tunnel/$(am__dirstamp) \
-	tunnel/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/misc/base64.$(OBJEXT):  \
+tunnel/vmware_view_tunnel-tunnelMain.$(OBJEXT):  \
+	tunnel/$(am__dirstamp) tunnel/$(DEPDIR)/$(am__dirstamp)
+tunnel/vmware_view_tunnel-tunnelProxy.$(OBJEXT):  \
+	tunnel/$(am__dirstamp) tunnel/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/vmware_view_tunnel-base64.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/misc/dynbuf.$(OBJEXT):  \
+lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
-lib/open-vm-tools/misc/strutil.$(OBJEXT):  \
+lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.$(OBJEXT):  \
+	lib/open-vm-tools/misc/$(am__dirstamp) \
+	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/vmware_view_tunnel-strutil.$(OBJEXT):  \
+	lib/open-vm-tools/misc/$(am__dirstamp) \
+	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
+lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.$(OBJEXT):  \
 	lib/open-vm-tools/misc/$(am__dirstamp) \
 	lib/open-vm-tools/misc/$(DEPDIR)/$(am__dirstamp)
 vmware-view-tunnel$(EXEEXT): $(vmware_view_tunnel_OBJECTS) $(vmware_view_tunnel_DEPENDENCIES) 
@@ -2552,8 +2584,6 @@ mostlyclean-compile:
 	-rm -f lib/open-vm-tools/file/fileLockPosix.$(OBJEXT)
 	-rm -f lib/open-vm-tools/file/fileLockPrimitive.$(OBJEXT)
 	-rm -f lib/open-vm-tools/file/filePosix.$(OBJEXT)
-	-rm -f lib/open-vm-tools/misc/base64.$(OBJEXT)
-	-rm -f lib/open-vm-tools/misc/dynbuf.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-atomic.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-base64.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-codeset.$(OBJEXT)
@@ -2563,6 +2593,8 @@ mostlyclean-compile:
 	-rm -f lib/open-vm-tools/misc/libMisc_a-dynbuf.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-escape.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-hashTable.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/libMisc_a-hostinfo.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-hostinfo_misc.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-hostname.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-idLinux.$(OBJEXT)
@@ -2574,11 +2606,16 @@ mostlyclean-compile:
 	-rm -f lib/open-vm-tools/misc/libMisc_a-random.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-strutil.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-timeutil.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/libMisc_a-utilMem.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-util_misc.$(OBJEXT)
 	-rm -f lib/open-vm-tools/misc/libMisc_a-vmstdio.$(OBJEXT)
-	-rm -f lib/open-vm-tools/misc/strutil.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/vmware_view_tunnel-base64.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/vmware_view_tunnel-strutil.$(OBJEXT)
+	-rm -f lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.$(OBJEXT)
 	-rm -f lib/open-vm-tools/panic/panic.$(OBJEXT)
-	-rm -f lib/open-vm-tools/panicDefault/panic.$(OBJEXT)
+	-rm -f lib/open-vm-tools/panicDefault/panicDefault.$(OBJEXT)
 	-rm -f lib/open-vm-tools/string/libString_a-bsd_output_shared.$(OBJEXT)
 	-rm -f lib/open-vm-tools/string/libString_a-bsd_vsnprintf.$(OBJEXT)
 	-rm -f lib/open-vm-tools/string/libString_a-convertutf.$(OBJEXT)
@@ -2592,13 +2629,11 @@ mostlyclean-compile:
 	-rm -f lib/open-vm-tools/unicode/unicodeSimpleTransforms.$(OBJEXT)
 	-rm -f lib/open-vm-tools/unicode/unicodeSimpleTypes.$(OBJEXT)
 	-rm -f lib/open-vm-tools/unicode/unicodeStatic.$(OBJEXT)
-	-rm -f lib/open-vm-tools/user/libUser_a-hostinfo.$(OBJEXT)
-	-rm -f lib/open-vm-tools/user/libUser_a-hostinfoPosix.$(OBJEXT)
 	-rm -f lib/open-vm-tools/user/libUser_a-util.$(OBJEXT)
 	-rm -f lib/open-vm-tools/user/libUser_a-utilPosix.$(OBJEXT)
-	-rm -f tunnel/stubs.$(OBJEXT)
-	-rm -f tunnel/tunnelMain.$(OBJEXT)
-	-rm -f tunnel/tunnelProxy.$(OBJEXT)
+	-rm -f tunnel/vmware_view_tunnel-stubs.$(OBJEXT)
+	-rm -f tunnel/vmware_view_tunnel-tunnelMain.$(OBJEXT)
+	-rm -f tunnel/vmware_view_tunnel-tunnelProxy.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -2698,8 +2733,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/file/$(DEPDIR)/fileLockPosix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/file/$(DEPDIR)/fileLockPrimitive.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/file/$(DEPDIR)/filePosix.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/base64.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/dynbuf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-atomic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-base64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-codeset.Po@am__quote@
@@ -2709,6 +2742,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-dynbuf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-escape.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hashTable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo_misc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostname.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-idLinux.Po@am__quote@
@@ -2720,11 +2755,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-timeutil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-util_misc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-vmstdio.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/strutil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/panic/$(DEPDIR)/panic.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/panicDefault/$(DEPDIR)/panic.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/panicDefault/$(DEPDIR)/panicDefault.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/string/$(DEPDIR)/libString_a-bsd_output_shared.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/string/$(DEPDIR)/libString_a-bsd_vsnprintf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/string/$(DEPDIR)/libString_a-convertutf.Po@am__quote@
@@ -2738,13 +2778,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/unicode/$(DEPDIR)/unicodeSimpleTransforms.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/unicode/$(DEPDIR)/unicodeSimpleTypes.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/unicode/$(DEPDIR)/unicodeStatic.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/user/$(DEPDIR)/libUser_a-util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/open-vm-tools/user/$(DEPDIR)/libUser_a-utilPosix.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@tunnel/$(DEPDIR)/stubs.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@tunnel/$(DEPDIR)/tunnelMain.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@tunnel/$(DEPDIR)/tunnelProxy.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -2930,6 +2968,34 @@ lib/open-vm-tools/misc/libMisc_a-hashTable.obj: lib/open-vm-tools/misc/hashTable
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-hashTable.obj `if test -f 'lib/open-vm-tools/misc/hashTable.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/hashTable.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/hashTable.c'; fi`
 
+lib/open-vm-tools/misc/libMisc_a-hostinfo.o: lib/open-vm-tools/misc/hostinfo.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-hostinfo.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-hostinfo.o `test -f 'lib/open-vm-tools/misc/hostinfo.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/hostinfo.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/hostinfo.c' object='lib/open-vm-tools/misc/libMisc_a-hostinfo.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-hostinfo.o `test -f 'lib/open-vm-tools/misc/hostinfo.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/hostinfo.c
+
+lib/open-vm-tools/misc/libMisc_a-hostinfo.obj: lib/open-vm-tools/misc/hostinfo.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-hostinfo.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-hostinfo.obj `if test -f 'lib/open-vm-tools/misc/hostinfo.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/hostinfo.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/hostinfo.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/hostinfo.c' object='lib/open-vm-tools/misc/libMisc_a-hostinfo.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-hostinfo.obj `if test -f 'lib/open-vm-tools/misc/hostinfo.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/hostinfo.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/hostinfo.c'; fi`
+
+lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.o: lib/open-vm-tools/misc/hostinfoPosix.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.o `test -f 'lib/open-vm-tools/misc/hostinfoPosix.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/hostinfoPosix.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/hostinfoPosix.c' object='lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.o `test -f 'lib/open-vm-tools/misc/hostinfoPosix.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/hostinfoPosix.c
+
+lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.obj: lib/open-vm-tools/misc/hostinfoPosix.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.obj `if test -f 'lib/open-vm-tools/misc/hostinfoPosix.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/hostinfoPosix.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/hostinfoPosix.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfoPosix.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/hostinfoPosix.c' object='lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-hostinfoPosix.obj `if test -f 'lib/open-vm-tools/misc/hostinfoPosix.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/hostinfoPosix.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/hostinfoPosix.c'; fi`
+
 lib/open-vm-tools/misc/libMisc_a-hostinfo_misc.o: lib/open-vm-tools/misc/hostinfo_misc.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-hostinfo_misc.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo_misc.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-hostinfo_misc.o `test -f 'lib/open-vm-tools/misc/hostinfo_misc.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/hostinfo_misc.c
 @am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo_misc.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-hostinfo_misc.Po
@@ -3056,6 +3122,20 @@ lib/open-vm-tools/misc/libMisc_a-random.obj: lib/open-vm-tools/misc/random.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-random.obj `if test -f 'lib/open-vm-tools/misc/random.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/random.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/random.c'; fi`
 
+lib/open-vm-tools/misc/libMisc_a-strutil.o: lib/open-vm-tools/misc/strutil.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-strutil.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-strutil.o `test -f 'lib/open-vm-tools/misc/strutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/strutil.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/strutil.c' object='lib/open-vm-tools/misc/libMisc_a-strutil.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-strutil.o `test -f 'lib/open-vm-tools/misc/strutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/strutil.c
+
+lib/open-vm-tools/misc/libMisc_a-strutil.obj: lib/open-vm-tools/misc/strutil.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-strutil.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-strutil.obj `if test -f 'lib/open-vm-tools/misc/strutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/strutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/strutil.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/strutil.c' object='lib/open-vm-tools/misc/libMisc_a-strutil.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-strutil.obj `if test -f 'lib/open-vm-tools/misc/strutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/strutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/strutil.c'; fi`
+
 lib/open-vm-tools/misc/libMisc_a-timeutil.o: lib/open-vm-tools/misc/timeutil.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-timeutil.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-timeutil.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-timeutil.o `test -f 'lib/open-vm-tools/misc/timeutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/timeutil.c
 @am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-timeutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-timeutil.Po
@@ -3069,6 +3149,20 @@ lib/open-vm-tools/misc/libMisc_a-timeutil.obj: lib/open-vm-tools/misc/timeutil.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/timeutil.c' object='lib/open-vm-tools/misc/libMisc_a-timeutil.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-timeutil.obj `if test -f 'lib/open-vm-tools/misc/timeutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/timeutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/timeutil.c'; fi`
+
+lib/open-vm-tools/misc/libMisc_a-utilMem.o: lib/open-vm-tools/misc/utilMem.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-utilMem.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-utilMem.o `test -f 'lib/open-vm-tools/misc/utilMem.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/utilMem.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/utilMem.c' object='lib/open-vm-tools/misc/libMisc_a-utilMem.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-utilMem.o `test -f 'lib/open-vm-tools/misc/utilMem.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/utilMem.c
+
+lib/open-vm-tools/misc/libMisc_a-utilMem.obj: lib/open-vm-tools/misc/utilMem.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-utilMem.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-utilMem.obj `if test -f 'lib/open-vm-tools/misc/utilMem.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/utilMem.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/utilMem.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-utilMem.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/utilMem.c' object='lib/open-vm-tools/misc/libMisc_a-utilMem.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-utilMem.obj `if test -f 'lib/open-vm-tools/misc/utilMem.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/utilMem.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/utilMem.c'; fi`
 
 lib/open-vm-tools/misc/libMisc_a-util_misc.o: lib/open-vm-tools/misc/util_misc.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-util_misc.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-util_misc.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-util_misc.o `test -f 'lib/open-vm-tools/misc/util_misc.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/util_misc.c
@@ -3097,20 +3191,6 @@ lib/open-vm-tools/misc/libMisc_a-vmstdio.obj: lib/open-vm-tools/misc/vmstdio.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/vmstdio.c' object='lib/open-vm-tools/misc/libMisc_a-vmstdio.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-vmstdio.obj `if test -f 'lib/open-vm-tools/misc/vmstdio.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/vmstdio.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/vmstdio.c'; fi`
-
-lib/open-vm-tools/misc/libMisc_a-strutil.o: lib/open-vm-tools/misc/strutil.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-strutil.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-strutil.o `test -f 'lib/open-vm-tools/misc/strutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/strutil.c
-@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/strutil.c' object='lib/open-vm-tools/misc/libMisc_a-strutil.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-strutil.o `test -f 'lib/open-vm-tools/misc/strutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/strutil.c
-
-lib/open-vm-tools/misc/libMisc_a-strutil.obj: lib/open-vm-tools/misc/strutil.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/libMisc_a-strutil.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo -c -o lib/open-vm-tools/misc/libMisc_a-strutil.obj `if test -f 'lib/open-vm-tools/misc/strutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/strutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/strutil.c'; fi`
-@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/libMisc_a-strutil.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/strutil.c' object='lib/open-vm-tools/misc/libMisc_a-strutil.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/libMisc_a-strutil.obj `if test -f 'lib/open-vm-tools/misc/strutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/strutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/strutil.c'; fi`
 
 lib/bora/misc/libMisc_a-loglevel_tools.o: lib/bora/misc/loglevel_tools.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libMisc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/bora/misc/libMisc_a-loglevel_tools.o -MD -MP -MF lib/bora/misc/$(DEPDIR)/libMisc_a-loglevel_tools.Tpo -c -o lib/bora/misc/libMisc_a-loglevel_tools.o `test -f 'lib/bora/misc/loglevel_tools.c' || echo '$(srcdir)/'`lib/bora/misc/loglevel_tools.c
@@ -3252,34 +3332,6 @@ lib/open-vm-tools/string/libString_a-str.obj: lib/open-vm-tools/string/str.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libString_a_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/string/libString_a-str.obj `if test -f 'lib/open-vm-tools/string/str.c'; then $(CYGPATH_W) 'lib/open-vm-tools/string/str.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/string/str.c'; fi`
 
-lib/open-vm-tools/user/libUser_a-hostinfo.o: lib/open-vm-tools/user/hostinfo.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/user/libUser_a-hostinfo.o -MD -MP -MF lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Tpo -c -o lib/open-vm-tools/user/libUser_a-hostinfo.o `test -f 'lib/open-vm-tools/user/hostinfo.c' || echo '$(srcdir)/'`lib/open-vm-tools/user/hostinfo.c
-@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Tpo lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/user/hostinfo.c' object='lib/open-vm-tools/user/libUser_a-hostinfo.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/user/libUser_a-hostinfo.o `test -f 'lib/open-vm-tools/user/hostinfo.c' || echo '$(srcdir)/'`lib/open-vm-tools/user/hostinfo.c
-
-lib/open-vm-tools/user/libUser_a-hostinfo.obj: lib/open-vm-tools/user/hostinfo.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/user/libUser_a-hostinfo.obj -MD -MP -MF lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Tpo -c -o lib/open-vm-tools/user/libUser_a-hostinfo.obj `if test -f 'lib/open-vm-tools/user/hostinfo.c'; then $(CYGPATH_W) 'lib/open-vm-tools/user/hostinfo.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/user/hostinfo.c'; fi`
-@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Tpo lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfo.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/user/hostinfo.c' object='lib/open-vm-tools/user/libUser_a-hostinfo.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/user/libUser_a-hostinfo.obj `if test -f 'lib/open-vm-tools/user/hostinfo.c'; then $(CYGPATH_W) 'lib/open-vm-tools/user/hostinfo.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/user/hostinfo.c'; fi`
-
-lib/open-vm-tools/user/libUser_a-hostinfoPosix.o: lib/open-vm-tools/user/hostinfoPosix.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/user/libUser_a-hostinfoPosix.o -MD -MP -MF lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Tpo -c -o lib/open-vm-tools/user/libUser_a-hostinfoPosix.o `test -f 'lib/open-vm-tools/user/hostinfoPosix.c' || echo '$(srcdir)/'`lib/open-vm-tools/user/hostinfoPosix.c
-@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Tpo lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/user/hostinfoPosix.c' object='lib/open-vm-tools/user/libUser_a-hostinfoPosix.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/user/libUser_a-hostinfoPosix.o `test -f 'lib/open-vm-tools/user/hostinfoPosix.c' || echo '$(srcdir)/'`lib/open-vm-tools/user/hostinfoPosix.c
-
-lib/open-vm-tools/user/libUser_a-hostinfoPosix.obj: lib/open-vm-tools/user/hostinfoPosix.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/user/libUser_a-hostinfoPosix.obj -MD -MP -MF lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Tpo -c -o lib/open-vm-tools/user/libUser_a-hostinfoPosix.obj `if test -f 'lib/open-vm-tools/user/hostinfoPosix.c'; then $(CYGPATH_W) 'lib/open-vm-tools/user/hostinfoPosix.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/user/hostinfoPosix.c'; fi`
-@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Tpo lib/open-vm-tools/user/$(DEPDIR)/libUser_a-hostinfoPosix.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/user/hostinfoPosix.c' object='lib/open-vm-tools/user/libUser_a-hostinfoPosix.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/user/libUser_a-hostinfoPosix.obj `if test -f 'lib/open-vm-tools/user/hostinfoPosix.c'; then $(CYGPATH_W) 'lib/open-vm-tools/user/hostinfoPosix.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/user/hostinfoPosix.c'; fi`
-
 lib/open-vm-tools/user/libUser_a-util.o: lib/open-vm-tools/user/util.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libUser_a_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/user/libUser_a-util.o -MD -MP -MF lib/open-vm-tools/user/$(DEPDIR)/libUser_a-util.Tpo -c -o lib/open-vm-tools/user/libUser_a-util.o `test -f 'lib/open-vm-tools/user/util.c' || echo '$(srcdir)/'`lib/open-vm-tools/user/util.c
 @am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/user/$(DEPDIR)/libUser_a-util.Tpo lib/open-vm-tools/user/$(DEPDIR)/libUser_a-util.Po
@@ -3377,6 +3429,118 @@ cocoa/vmware_view-cdkDebugAssert.obj: cocoa/cdkDebugAssert.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cocoa/cdkDebugAssert.c' object='cocoa/vmware_view-cdkDebugAssert.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o cocoa/vmware_view-cdkDebugAssert.obj `if test -f 'cocoa/cdkDebugAssert.c'; then $(CYGPATH_W) 'cocoa/cdkDebugAssert.c'; else $(CYGPATH_W) '$(srcdir)/cocoa/cdkDebugAssert.c'; fi`
+
+tunnel/vmware_view_tunnel-stubs.o: tunnel/stubs.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tunnel/vmware_view_tunnel-stubs.o -MD -MP -MF tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Tpo -c -o tunnel/vmware_view_tunnel-stubs.o `test -f 'tunnel/stubs.c' || echo '$(srcdir)/'`tunnel/stubs.c
+@am__fastdepCC_TRUE@	mv -f tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Tpo tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='tunnel/stubs.c' object='tunnel/vmware_view_tunnel-stubs.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tunnel/vmware_view_tunnel-stubs.o `test -f 'tunnel/stubs.c' || echo '$(srcdir)/'`tunnel/stubs.c
+
+tunnel/vmware_view_tunnel-stubs.obj: tunnel/stubs.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tunnel/vmware_view_tunnel-stubs.obj -MD -MP -MF tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Tpo -c -o tunnel/vmware_view_tunnel-stubs.obj `if test -f 'tunnel/stubs.c'; then $(CYGPATH_W) 'tunnel/stubs.c'; else $(CYGPATH_W) '$(srcdir)/tunnel/stubs.c'; fi`
+@am__fastdepCC_TRUE@	mv -f tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Tpo tunnel/$(DEPDIR)/vmware_view_tunnel-stubs.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='tunnel/stubs.c' object='tunnel/vmware_view_tunnel-stubs.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tunnel/vmware_view_tunnel-stubs.obj `if test -f 'tunnel/stubs.c'; then $(CYGPATH_W) 'tunnel/stubs.c'; else $(CYGPATH_W) '$(srcdir)/tunnel/stubs.c'; fi`
+
+tunnel/vmware_view_tunnel-tunnelMain.o: tunnel/tunnelMain.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tunnel/vmware_view_tunnel-tunnelMain.o -MD -MP -MF tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Tpo -c -o tunnel/vmware_view_tunnel-tunnelMain.o `test -f 'tunnel/tunnelMain.c' || echo '$(srcdir)/'`tunnel/tunnelMain.c
+@am__fastdepCC_TRUE@	mv -f tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Tpo tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='tunnel/tunnelMain.c' object='tunnel/vmware_view_tunnel-tunnelMain.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tunnel/vmware_view_tunnel-tunnelMain.o `test -f 'tunnel/tunnelMain.c' || echo '$(srcdir)/'`tunnel/tunnelMain.c
+
+tunnel/vmware_view_tunnel-tunnelMain.obj: tunnel/tunnelMain.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tunnel/vmware_view_tunnel-tunnelMain.obj -MD -MP -MF tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Tpo -c -o tunnel/vmware_view_tunnel-tunnelMain.obj `if test -f 'tunnel/tunnelMain.c'; then $(CYGPATH_W) 'tunnel/tunnelMain.c'; else $(CYGPATH_W) '$(srcdir)/tunnel/tunnelMain.c'; fi`
+@am__fastdepCC_TRUE@	mv -f tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Tpo tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelMain.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='tunnel/tunnelMain.c' object='tunnel/vmware_view_tunnel-tunnelMain.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tunnel/vmware_view_tunnel-tunnelMain.obj `if test -f 'tunnel/tunnelMain.c'; then $(CYGPATH_W) 'tunnel/tunnelMain.c'; else $(CYGPATH_W) '$(srcdir)/tunnel/tunnelMain.c'; fi`
+
+tunnel/vmware_view_tunnel-tunnelProxy.o: tunnel/tunnelProxy.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tunnel/vmware_view_tunnel-tunnelProxy.o -MD -MP -MF tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Tpo -c -o tunnel/vmware_view_tunnel-tunnelProxy.o `test -f 'tunnel/tunnelProxy.c' || echo '$(srcdir)/'`tunnel/tunnelProxy.c
+@am__fastdepCC_TRUE@	mv -f tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Tpo tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='tunnel/tunnelProxy.c' object='tunnel/vmware_view_tunnel-tunnelProxy.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tunnel/vmware_view_tunnel-tunnelProxy.o `test -f 'tunnel/tunnelProxy.c' || echo '$(srcdir)/'`tunnel/tunnelProxy.c
+
+tunnel/vmware_view_tunnel-tunnelProxy.obj: tunnel/tunnelProxy.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tunnel/vmware_view_tunnel-tunnelProxy.obj -MD -MP -MF tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Tpo -c -o tunnel/vmware_view_tunnel-tunnelProxy.obj `if test -f 'tunnel/tunnelProxy.c'; then $(CYGPATH_W) 'tunnel/tunnelProxy.c'; else $(CYGPATH_W) '$(srcdir)/tunnel/tunnelProxy.c'; fi`
+@am__fastdepCC_TRUE@	mv -f tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Tpo tunnel/$(DEPDIR)/vmware_view_tunnel-tunnelProxy.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='tunnel/tunnelProxy.c' object='tunnel/vmware_view_tunnel-tunnelProxy.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tunnel/vmware_view_tunnel-tunnelProxy.obj `if test -f 'tunnel/tunnelProxy.c'; then $(CYGPATH_W) 'tunnel/tunnelProxy.c'; else $(CYGPATH_W) '$(srcdir)/tunnel/tunnelProxy.c'; fi`
+
+lib/open-vm-tools/misc/vmware_view_tunnel-base64.o: lib/open-vm-tools/misc/base64.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-base64.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-base64.o `test -f 'lib/open-vm-tools/misc/base64.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/base64.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/base64.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-base64.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-base64.o `test -f 'lib/open-vm-tools/misc/base64.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/base64.c
+
+lib/open-vm-tools/misc/vmware_view_tunnel-base64.obj: lib/open-vm-tools/misc/base64.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-base64.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-base64.obj `if test -f 'lib/open-vm-tools/misc/base64.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/base64.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/base64.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-base64.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/base64.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-base64.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-base64.obj `if test -f 'lib/open-vm-tools/misc/base64.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/base64.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/base64.c'; fi`
+
+lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.o: lib/open-vm-tools/misc/dynbuf.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.o `test -f 'lib/open-vm-tools/misc/dynbuf.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/dynbuf.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/dynbuf.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.o `test -f 'lib/open-vm-tools/misc/dynbuf.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/dynbuf.c
+
+lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.obj: lib/open-vm-tools/misc/dynbuf.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.obj `if test -f 'lib/open-vm-tools/misc/dynbuf.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/dynbuf.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/dynbuf.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-dynbuf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/dynbuf.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-dynbuf.obj `if test -f 'lib/open-vm-tools/misc/dynbuf.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/dynbuf.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/dynbuf.c'; fi`
+
+lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.o: lib/open-vm-tools/misc/idLinux.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.o `test -f 'lib/open-vm-tools/misc/idLinux.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/idLinux.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/idLinux.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.o `test -f 'lib/open-vm-tools/misc/idLinux.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/idLinux.c
+
+lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.obj: lib/open-vm-tools/misc/idLinux.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.obj `if test -f 'lib/open-vm-tools/misc/idLinux.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/idLinux.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/idLinux.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-idLinux.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/idLinux.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-idLinux.obj `if test -f 'lib/open-vm-tools/misc/idLinux.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/idLinux.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/idLinux.c'; fi`
+
+lib/open-vm-tools/misc/vmware_view_tunnel-strutil.o: lib/open-vm-tools/misc/strutil.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-strutil.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-strutil.o `test -f 'lib/open-vm-tools/misc/strutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/strutil.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/strutil.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-strutil.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-strutil.o `test -f 'lib/open-vm-tools/misc/strutil.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/strutil.c
+
+lib/open-vm-tools/misc/vmware_view_tunnel-strutil.obj: lib/open-vm-tools/misc/strutil.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-strutil.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-strutil.obj `if test -f 'lib/open-vm-tools/misc/strutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/strutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/strutil.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-strutil.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/strutil.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-strutil.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-strutil.obj `if test -f 'lib/open-vm-tools/misc/strutil.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/strutil.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/strutil.c'; fi`
+
+lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.o: lib/open-vm-tools/misc/utilMem.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.o -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.o `test -f 'lib/open-vm-tools/misc/utilMem.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/utilMem.c
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/utilMem.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.o `test -f 'lib/open-vm-tools/misc/utilMem.c' || echo '$(srcdir)/'`lib/open-vm-tools/misc/utilMem.c
+
+lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.obj: lib/open-vm-tools/misc/utilMem.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.obj -MD -MP -MF lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Tpo -c -o lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.obj `if test -f 'lib/open-vm-tools/misc/utilMem.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/utilMem.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/utilMem.c'; fi`
+@am__fastdepCC_TRUE@	mv -f lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Tpo lib/open-vm-tools/misc/$(DEPDIR)/vmware_view_tunnel-utilMem.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lib/open-vm-tools/misc/utilMem.c' object='lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(vmware_view_tunnel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/open-vm-tools/misc/vmware_view_tunnel-utilMem.obj `if test -f 'lib/open-vm-tools/misc/utilMem.c'; then $(CYGPATH_W) 'lib/open-vm-tools/misc/utilMem.c'; else $(CYGPATH_W) '$(srcdir)/lib/open-vm-tools/misc/utilMem.c'; fi`
 
 .cc.o:
 @am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -5035,7 +5199,7 @@ debs: VMware-view-open-client.control deb-stage
 	$(MKDIR_P) $(DEB_STAGE_ROOT)/DEBIAN
 	$(INSTALL_DATA) -T $< $(DEB_STAGE_ROOT)/DEBIAN/control
 	$(FAKEROOT) $(DPKG_DEB) --build $(DEB_STAGE_ROOT)
-	mv $(DEB_STAGE_ROOT).deb $(PACKAGING_NAME)_$(VERSION)_$(RPM_ARCH).deb
+	mv $(DEB_STAGE_ROOT).deb $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb
 	-rm -rf $(DEB_STAGE_ROOT)
 
 rpm-stage: all-am
@@ -5112,6 +5276,8 @@ bindist: all-am
 @VIEW_GTK_TRUE@@ENDIF@
 
 @VIEW_GTK_TRUE@ifeq ($(PACKAGING_NAME),VMware-view-open-client)
+@VIEW_GTK_TRUE@ifeq ($(host_cpu),i686)
+@VIEW_GTK_TRUE@@ENDIF@
 @VIEW_GTK_TRUE@@ENDIF@
 
 deliverables: $(DELIVERABLES)
@@ -5132,12 +5298,12 @@ ifneq ($(PUBLISH_DIR),)
 @VIEW_GTK_TRUE@@ENDIF@ # MKSQUASHFS
 @VIEW_GTK_TRUE@@ENDIF@ # RPMBUILD
 @VIEW_GTK_TRUE@ifneq ($(DPKG_DEB),)
-@VIEW_GTK_TRUE@	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(RPM_ARCH).deb \
+@VIEW_GTK_TRUE@	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb \
 @VIEW_GTK_TRUE@		$(PUBLISH_DIR)
 @VIEW_GTK_TRUE@@ENDIF@ # DPKG_DEB
-@VIEW_COCOA_TRUE@ifeq ($(build_os), darwin)
+@VIEW_COCOA_TRUE@ifeq ($(findstring darwin,$(build_os)),darwin)
 @VIEW_COCOA_TRUE@	$(INSTALL_DATA) $(appdmg) $(PUBLISH_DIR)
-@VIEW_COCOA_TRUE@@ENDIF@ # HDIUTIL
+@VIEW_COCOA_TRUE@@ENDIF@
 @ENDIF@ # PUBLISH_DIR
 app: vmware-view vmware-view-tunnel Info.plist fix-toolchain-paths.sh
 	rm -rf $(appdir)
@@ -5182,20 +5348,16 @@ dmg: app
 	cp $(top_srcdir)/cocoa/rdc.webloc $(stagedir)/$(appname)/"Download Microsoft RDC.webloc"
 	cp $(ICONS_DIR)/view.icns $(stagedir)
 # XXX: Need to support multiple EULA languages...
-	cp $(top_builddir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir) || \
-		cp $(top_srcdir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir)
-ifeq ($(build_os), darwin)
-	perl $(top_srcdir)/cocoa/pkg-dmg \
+@VIEW_EULAS_TRUE@	cp $(top_builddir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir) || \
+@VIEW_EULAS_TRUE@		cp $(top_srcdir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir)
+ifeq ($(findstring darwin,$(build_os)),darwin)
+	perl $(top_srcdir)/cocoa/pkg-dmg $(dmgeula) \
 		--source $(stagedir)/$(appname) \
 		--target $(top_builddir)/$(appdmg) \
-		--icon $(stagedir)/view.icns \
-		--license $(stagedir)/$(PACKAGING_NAME)-EULA-en.txt
+		--icon $(stagedir)/view.icns
 @ELSE@
 	cp $(top_srcdir)/cocoa/pkg-dmg $(stagedir)
-@ENDIF@ # HDIUTIL
-#dist_help_DATA += doc/help/integrated_help-de.txt
-#dist_help_DATA += doc/help/integrated_help-fr.txt
-#dist_help_DATA += doc/help/integrated_help-ja.txt
+@ENDIF@
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

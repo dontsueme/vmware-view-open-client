@@ -169,14 +169,13 @@ ProcHelper::Start(Util::string procName,          // IN
    }
    Log("Starting child: %s\n", cmd.c_str());
 
-   char const **argList = (char const**)
-      Util_SafeMalloc(sizeof(char*) * (args.size() + 2));
+   char **argList = (char **)g_new0(char *, args.size() + 2);
    int argIdx = 0;
 
-   argList[argIdx++] = procName.c_str();
+   argList[argIdx++] = (char *)procName.c_str();
    for (std::vector<Util::string>::iterator i = args.begin();
         i != args.end(); i++) {
-      argList[argIdx++] = (*i).c_str();
+      argList[argIdx++] = (char *)(*i).c_str();
    }
    argList[argIdx++] = NULL;
 
@@ -205,7 +204,7 @@ ProcHelper::Start(Util::string procName,          // IN
       ResetProcessState(inFds[0], errFds[1], errFds[1], skipFd1, skipFd2);
 
       // Search in $PATH
-      Posix_Execvp(procPath.c_str(), (char* const*) argList);
+      Posix_Execvp(procPath.c_str(), argList);
 
       // An error occurred
       Log("Failed to spawn %s: %s\n", procName.c_str(), Err_ErrString());
@@ -231,7 +230,7 @@ ProcHelper::Start(Util::string procName,          // IN
       break;
    }
 
-   free(argList);
+   g_free(argList);
 }
 
 

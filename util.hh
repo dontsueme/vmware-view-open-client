@@ -137,8 +137,11 @@ string ParseHostLabel(const string &label, unsigned short *port, bool *secure);
 string GetHostLabel(const string &hostname, unsigned short port, bool secure);
 
 ClientInfoMap GetClientInfo(const string broker, int port);
+string GetMacAddr(int sock, struct sockaddr_in *addr);
 ClientInfoMap GetNICInfo(const string broker, int port);
+bool EnsureFilePermissions(const char *path, int mode);
 
+int Utf8Casecmp (const char *str1, const char *str2);
 
 /*
  *-----------------------------------------------------------------------------

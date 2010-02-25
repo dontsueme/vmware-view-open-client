@@ -1,0 +1,113 @@
+<span underline="double">Aide de VMware View Client</span>
+
+Avec VMware View Client, vous pouvez vous connecter aux postes de travail virtuels disponibles.
+
+Pour plus d'informations sur les postes de travail virtuels et sur les logiciels installés, contactez votre administrateur View.
+
+<span underline="single">Connexion à View Connection Server</span>
+
+View Client s'exécute comme une application Linux native qui se connecte à View Connection Server. Vous devez vous connecter à View Connection Server avant de pouvoir ouvrir une session et vous connecter à un poste de travail virtuel.
+
+Remarque : View Client ne peut se connecter qu'à une seule instance de View Connection Server à la fois. Pour vous connecter, vous devez être en mesure de fournir le nom d'hôte ou l'adresse IP du serveur.
+
+Pour vous connecter à View Connection Server :
+1. Démarrez View Client selon les instructions de votre administrateur View.
+2. Sélectionnez votre View Connection Server dans la liste <b>Adresse</b>, ou saisissez le nom d'hôte ou l'adresse IP du serveur.
+3. Cliquez sur <b>Options</b> pour afficher ou masquer les options de connexion au serveur sélectionné. Ne configurez les options que si votre administrateur View le demande. Les options sont les suivantes :
+
+<b>Port</b> : l'entrée de port est définie sur le port par défaut pour View Connection Server.
+<b>SSL</b> : utilisez une connexion SSL pour protéger les données d'entreprise sensibles et garantir le cryptage complet de toutes les connexions. Il est possible que votre administrateur View ait configuré View Connection Server pour que la connexion soit toujours sécurisée, même si vous définissez une connexion non sécurisée.
+
+Remarque : vous pouvez également fournir les options port et SSL en les saisissant directement dans le champ d'adresse. Pour les connexions non SSL, saisissez : http://&lt;URL&gt;[:numéro de port]. Pour les connexions SSL, saisissez : https://&lt;URL&gt;[:numéro de port].
+
+<b>Connexion automatique</b> : permet la connexion directe à l'instance actuelle de View Connection Server au démarrage de View Client. Cochez cette option si vous vous connectez toujours au même View Connection Server. Si vous ne la cochez pas, vous êtes invité à choisir un View Connection Server au démarrage de View Client.
+
+Remarque : si la connexion échoue, vous revenez à la boîte de dialogue de sélection de serveur. Si la connexion réussit, vous pouvez revenir à la boîte de dialogue de sélection de serveur en cliquant sur <b>Annuler</b> dans la première boîte de dialogue qui s'affiche à la connexion.
+
+4. Cliquez sur <b>Connexion</b>.
+
+<span underline="single">Ouverture de session sur View Connection Server</span>
+
+Après la connexion à View Connection Server, vous êtes invité à ouvrir une session en saisissant le nom d'utilisateur et le mot de passe que votre administrateur View vous a fournis. En fonction de la configuration du système, il est possible que vous puissiez également ouvrir une session à distance avec RSA SecurID, ou à l'aide d'une carte à puce prise en charge. Pour plus d'informations spécifiques sur la méthode d'ouverture de session avec l'une ou l'autre de ces méthodes, contactez votre administrateur View.
+
+Pour ouvrir une session :
+1. Connectez-vous à View Connection Server.
+2. Dans la fenêtre d'ouverture de session, saisissez vos nom d'utilisateur et mot de passe.
+3. Sélectionnez le domaine approprié dans la liste.
+4. Cliquez sur <b>Connexion</b>.
+
+Une liste des postes de travail virtuels que vous êtes autorisé(e) à utiliser s'affiche.
+
+<span underline="single">Connexion à un poste de travail</span>
+
+Après votre connexion et votre ouverture de session sur View Connection Server, vous pouvez vous connecter à un poste de travail virtuel. La fenêtre View Client affiche une liste des postes de travail que vous êtes autorisé(e) à utiliser, ainsi que l'état actuel de chaque poste de travail.
+
+Pour vous connecter à un poste de travail :
+1. Sélectionnez un poste de travail dans la liste de la fenêtre View Client.
+2. Dans la liste, double-cliquez sur le poste de travail, puis cliquez sur <b>Connexion</b>, ou cliquez sur la flèche vers le bas et sélectionnez <b>Connexion</b>.
+
+<span underline="single">Définition d'un poste de travail pour un affichage sur plusieurs moniteurs</span>
+
+Lorsque vous vous connectez à un poste de travail virtuel, vous pouvez le définir pour qu'il s'affiche en mode Plein écran sur plusieurs écrans. Cette fonctionnalité n'est disponible que si l'administrateur View l'a activée, et si votre système est correctement configuré.
+
+Pour définir l'affichage sur plusieurs écrans :
+1. Dans la fenêtre View Client, sélectionnez un poste de travail dans la liste.
+2. Sélectionnez <b>Utiliser tous les écrans</b>.
+3. Dans la liste, double-cliquez sur le poste de travail, puis cliquez sur <b>Connexion</b>, ou cliquez sur la flèche vers le bas et sélectionnez <b>Connexion</b>.
+
+Votre sélection est enregistrée en tant que préférence pour votre prochaine connexion.
+
+<span underline="single">Restauration d'un poste de travail</span>
+
+Vous pouvez restaurer un poste de travail virtuel qui est désactivé sur un autre hôte. La restauration d'un poste de travail désactivé ignore toutes les modifications qui y ont été apportées, et toutes les données qui n'ont pas été sauvegardées sur le serveur sont perdues.
+
+Pour restaurer un poste de travail :
+1. Cliquez sur la flèche vers le bas à côté du poste de travail désactivé que vous voulez restaurer.
+2. Sélectionnez <b>Restaurer</b>.
+
+La désactivation est annulée sur l'hôte distant et vous pouvez alors ouvrir une session sur le poste de travail sur l'hôte local.
+
+<span underline="single">Déconnexion d'un poste de travail</span>
+
+Lorsque vous vous déconnectez d'un poste de travail virtuel, votre session reste ouverte. Tous les programmes exécutés sur le poste de travail restent ouverts. Vous pouvez vous reconnecter à tout moment au poste de travail et reprendre votre session.
+
+Pour vous déconnecter depuis un poste de travail :
+1. Enregistrez tous les fichiers ouverts sur le poste de travail.
+2. Dans le menu <b>démarrer</b> du poste de travail, sélectionnez <b>Se déconnecter</b>, ou appuyez sur <b>Ctrl+Alt+Suppr</b> et cliquez sur <b>Se déconnecter</b>.
+
+<span underline="single">Fermeture d'une session sur un poste de travail</span>
+
+Lorsque vous fermez une session sur un poste de travail virtuel, la session actuelle se termine, tous les programmes sont fermés et toutes les données non enregistrées sont perdues. Vous pouvez fermer votre session depuis le poste de travail, ou depuis la fenêtre View Client.
+
+Pour fermer une session depuis un poste de travail :
+1. Enregistrez tous les fichiers ouverts sur le poste de travail.
+2. Dans le menu <b>démarrer</b>, sélectionnez <b>Fermer la session</b>.
+3. Dans la boîte de dialogue de confirmation, cliquez sur <b>Fermer la session</b>.
+Vous êtes invité(e) à enregistrer tous les fichiers ouverts, si vous ne l'avez pas déjà fait.
+
+Pour fermer une session depuis la fenêtre View Client :
+1. Cliquez sur la flèche vers le bas à côté du poste de travail désactivé que vous voulez annuler.
+2. Sélectionnez <b>Fermer la session</b>.
+
+<span underline="single">Réinitialisation d'un poste de travail</span>
+
+Lorsque vous réinitialisez un poste de travail, il est fermé et redémarré, et toutes les données non enregistrées sont perdues. Vous devez avoir ouvert une session sur le poste de travail pour le réinitialiser.
+
+Vous pouvez réinitialiser un poste de travail à partir de la fenêtre View Client, ou depuis le poste de travail lui-même.
+
+Pour réinitialiser un poste de travail depuis la fenêtre View Client :
+1. Dans la fenêtre View Client, cliquez sur la flèche vers le bas à côté du poste de travail que vous voulez réinitialiser.
+2. Sélectionnez <b>Réinitialiser</b>.
+3. Cliquez sur <b>Réinitialiser</b> pour confirmer.
+
+Pour réinitialiser un poste de travail à partir du poste de travail :
+1. Appuyez sur <b>Ctrl+Alt+Suppr</b>.
+2. Cliquez sur <b>Réinitialiser</b>.
+
+<span underline="single">Actualisation de la liste des postes de travail</span>
+
+Vous pouvez actualiser la liste des postes de travail afin d'afficher les modifications effectuées depuis la dernière récupération de la liste par le View Connection Server. Pour cela, appuyez sur la touche <b>F5</b>.
+
+-------------------
+
+Copyright © 2009 - 2010 VMware, Inc. Tous droits réservés. Ce produit est protégé par les lois américaines et internationales sur le copyright et la propriété intellectuelle. Les produits logiciels de VMware sont couverts par un ou plusieurs brevets, répertoriés à l'adresse http://www.vmware.com/go/patents-fr.

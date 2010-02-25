@@ -40,6 +40,7 @@
 @property(copy) NSArray *domains;
 @property BOOL savePassword;
 @property(readonly) BOOL upnUsername;
+@property BOOL userSelectable;
 
 
 @end // @protocol CdkWinCreds

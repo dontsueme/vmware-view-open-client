@@ -76,7 +76,8 @@ public:
       // State change notifications
       virtual void RequestBroker() { }
       virtual void RequestDisclaimer(const Util::string &disclaimer) { }
-      virtual void RequestPasscode(const Util::string &username) { }
+      virtual void RequestPasscode(const Util::string &username,
+                                   bool userSelectable) { }
       virtual void RequestNextTokencode(const Util::string &username) { }
       virtual void RequestPinChange(const Util::string &pin,
                                     const Util::string &message,
@@ -200,8 +201,15 @@ private:
       CERT_DID_RESPOND
    };
 
-   static gboolean RefreshDesktopsTimeout(gpointer data);
-   static gboolean OnIdleSubmitCertAuth(gpointer data);
+   enum TunnelState {
+      TUNNEL_DOWN,
+      TUNNEL_GETTING_INFO,
+      TUNNEL_CONNECTING,
+      TUNNEL_RUNNING
+   };
+
+   static void RefreshDesktopsTimeout(void *data);
+   static void OnIdleSubmitCertAuth(void *data);
 
    void ClearSmartCardPinAndReader();
 
@@ -214,14 +222,13 @@ private:
    boost::signals::connection mTunnelDisconnectCnx;
    RestartMonitor mTunnelMonitor;
    CertState mCertState;
-   unsigned int mRefreshTimeoutSourceID;
+   TunnelState mTunnelState;
    bool mGettingDesktops;
    char *mSmartCardPin;
    Util::string mSmartCardReader;
    std::vector<Util::string> mSupportedProtocols;
    Util::string mCookieFile;
    unsigned int mAuthRequestId;
-   unsigned int mIdleCertAuthId;
 };
 
 

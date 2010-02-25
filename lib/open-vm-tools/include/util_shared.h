@@ -78,7 +78,7 @@ UtilCRCMakeTable(void)
 }
    
 static INLINE_SINGLE_CALLER uint32 
-UtilCRCUpdate(uint32 crc, uint8 *buf, int len)
+UtilCRCUpdate(uint32 crc, const uint8 *buf, int len)
 {
    uint32 c = crc;
    int n;
@@ -112,7 +112,7 @@ UtilCRCUpdate(uint32 crc, uint8 *buf, int len)
  *----------------------------------------------------------------------
  */
 uint32 
-CRC_Compute(uint8 *buf, int len)
+CRC_Compute(const uint8 *buf, int len)
 {
    return UtilCRCUpdate(0xffffffffL, buf, len) ^ 0xffffffffL;
 }

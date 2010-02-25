@@ -74,8 +74,8 @@
 #define VM_SYSTEM_HAS_GETGRNAM_R 1
 #endif
 
-# if defined(__FreeBSD__) && __FreeBSD_version >= 503000
-#  include <syslimits.h>  // PATH_MAX
+# if defined(__FreeBSD__)
+#  include <sys/syslimits.h>  // PATH_MAX
 # else
 #  include <limits.h>  // PATH_MAX
 # endif
@@ -179,8 +179,7 @@ Posix_Creat(ConstUnicode pathName, // IN:
  *      Open a file via POSIX fopen()
  *
  * Results:
- *      -1	Error
- *      >= 0	File descriptor (success)
+ *      A file pointer, or NULL on error.
  *
  * Side effects:
  *      errno is set on error
@@ -2956,12 +2955,11 @@ exit:
  *
  * Posix_Printf --
  *
- *      Wrapper around printf. [w]printf can only print characters from
- *      the local character set.  So instead we use ConsoleWriteW which can
- *      print characters from the entire Unicode character set. 
+ *      POSIX printf.
  *
  * Returns:
- *      Returns the number of characters printed out.
+ *      Returns the number of characters printed out or a negative value on
+ *      failure.
  *
  * Side effects:
  *      None.
@@ -2998,10 +2996,11 @@ Posix_Printf(ConstUnicode format,
  *
  * Posix_Fprintf --
  *
- *      Wrapper around fprintf. 
- *      
+ *      POSIX fprintf.
+ *
  * Returns:
- *      Returns the number of bytes characters printed out.
+ *      Returns the number of characters printed out or a negative value on
+ *      failure.
  *
  * Side effects:
  *      None.

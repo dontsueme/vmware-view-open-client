@@ -505,11 +505,11 @@ SSLGetModulePath(void)
               GetLastError());
    }
 #else
-   Bool su = IsSuperUser();
+   uid_t uid;
 
-   SuperUser(TRUE);
+   uid = Id_BeginSuperUser();
    path = Posix_ReadLink("/proc/self/exe");
-   SuperUser(su);
+   Id_EndSuperUser(uid);
 
    if (path == NULL) {
       Warning("%s: readlink failed: %s\n", __FUNCTION__, strerror(errno));
@@ -1862,9 +1862,10 @@ SSLLoadCertificatesFromFile(void)
    Bool success = FALSE;
    char *certFile = SSLCertFile;
    char *keyFile = SSLKeyFile;
-   Bool su = IsSuperUser();
+   uid_t uid;
    SSL_CTX *ctx = SSL_DefaultContext();
-   SuperUser(TRUE);
+
+   uid = Id_BeginSuperUser();
 
    /* Loads certificate */
    SSL_LOG(("SSL: Loading certificate: '%s' ...\n", certFile));
@@ -1894,7 +1895,8 @@ SSLLoadCertificatesFromFile(void)
    success = TRUE;
 
 cleanup:
-   SuperUser(su);
+   Id_EndSuperUser(uid);
+
    return success;
 }
 

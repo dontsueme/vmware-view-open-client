@@ -129,7 +129,7 @@ ProcHelperConnections::~ProcHelperConnections()
  *      None
  *
  * Side effects:
- *      Notification is posted to the default notification center.
+ *      Calls delegate procHelper:didExitWithStatus: method.
  *
  *-----------------------------------------------------------------------------
  */
@@ -154,7 +154,7 @@ ProcHelperConnections::OnExit(int status) // IN
  *      None
  *
  * Side effects:
- *      Notification is posted to the default notification center.
+ *      Calls delegate procHelper:didWriteError: method.
  *
  *-----------------------------------------------------------------------------
  */

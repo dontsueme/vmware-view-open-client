@@ -1,0 +1,1085 @@
+# VMware View Open Client
+# Copyright (C) 2009 VMware, Inc.
+# This file is distributed under the same license as the
+# VMware-view-open-client package.
+# <vmware-view-open-client@googlegroups.com>, 2009.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: 4.0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-12-21 16:20-0800\n"
+"PO-Revision-Date: 2010-01-08 12:07-0800\n"
+"Last-Translator: jacob berkman <jberkman@vmware.com>\n"
+"Language-Team: vvoc <vmware-view-open-client@groups.google.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../baseApp.cc:199
+#, c-format
+msgid "Using log file %s\n"
+msgstr "Utilisation du fichier journal %s\n"
+
+#: ../baseXml.cc:298
+msgid "Invalid response: Invalid \"result\" in XML."
+msgstr "Réponse non valide: \"résultat\" non valide dans XML."
+
+#: ../baseXml.cc:321
+#, c-format
+msgid "Unknown error: %s"
+msgstr "Erreur inconnue: %s"
+
+#: ../baseXml.cc:356
+msgid "Invalid response: Parameter with no name."
+msgstr "Réponse non valide: paramètre sans nom."
+
+#: ../baseXml.cc:377
+#, c-format
+msgid "Invalid response: Parameter \"%s\" has no value."
+msgstr "Réponse non valide: le paramètre \"%s\" n'a pas de valeur."
+
+#: ../baseXml.cc:539
+msgid "SSL Security Error."
+msgstr "Erreur de sécurité SSL."
+
+#: ../baseXml.cc:541
+msgid "Could not connect to server."
+msgstr "Impossible de se connecter au serveur."
+
+#: ../baseXml.cc:575
+msgid "Invalid response: General error."
+msgstr "Réponse non valide: erreur générale."
+
+#: ../baseXml.cc:600
+#: ../baseXml.cc:641
+#, c-format
+msgid "Invalid response: Unknown response \"%s\"."
+msgstr "Réponse non valide: réponse inconnue \"%s\"."
+
+#: ../baseXml.cc:626
+#, c-format
+msgid "Unable to save command text for %s."
+msgstr "Impossible d'enregistrer le texte de commande pour %s."
+
+#: ../baseXml.cc:658
+#, c-format
+msgid "The server \"%s\" may not be a compatible View Connection Server. Check the "
+"server address and try again."
+msgstr "Le serveur \"%s\" n'est peut-être pas un serveur View Connection Server compatible. Vérifiez l'adresse du serveur et réessayez."
+
+#: ../baseXml.cc:749
+msgid "Request cancelled by user."
+msgstr "Demande annulée par l'utilisateur."
+
+#: ../broker.cc:232
+msgid "Setting client locale..."
+msgstr "Définition des paramètres régionaux du client..."
+
+#: ../broker.cc:261
+msgid "Accepting disclaimer..."
+msgstr "Acceptation de la clause de non responsabilité en cours..."
+
+#. Disable the OK button
+#: ../broker.cc:305
+#: ../broker.cc:339
+#: ../broker.cc:373
+#: ../broker.cc:408
+#: ../broker.cc:1682
+#: ../gtk/window.cc:748
+#: ../gtk/window.cc:772
+#: ../gtk/window.cc:2601
+msgid "Logging in..."
+msgstr "Connexion en cours..."
+
+#: ../broker.cc:445
+msgid "Changing password..."
+msgstr "Modification du mot de passe en cours..."
+
+#: ../broker.cc:481
+#: ../gtk/window.cc:1809
+msgid "Connecting to the desktop..."
+msgstr "Connexion au poste de travail en cours..."
+
+#: ../broker.cc:725
+msgid "Logging out..."
+msgstr "Déconnexion en cours..."
+
+#: ../broker.cc:752
+msgid "Getting server configuration..."
+msgstr "Obtention de la configuration du serveur en cours..."
+
+#: ../broker.cc:845
+#, c-format
+msgid "Unknown result returned: %s"
+msgstr "Résultat inconnu renvoyé: %s"
+
+#: ../broker.cc:866
+#: ../broker.cc:1388
+#, c-format
+msgid "Error authenticating: %s"
+msgstr "Erreur lors de l'authentification: %s"
+
+#: ../broker.cc:917
+msgid "Your new RSA SecurID PIN has been set.\n"
+"\n"
+"Please wait for the next tokencode to appear on your RSA SecurID token, then "
+"continue."
+msgstr "Votre nouveau code PIN RSA SecurID a été défini.\n"
+"\n"
+"Attendez que le code de jeton suivant apparaisse sur votre jeton RSA SecurID, puis continuez."
+
+#: ../broker.cc:948
+#, c-format
+msgid "Unknown authentication method requested: %s"
+msgstr "Méthode d'authentification inconnue demandée: %s"
+
+#: ../broker.cc:999
+msgid "Invalid PIN Change response sent by server."
+msgstr "Réponse non valide à la modification du code PIN envoyée par le serveur."
+
+#: ../brokerXml.cc:257
+msgid "Invalid response from broker: Invalid \"authentication\" in XML."
+msgstr "Réponse non valide du service Broker: \"authentification\" non valide dans XML."
+
+#: ../brokerXml.cc:264
+msgid "Invalid response from broker: Invalid \"screen\" in XML."
+msgstr "Réponse non valide du service Broker: \"écran\" non valide dans XML."
+
+#: ../brokerXml.cc:272
+msgid "Invalid response from broker: Invalid \"name\" in XML."
+msgstr "Réponse non valide du service Broker: \"nom\" non valide dans XML."
+
+#: ../brokerXml.cc:782
+msgid "Invalid response from broker: Listener with invalid host name."
+msgstr "Réponse non valide du service Broker: port d'écoute doté d'un nom d'hôte non valide."
+
+#: ../cocoa/cdkPrefs.m:136
+#, c-format
+msgid "Could not load RDC template data: %s.\n"
+msgstr "Impossible de charger les données du modèle RDC: %s.\n"
+
+#: ../cocoa/cdkPrefs.m:147
+#, c-format
+msgid "Could not parse RDC template data: %s.\n"
+msgstr "Impossible d'analyser les données du modèle RDC: %s.\n"
+
+#: ../cocoa/cdkRdc.m:260
+#, c-format
+msgid "Could not serialize RDC data: %s.\n"
+msgstr "Impossible de sérialiser les données RDC: %s.\n"
+
+#: ../cocoa/cdkRdc.m:267
+#, c-format
+msgid "Could not write RDC data: %s.\n"
+msgstr "Impossible d'écrire les données RDC: %s.\n"
+
+#: ../cocoa/cdkRdc.m:346
+msgid "Microsoft Remote Desktop Connection 2 could not be found.\n"
+msgstr "Microsoft Remote Desktop Connection 2 introuvable.\n"
+
+#: ../cocoa/cdkWindowController.m:247
+#, c-format
+msgid "About %s"
+msgstr "À propos de %s"
+
+#: ../cocoa/cdkWindowController.m:249
+#, c-format
+msgid "Hide %s"
+msgstr "Masquer %s"
+
+#: ../cocoa/cdkWindowController.m:251
+#, c-format
+msgid "Quit %s"
+msgstr "Quitter %s"
+
+#: ../cocoa/cdkWindowController.m:253
+#, c-format
+msgid "%s Help"
+msgstr "Aide %s"
+
+#: ../cocoa/cdkWindowController.m:866
+#: ../gtk/window.cc:2523
+msgid "The desktop has unexpectedly disconnected."
+msgstr "Le poste de travail s'est déconnecté de façon inattendue."
+
+#: ../desktop.cc:278
+#, c-format
+msgid "Unable to connect to desktop \"%s\": %s"
+msgstr "Impossible de se connecter au poste de travail \"%s\": %s"
+
+#: ../desktop.cc:370
+#, c-format
+msgid "Unable to reset desktop \"%s\": %s"
+msgstr "Impossible de réinitialiser le poste de travail \"%s\": %s"
+
+#: ../desktop.cc:458
+#, c-format
+msgid "Unable to log out of \"%s\": %s"
+msgstr "Impossible de se déconnecter de \"%s\": %s"
+
+#: ../desktop.cc:518
+#, c-format
+msgid "Unable to rollback \"%s\": %s"
+msgstr "Impossible de restaurer \"%s\": %s"
+
+#: ../desktop.cc:709
+msgid "Desktop is corrupted."
+msgstr "Le poste de travail est corrompu."
+
+#: ../desktop.cc:750
+msgid "Desktop check in paused. Select connect to resume."
+msgstr "Activation du poste de travail suspendue. Sélectionnez Se connecter pour reprendre."
+
+#: ../desktop.cc:753
+msgid "Desktop check out paused. Select connect to resume."
+msgstr "Désactivation du poste de travail suspendue. Sélectionnez Se connecter pour reprendre."
+
+#: ../desktop.cc:838
+msgid "Resetting desktop"
+msgstr "Réinitialisation du poste de travail"
+
+#: ../desktop.cc:840
+msgid "Logging off"
+msgstr "Déconnection"
+
+#: ../desktop.cc:842
+msgid "Rolling back checkout"
+msgstr "Restauration de l'extraction"
+
+#: ../desktop.cc:844
+msgid "Desktop is being rolled back (may not be available)"
+msgstr "Le poste de travail est en cours d'annulation (peut ne pas être disponible)"
+
+#: ../desktop.cc:848
+msgid "Checked out to another machine"
+msgstr "Désactivé pour une autre machine"
+
+#: ../desktop.cc:852
+msgid "Maintenance (may not be available)"
+msgstr "Maintenance (peut ne pas être disponible)"
+
+#: ../desktop.cc:854
+msgid "Logged on"
+msgstr "Connecté"
+
+#: ../desktop.cc:856
+msgid "Available"
+msgstr "Disponible"
+
+#: ../desktop.cc:859
+msgid "Unknown status"
+msgstr "État inconnu"
+
+#: ../extraTranslations.hh:36
+msgid "VMware View Client"
+msgstr "VMware View Client"
+
+#: ../extraTranslations.hh:37
+msgid "VMware View Open Client"
+msgstr "VMware View Open Client"
+
+#.
+#. * Message from the tunnel server are not translated; the ones we know
+#. * about are actually translated in cdk::Tunnel::OnErr().
+#.
+#: ../extraTranslations.hh:43
+msgid "Secure connection timed out"
+msgstr "Le délai de la connexion sécurisée est expiré"
+
+#: ../extraTranslations.hh:44
+msgid "The session has timed out, please re-authenticate"
+msgstr "La session a expiré, authentifiez-vous de nouveau."
+
+#: ../extraTranslations.hh:45
+msgid "Session timed out"
+msgstr "Le délai de la session est expiré"
+
+#: ../extraTranslations.hh:46
+msgid "Logout request by system"
+msgstr "Fermeture de session demandée par le système"
+
+#: ../extraTranslations.hh:47
+msgid "Client disconnected following no activity"
+msgstr "Client déconnecté suite à une période d'inactivité"
+
+#: ../extraTranslations.hh:48
+msgid "Could not connect to server"
+msgstr "Impossible de se connecter au serveur"
+
+#: ../extraTranslations.hh:49
+msgid "tunnel session not created"
+msgstr "session de tunnel non créée"
+
+#: ../gtk/app.cc:271
+#, c-format
+msgid "Could not find locale directory; falling back to %s\n"
+msgstr "Répertoire de paramètres régionaux introuvable ; rétablissement de %s\n"
+
+#: ../gtk/brokerDlg.cc:62
+msgid "_Port:"
+msgstr "_Port:"
+
+#: ../gtk/brokerDlg.cc:65
+msgid "_Use secure connection (SSL)"
+msgstr "_Utiliser une connexion SSL"
+
+#: ../gtk/brokerDlg.cc:67
+msgid "_Always connect to this server at startup"
+msgstr "_Toujours se connecter à ce serveur au démarrage"
+
+#: ../gtk/brokerDlg.cc:81
+msgid "Enter the host name or IP address of the View Connection Server."
+msgstr "Entrez le nom d'hôte ou l'adresse IP du serveur View Connection Server."
+
+#: ../gtk/brokerDlg.cc:88
+msgid "A_ddress:"
+msgstr "A_dresse:"
+
+#: ../gtk/brokerDlg.cc:111
+msgid "_Options"
+msgstr "_Options"
+
+#: ../gtk/cryptoki.cc:1113
+msgid "An incorrect PIN entry will result in your smart card or token being locked."
+msgstr "La saisie d'un code PIN incorrect entraînera le verrouillage de votre carte à puce ou de votre jeton."
+
+#: ../gtk/cryptoki.cc:1117
+msgid "Your smart card or token has been locked.  Please contact your administrator "
+"to unlock it."
+msgstr "Votre carte à puce ou votre jeton a été verrouillé.  Contactez votre administrateur "
+"pour le déverrouillage."
+
+#: ../gtk/cryptoki.cc:1148
+#, c-format
+msgid "You have entered an incorrect PIN.\n"
+"\n"
+"%s"
+msgstr "Vous avez saisi un code PIN incorrect.\n"
+"\n"
+"%s"
+
+#: ../gtk/cryptoki.cc:1150
+msgid "An additional incorrect PIN entry will result in your smart card or token "
+"being locked."
+msgstr "La saisie supplémentaire d'un code PIN incorrect entraînera le verrouillage de votre carte à puce ou de votre jeton."
+
+#: ../gtk/cryptoki.cc:1152
+msgid "Please enter your PIN again."
+msgstr "Saisissez de nouveau votre code PIN."
+
+#: ../gtk/cryptoki.cc:1167
+msgid "There was an error logging in to your smart card or token."
+msgstr "Une erreur est survenue lors de la connexion à votre carte à puce ou à votre jeton."
+
+#: ../gtk/desktopDlg.cc:574
+msgid "Inhibiting Ctrl-Alt-Enter keypress, to avoid rdesktop exit.\n"
+msgstr "Inhibition de la sélection de touches Ctrl-Alt-Entrée pour éviter la fermeture de rdesktop.\n"
+
+#: ../gtk/desktopDlg.cc:780
+msgid "Metacity keybindings will be temporarily disabled on SLED 10 SP2.\n"
+msgstr "Les associations de touches Metacity seront temporairement désactivées sur SLED 10 SP2.\n"
+
+#: ../gtk/desktopSelectDlg.cc:98
+msgid "_Available Desktops:"
+msgstr "_Postes de travail disponibles:"
+
+#: ../gtk/desktopSelectDlg.cc:208
+msgid "All Monitors"
+msgstr "Tous les moniteurs"
+
+#: ../gtk/desktopSelectDlg.cc:215
+msgid "Full Screen"
+msgstr "Plein écran"
+
+#: ../gtk/desktopSelectDlg.cc:222
+msgid "Large Window"
+msgstr "Grande fenêtre"
+
+#: ../gtk/desktopSelectDlg.cc:228
+msgid "Small Window"
+msgstr "Petite fenêtre"
+
+#: ../gtk/desktopSelectDlg.cc:241
+msgid "Custom..."
+msgstr "Personnalisé..."
+
+#: ../gtk/desktopSelectDlg.cc:247
+msgid "_Display:"
+msgstr "_Afficher:"
+
+#: ../gtk/desktopSelectDlg.cc:612
+#: ../gtk/windowSizeDlg.cc:266
+#, c-format
+msgid "%d x %d"
+msgstr "%d x %d"
+
+#: ../gtk/desktopSelectDlg.cc:671
+#, c-format
+msgid "Are you sure you want to reset %s?\n"
+"\n"
+"Any unsaved data may be lost."
+msgstr "Voulez-vous vraiment réinitialiser %s ?\n"
+"\n"
+"Toutes les données non enregistrées seront perdues."
+
+#: ../gtk/desktopSelectDlg.cc:673
+#: ../gtk/desktopSelectDlg.cc:917
+#: ../gtk/window.cc:2429
+msgid "_Reset"
+msgstr "_Réinitialiser"
+
+#: ../gtk/desktopSelectDlg.cc:676
+#, c-format
+msgid "Are you sure you want to end your current session with %s?\n"
+"\n"
+"Any unsaved data may be lost."
+msgstr "Voulez-vous vraiment mettre fin à la session actuelle avec %s ?\n"
+"\n"
+"Toutes les données non enregistrées seront perdues."
+
+#: ../gtk/desktopSelectDlg.cc:678
+#: ../gtk/desktopSelectDlg.cc:906
+msgid "_Log Off"
+msgstr "_Se déconnecter"
+
+#: ../gtk/desktopSelectDlg.cc:681
+#, c-format
+msgid "Are you sure you want to rollback %s?\n"
+"\n"
+"Any changes made to the checked-out desktop on another machine since your "
+"last backup will be discarded."
+msgstr "Voulez-vous vraiment restaurer %s ?\n"
+"\n"
+"Toutes les modifications apportées au poste de travail extrait sur une autre machine depuis votre dernière sauvegarde seront ignorées."
+
+#: ../gtk/desktopSelectDlg.cc:684
+msgid "_Rollback"
+msgstr "Rest_aurer"
+
+#: ../gtk/desktopSelectDlg.cc:842
+#: ../gtk/window.cc:680
+#: ../gtk/window.cc:766
+#: ../gtk/window.cc:1070
+#: ../gtk/window.cc:2589
+msgid "Co_nnect"
+msgstr "Se c_onnecter"
+
+#: ../gtk/desktopSelectDlg.cc:856
+msgid "_Protocols"
+msgstr "_Protocoles"
+
+#: ../gtk/desktopSelectDlg.cc:931
+msgid "Roll_back"
+msgstr "Res_taurer"
+
+#: ../gtk/helpSupportDlg.cc:167
+#, c-format
+msgid "User help directory not found; falling back to %s.\n"
+msgstr "Répertoire de l'aide utilisateurs introuvable ; rétablissement de %s.\n"
+
+#: ../gtk/helpSupportDlg.cc:238
+#, c-format
+msgid "An error occurred while reading the help file: %s.\n"
+msgstr "Une erreur s'est produite lors de la lecture du fichier d'aide: %s.\n"
+
+#: ../gtk/loginDlg.cc:72
+#: ../gtk/securIDDlg.cc:135
+msgid "_Username:"
+msgstr "_Nom d'utilisateur:"
+
+#: ../gtk/loginDlg.cc:86
+msgid "_Password:"
+msgstr "_Mot de passe:"
+
+#: ../gtk/loginDlg.cc:101
+msgid "_Domain:"
+msgstr "_Domaine:"
+
+#: ../gtk/passwordDlg.cc:74
+msgid "Username:"
+msgstr "Nom d'utilisateur:"
+
+#: ../gtk/passwordDlg.cc:84
+msgid "Domain:"
+msgstr "Domaine:"
+
+#: ../gtk/passwordDlg.cc:94
+msgid "Old _Password:"
+msgstr "Ancien _mot de passe:"
+
+#: ../gtk/passwordDlg.cc:109
+msgid "_New Password:"
+msgstr "_Nouveau mot de passe:"
+
+#: ../gtk/passwordDlg.cc:124
+msgid "Con_firm:"
+msgstr "Con_firmer:"
+
+#: ../gtk/prefs.cc:111
+#, c-format
+msgid "Creating ~/.vmware failed: %s\n"
+msgstr "Échec de création de ~/.vmware: %s\n"
+
+#: ../gtk/prefs.cc:727
+msgid "Keep window manager key bindings."
+msgstr "Conserver les associations de touches du gestionnaire de fenêtre."
+
+#: ../gtk/prefs.cc:729
+msgid "Specify connection broker."
+msgstr "Spécifiez un service Broker pour les connexions."
+
+#: ../gtk/prefs.cc:729
+msgid "<broker URL>"
+msgstr "<URL du service Broker>"
+
+#: ../gtk/prefs.cc:731
+msgid "Specify user name for password authentication."
+msgstr "Spécifiez un nom d'utilisateur pour l'authentification du mot de passe."
+
+#: ../gtk/prefs.cc:731
+msgid "<user name>"
+msgstr "<nom d'utilisateur>"
+
+#: ../gtk/prefs.cc:733
+msgid "Specify password for password authentication."
+msgstr "Spécifiez un mot de passe pour l'authentification du mot de passe."
+
+#: ../gtk/prefs.cc:733
+msgid "<password>"
+msgstr "<mot de passe>"
+
+#: ../gtk/prefs.cc:735
+msgid "Specify domain for password authentication."
+msgstr "Spécifiez un domaine pour l'authentification du mot de passe."
+
+#: ../gtk/prefs.cc:735
+msgid "<domain name>"
+msgstr "<nom du domaine>"
+
+#: ../gtk/prefs.cc:737
+msgid "Specify desktop by name."
+msgstr "Spécifiez le poste de travail par nom."
+
+#: ../gtk/prefs.cc:737
+msgid "<desktop name>"
+msgstr "<nom du poste de travail>"
+
+#: ../gtk/prefs.cc:739
+msgid "Connect automatically if enough values are given on the command line."
+msgstr "Connexion automatique si des valeurs suffisantes sont fournies sur la ligne de commande."
+
+#: ../gtk/prefs.cc:742
+msgid "Enable full screen mode."
+msgstr "Activer le mode plein écran."
+
+#: ../gtk/prefs.cc:744
+msgid "Image file to use as background in full screen mode."
+msgstr "Fichier image à utiliser en tant qu'arrière-plan en mode plein écran."
+
+#: ../gtk/prefs.cc:744
+#: ../gtk/prefs.cc:748
+msgid "<image>"
+msgstr "<image>"
+
+#: ../gtk/prefs.cc:746
+msgid "Forward device redirection to rdesktop"
+msgstr "Transférer la redirection du périphérique vers rdesktop"
+
+#: ../gtk/prefs.cc:746
+msgid "<device info>"
+msgstr "<informations sur le périphérique>"
+
+#: ../gtk/prefs.cc:748
+msgid "Display a custom logo."
+msgstr "Afficher un logo personnalisé."
+
+#: ../gtk/prefs.cc:750
+msgid "Directory location containing Wyse MMR libraries."
+msgstr "Emplacement du répertoire contenant des bibliothèques Wyse MMR."
+
+#: ../gtk/prefs.cc:751
+msgid "<mmr directory>"
+msgstr "<répertoire mmr>"
+
+#: ../gtk/prefs.cc:753
+msgid "Command line options to forward to rdesktop."
+msgstr "Options de ligne de commande à transférer à rdesktop."
+
+#: ../gtk/prefs.cc:754
+msgid "<rdesktop options>"
+msgstr "<options rdesktop>"
+
+#: ../gtk/prefs.cc:756
+msgid "Options for USB forwarding."
+msgstr "Options de transfert USB."
+
+#: ../gtk/prefs.cc:756
+msgid "<usb options>"
+msgstr "<options usb>"
+
+#: ../gtk/prefs.cc:758
+msgid "Preferred connection protocol [RDP|PCOIP|RGS|localvm]"
+msgstr "Protocole de connexion préféré [RDP|PCOIP|RGS|localvm]"
+
+#: ../gtk/prefs.cc:759
+msgid "<protocol name>"
+msgstr "<nom protocole>"
+
+#: ../gtk/prefs.cc:765
+msgid "File containing additional command line arguments."
+msgstr "Fichier contenant des arguments de ligne de commande supplémentaires."
+
+#: ../gtk/prefs.cc:766
+msgid "<file path>"
+msgstr "<chemin d'accès au fichier>"
+
+#: ../gtk/prefs.cc:768
+msgid "Display version information and exit."
+msgstr "Affichez les informations sur la version et quittez la fenêtre."
+
+#: ../gtk/prefs.cc:773
+#: ../gtk/prefs.cc:833
+msgid "- connect to VMware View desktops"
+msgstr "- connexion aux postes de travail VMware View"
+
+#: ../gtk/prefs.cc:790
+#: ../gtk/prefs.cc:869
+#, c-format
+msgid "Error parsing command line: %s\n"
+msgstr "Erreur lors de l'analyse de la ligne de commande: %s\n"
+
+#: ../gtk/prefs.cc:796
+#, c-format
+msgid "%s %s\n"
+"\n"
+"VMware is a registered trademark or trademark (the \"Marks\") of VMware, "
+"Inc.\n"
+"in the United States and/or other jurisdictions and is not licensed to you\n"
+"under the terms of the LGPL version 2.1. If you distribute VMware View Open\n"
+"Client unmodified in either binary or source form or the accompanying\n"
+"documentation unmodified, you may not remove, change, alter or otherwise\n"
+"modify the Marks in any manner. If you make minor modifications to VMware\n"
+"View Open Client or the accompanying documentation, you may, but are not\n"
+"required to, continue to distribute the unaltered Marks with your binary or\n"
+"source distributions. If you make major functional changes to VMware View\n"
+"Open Client or the accompanying documentation, you may not distribute the\n"
+"Marks with your binary or source distribution and you must remove all\n"
+"references to the Marks contained in your distribution. All other use or\n"
+"distribution of the Marks requires the prior written consent of VMware.\n"
+"All other marks and names mentioned herein may be trademarks of their\n"
+"respective companies.\n"
+"\n"
+"Copyright © 1998-2010 VMware, Inc. All rights reserved.\n"
+"This product is protected by U.S. and international copyright and\n"
+"intellectual property laws.\n"
+"VMware software products are protected by one or more patents listed at\n"
+"%s\n"
+"\n"
+msgstr "%s %s\n"
+"\n"
+"VMware est une marque déposée ou une marque commerciale (les \"Marques\") de VMware, "
+"Inc.\n"
+"aux États-Unis et/ou dans d'autres juridictions. Vous ne disposez pas de licence\n"
+"d'après les conditions du LGPL version 2.1. Si vous distribuez VMware View Open\n"
+"Client non modifié sous forme binaire ou source ou la documentation\n"
+"jointe non modifiée, vous ne pouvez pas retirer, changer, altérer ou\n"
+"modifier les Marques de quelque façon que ce soit. Si vous apportez des modifications mineures à VMware\n"
+"View Open Client ou à la documentation jointe, vous pouvez, mais n'êtes pas\n"
+"tenu de, continuer à distribuer les Marques non modifiées avec vos distributions\n"
+"binaire ou source. Si vous apportez des modifications fonctionnelles majeures à VMware View\n"
+"Open Client ou à la documentation jointe, vous ne pouvez pas distribuer les\n"
+"Marques avec votre distribution binaire ou source et vous devez supprimer toutes\n"
+"les références aux Marques contenues dans votre distribution. Toute autre utilisation ou\n"
+"distribution des Marques nécessite le consentement écrit préalable de VMware.\n"
+"Toutes les autres marques et noms mentionnés sont des marques déposées par leurs\n"
+"propriétaires respectifs.\n"
+"\n"
+"Copyright © 1998-2010 VMware, Inc. Tous droits réservés.\n"
+"Ce produit est protégé par les lois américaines et internationales sur le copyright et\n"
+"la propriété intellectuelle.\n"
+"Les produits logiciels de VMware sont protégés par un ou plusieurs brevets répertoriés à l'adresse\n"
+"%s\n"
+"\n"
+
+#. TRANSLATORS: Ignore this; we will localize with appropriate URL.
+#: ../gtk/prefs.cc:818
+msgid "http://www.vmware.com/go/patents"
+msgstr "http://www.vmware.com/go/patents-fr"
+
+#: ../gtk/prefs.cc:885
+msgid "Password: "
+msgstr "Mot de passe: "
+
+#: ../gtk/prefs.cc:957
+#, c-format
+msgid "Unknown protocol: %s\n"
+msgstr "Protocole inconnu: %s\n"
+
+#: ../gtk/rdesktop.cc:216
+msgid "Required GStreamer plugins could not be found.  Please check that your path "
+"is set properly."
+msgstr "Plug-ins GStreamer nécessaires introuvables. Vérifiez que le chemin d'accès est correctement paramétré."
+
+#: ../gtk/rmks.cc:120
+#, c-format
+msgid "An error was encountered with the remote desktop connection: %s."
+msgstr "Une erreur est survenue avec la connexion de poste de travail distant: %s."
+
+#: ../gtk/rmks.cc:133
+msgid "\n"
+"\n"
+"You may be able to connect to this desktop by clicking cancel and selecting "
+"a different protocol."
+msgstr "\n"
+"\n"
+"Vous pouvez vous connecter à ce poste de travail en cliquant sur Annuler et en sélectionnant "
+"un protocole différent."
+
+#: ../gtk/rmks.cc:142
+msgid "An unknown error was encountered with the remote desktop connection."
+msgstr "Une erreur inconnue est survenue avec la connexion de poste de travail distant."
+
+#: ../gtk/scCertDetailsDlg.cc:99
+msgid "<b>This certificate has been verified for the following uses:</b>"
+msgstr "<b>Ce certificat a été vérifié pour les utilisations suivantes:</b>"
+
+#: ../gtk/scCertDetailsDlg.cc:102
+msgid "SSL Client Certificate"
+msgstr "Certificat de client SSL"
+
+#: ../gtk/scCertDetailsDlg.cc:103
+msgid "SSL Server Certificate"
+msgstr "Certificat de serveur SSL"
+
+#: ../gtk/scCertDetailsDlg.cc:104
+msgid "Status Responder Certificate"
+msgstr "Certificat du répondeur d'état"
+
+#: ../gtk/scCertDetailsDlg.cc:114
+msgid "<b>Issued To</b>"
+msgstr "<b>Délivré à</b>"
+
+#: ../gtk/scCertDetailsDlg.cc:125
+msgid "Serial Number:"
+msgstr "Numéro de série:"
+
+#: ../gtk/scCertDetailsDlg.cc:128
+msgid "<b>Issued By</b>"
+msgstr "<b>Délivré par</b>"
+
+#: ../gtk/scCertDetailsDlg.cc:133
+msgid "<b>Validity</b>"
+msgstr "<b>Validité</b>"
+
+#: ../gtk/scCertDetailsDlg.cc:135
+msgid "Not Valid Before:"
+msgstr "Non valide avant:"
+
+#: ../gtk/scCertDetailsDlg.cc:138
+msgid "Not Valid After:"
+msgstr "Non valide après:"
+
+#: ../gtk/scCertDetailsDlg.cc:141
+msgid "<b>Fingerprints</b>"
+msgstr "<b>Empreintes digitales</b>"
+
+#: ../gtk/scCertDetailsDlg.cc:150
+msgid "SHA1 Fingerprint:"
+msgstr "Empreinte digitale SHA1:"
+
+#: ../gtk/scCertDetailsDlg.cc:157
+msgid "MD5 Fingerprint:"
+msgstr "Empreinte digitale MD5:"
+
+#.
+#. * Translators: this is just the format of a label's text; the
+#. * actual text of the label is translated elsewhere.
+#.
+#: ../gtk/scCertDetailsDlg.cc:433
+#, c-format
+msgid "%s:"
+msgstr "%s:"
+
+#: ../gtk/scCertDetailsDlg.cc:472
+msgid "Common Name"
+msgstr "Nom commun"
+
+#: ../gtk/scCertDetailsDlg.cc:474
+msgid "Country"
+msgstr "Pays"
+
+#: ../gtk/scCertDetailsDlg.cc:476
+msgid "Locality"
+msgstr "Ville"
+
+#: ../gtk/scCertDetailsDlg.cc:478
+msgid "State or Province"
+msgstr "Département ou région"
+
+#: ../gtk/scCertDetailsDlg.cc:480
+msgid "Organization"
+msgstr "Organisation"
+
+#: ../gtk/scCertDetailsDlg.cc:482
+msgid "Organizational Unit"
+msgstr "Unité d'organisation"
+
+#: ../gtk/scCertDetailsDlg.cc:484
+msgid "Email Address"
+msgstr "Adresse électronique"
+
+#: ../gtk/scCertDetailsDlg.cc:486
+msgid "Given Name"
+msgstr "Nom donné"
+
+#: ../gtk/scCertDetailsDlg.cc:488
+msgid "Surname"
+msgstr "Nom"
+
+#: ../gtk/scCertDetailsDlg.cc:490
+msgid "Domain Component"
+msgstr "Composant de domaine"
+
+#: ../gtk/scCertDlg.cc:66
+msgid "Choo_se a certificate:"
+msgstr "Choi_sir un certificat:"
+
+#: ../gtk/scCertDlg.cc:142
+#, c-format
+msgid "<b>%s</b>\n"
+"<span size=\"smaller\">Issued by %s</span>"
+msgstr "<b>%s</b>\n"
+"<span size=\"smaller\">Délivré par %s</span>"
+
+#: ../gtk/scInsertPromptDlg.cc:113
+msgid "A smart card has been inserted."
+msgstr "Une carte à puce a été insérée."
+
+#: ../gtk/scInsertPromptDlg.cc:114
+msgid "Insert a smart card to continue."
+msgstr "Insérez une carte à puce pour continuer."
+
+#: ../gtk/scPinDlg.cc:75
+#: ../gtk/securIDDlg.cc:189
+msgid "_PIN:"
+msgstr "_Code PIN:"
+
+#: ../gtk/scPinDlg.cc:110
+#, c-format
+msgid "A PIN is required to log in using the token named %s."
+msgstr "Un code PIN est nécessaire pour se connecter avec le jeton nommé %s."
+
+#: ../gtk/securIDDlg.cc:143
+msgid "Enter your RSA SecurID user name and passcode."
+msgstr "Saisissez votre nom d'utilisateur et votre code de passe RSA SecurID."
+
+#: ../gtk/securIDDlg.cc:150
+msgid "_Passcode:"
+msgstr "C_ode secret:"
+
+#: ../gtk/securIDDlg.cc:159
+msgid "Wait until the next tokencode appears on your RSA SecurID token, then enter "
+"it."
+msgstr "Patientez jusqu'à l'affichage du code de jeton suivant sur votre jeton RSA SecurID, puis entrez-le."
+
+#: ../gtk/securIDDlg.cc:167
+msgid "_Tokencode:"
+msgstr "Co_de de jeton:"
+
+#: ../gtk/securIDDlg.cc:177
+msgid "Enter a new RSA SecurID PIN."
+msgstr "Entrez un nouveau code PIN RSA SecurID."
+
+#: ../gtk/securIDDlg.cc:179
+msgid "Enter a new RSA SecurID PIN or accept the system-generated PIN."
+msgstr "Entrez un nouveau code PIN RSA SecurID ou acceptez le code PIN généré par le système."
+
+#: ../gtk/securIDDlg.cc:182
+msgid "Accept the system-generated RSA SecurID PIN."
+msgstr "Acceptez le code PIN RSA SecurID généré par le système."
+
+#: ../gtk/securIDDlg.cc:194
+msgid "Con_firm PIN:"
+msgstr "Con_firmer le code PIN:"
+
+#: ../gtk/window.cc:370
+msgid "_View Certificate"
+msgstr "_Afficher le certificat"
+
+#: ../gtk/window.cc:851
+#: ../gtk/window.cc:878
+#: ../gtk/window.cc:907
+msgid "_Authenticate"
+msgstr "_Authentifier"
+
+#: ../gtk/window.cc:939
+msgid "_Login"
+msgstr "_Connexion"
+
+#: ../gtk/window.cc:1010
+msgid "Ch_ange"
+msgstr "Mo_difier"
+
+#: ../gtk/window.cc:1373
+msgid "The PINs do not match."
+msgstr "Les codes PIN ne correspondent pas."
+
+#: ../gtk/window.cc:1439
+msgid "The passwords do not match."
+msgstr "Les mots de passe ne correspondent pas."
+
+#: ../gtk/window.cc:1520
+msgid "The secure connection to the View Server has unexpectedly disconnected."
+msgstr "La connexion sécurisée à View Server s'est déconnectée de façon inattendue."
+
+#: ../gtk/window.cc:1523
+#, c-format
+msgid "\n"
+"\n"
+"Reason: %s."
+msgstr "\n"
+"\n"
+"Raison: %s."
+
+#: ../gtk/window.cc:1605
+#, c-format
+msgid "Unable to load image '%s': %s\n"
+msgstr "Impossible de charger l'image '%s': %s\n"
+
+#: ../gtk/window.cc:1751
+#, c-format
+msgid "Unable to load background image '%s': %s\n"
+msgstr "Impossible de charger l'image d'arrière-plan '%s': %s\n"
+
+#: ../gtk/window.cc:2167
+msgid "_Retry"
+msgstr "_Réessayer"
+
+#: ../gtk/window.cc:2413
+#, c-format
+msgid "You are connected to %s.\n"
+"\n"
+"If this desktop is unresponsive, click Disconnect."
+msgstr "Vous êtes connecté à %s.\n"
+"\n"
+"Si ce poste de travail ne répond pas, cliquez sur Déconnecter."
+
+#: ../gtk/window.cc:2426
+msgid "Send C_trl-Alt-Del"
+msgstr "Envoyer C_trl-Alt-Suppr"
+
+#: ../gtk/window.cc:2427
+msgid "_Disconnect"
+msgstr "_Déconnecter"
+
+#: ../gtk/window.cc:2740
+msgid "Your smart card or token was removed, so you have been logged out of the "
+"View Connection Server."
+msgstr "Votre carte à puce ou votre jeton a été retiré, votre session a donc été fermée sur le"
+"serveur View Connection Server."
+
+#: ../gtk/windowSizeDlg.cc:66
+msgid "_Select"
+msgstr "_Sélectionner"
+
+#: ../gtk/windowSizeDlg.cc:79
+msgid "Select a window size:"
+msgstr "Sélectionnez une taille de fenêtre:"
+
+#: ../gtk/windowSizeDlg.cc:95
+msgid "Small"
+msgstr "Petite"
+
+#: ../gtk/windowSizeDlg.cc:103
+msgid "Large"
+msgstr "Grande"
+
+#: ../protocols.cc:38
+msgid "Microsoft RDP"
+msgstr "Microsoft RDP"
+
+#: ../protocols.cc:39
+msgid "Microsoft _RDP"
+msgstr "Microsoft _RDP"
+
+#: ../protocols.cc:42
+msgid "HP RGS"
+msgstr "HP RGS"
+
+#: ../protocols.cc:43
+msgid "HP R_GS"
+msgstr "HP R_GS"
+
+#: ../protocols.cc:46
+msgid "PCoIP"
+msgstr "PCoIP"
+
+#: ../protocols.cc:47
+msgid "_PCoIP"
+msgstr "_PCoIP"
+
+#: ../protocols.cc:50
+msgid "Local"
+msgstr "Local"
+
+#: ../protocols.cc:51
+msgid "_Local"
+msgstr "_Local"
+
+#: ../protocols.cc:115
+#: ../protocols.cc:178
+msgid "Unknown Protocol"
+msgstr "Protocole inconnu"
+
+#: ../protocols.cc:126
+#: ../protocols.cc:189
+msgid "Invalid Protocol"
+msgstr "Protocole non valide"
+
+#: ../protocols.cc:152
+#: ../protocols.cc:215
+#, c-format
+msgid "Unknown Protocol (%s)"
+msgstr "Protocole inconnu (%s)"
+
+#: ../tunnel.cc:160
+msgid "Could not find secure tunnel executable.\n"
+msgstr "Impossible de trouver un exécutable de tunnel sécurisé.\n"
+
+#: ../tunnel.cc:236
+#, c-format
+msgid "Message from View Server: %s"
+msgstr "Message de View Server: %s"
+
+#: ../tunnel.cc:241
+#, c-format
+msgid "Error from View Server: %s"
+msgstr "Erreur de View Server: %s"
+
+#: ../tunnel.cc:245
+#, c-format
+msgid "Couldn't resolve tunnel address '%s'"
+msgstr "Impossible de résoudre l'adresse de tunnel '%s'"
+
+#: ../usb.cc:112
+#, c-format
+msgid "%s was not found; disabling USB redirection.\n"
+msgstr "%s introuvable ; désactivation de la redirection USB.\n"
+
+#: ../util.cc:1175
+#, c-format
+msgid "File '%s' could not be created: %s\n"
+msgstr "Le fichier '%s' n'a pas pu être créé: %s\n"
+
+#: ../util.cc:1179
+#, c-format
+msgid "Could not change mode of file '%s': %s\n"
+msgstr "Impossible de modifier le mode de file '%s': %s\n"
+
+#~ msgid "_Connect"
+#~ msgstr "_Se connecter"
+
+#~ msgid "Teradici PCoIP"
+#~ msgstr "Teradici PCoIP"

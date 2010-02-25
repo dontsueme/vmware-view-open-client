@@ -1,5 +1,5 @@
-VMware View Open Client 4.0.0
-Build 215529, 2009-12-08
+VMware View Open Client 4.0.1
+Build 235010, 2010-02-18
 
 VMware is a registered trademark or trademark (the "Marks") of VMware, Inc.
 in the United States and/or other jurisdictions and is not licensed to you
@@ -17,26 +17,26 @@ distribution of the Marks requires the prior written consent of VMware.
 All other marks and names mentioned herein may be trademarks of their
 respective companies.
 
-Copyright (C) 1998-2009 VMware, Inc. All rights reserved. This product
-is protected by U.S. and international copyright and intellectual
-property laws. VMware software products are protected by one or more
-U.S. Patent Numbers 6,075,938, 6,397,242, 6,496,847, 6,704,925,
-6,711,672, 6,725,289, 6,735,601, 6,785,886, 6,789,156, 6,795,966,
-6,880,022, 6,944,699, 6,961,806, 6,961,941, 7,069,413, 7,082,598,
-7,089,377, 7,111,086, 7,111,145, 7,117,481, 7,149,843, 7,155,558,
-7,222,221, 7,260,815, 7,260,820, 7,269,683, 7,275,136, 7,277,998,
-7,277,999, 7,278,030, 7,281,102, 7,290,253, 7,343,599, 7,356,679,
-7,409,487, 7,412,492, 7,412,702, 7,424,710, 7,428,636, 7,433,951,
-7,434,002, 7,447,854, 7,475,002, 7,478,173, 7,478,180, 7,478,218,
-7,478,388, 7,484,208, 7,487,313, 7,487,314, 7,490,216, 7,500,048,
-7,506,122, 7,516,453, 7,529,897, 7,555,747, 7,577,722, 7,581,064,
-7,590,982, 7,594,111, 7,603,704, 7,606,868; patents pending.
+Copyright (C) 1998-2010 VMware, Inc. All rights reserved. VMware
+software products are protected by one or more U.S. Patent Numbers
+6,075,938, 6,397,242, 6,496,847, 6,704,925, 6,711,672, 6,725,289,
+6,735,601, 6,785,886, 6,789,156, 6,795,966, 6,880,022, 6,944,699,
+6,961,806, 6,961,941, 7,069,413, 7,082,598, 7,089,377, 7,111,086,
+7,111,145, 7,117,481, 7,149,843, 7,155,558, 7,222,221, 7,260,815,
+7,260,820, 7,269,683, 7,275,136, 7,277,998, 7,277,999, 7,278,030,
+7,281,102, 7,290,253, 7,343,599, 7,356,679, 7,409,487, 7,412,492,
+7,412,702, 7,424,710, 7,428,636, 7,433,951, 7,434,002, 7,447,854,
+7,475,002, 7,478,173, 7,478,180, 7,478,218, 7,478,388, 7,484,208,
+7,487,313, 7,487,314, 7,490,216, 7,500,048, 7,506,122, 7,516,453,
+7,529,897, 7,555,747, 7,577,722, 7,581,064, 7,590,982, 7,594,111,
+7,603,704, 7,606,868, 7,620,766, 7,620,955, 7,624,240, 7,636,831;
+patents pending.
 
 
 WELCOME
 -------
 
-Welcome to the release of VMware View Open Client 4.0.0.
+Welcome to the release of VMware View Open Client 4.0.1.
 
 For VMware View partners, official builds of VMware View Client are
 available through VMware Partner Engineering. If you don't feel
@@ -61,7 +61,7 @@ STATUS
 ------
 
 This is the General Availability release of VMware View Open Client
-4.0.0.
+4.0.1.
 
 
 CONTACT
@@ -135,12 +135,12 @@ VMware View Open Client is distributed in the following forms:
 
 To use the binary tar gzip, simply unpack the tarball:
 
-$ tar zxf VMware-view-open-client-4.0.0-215529.tar.gz
+$ tar zxf VMware-view-open-client-4.0.1-235010.tar.gz
 
 To run, navigate to the 'bin' subdirectory and run directly from the
 command line:
 
-$ cd VMware-view-open-client-4.0.0-215529/bin
+$ cd VMware-view-open-client-4.0.1-235010/bin
 $ ./vmware-view
 
 You can also copy files from the tarball into system directories:
@@ -204,19 +204,61 @@ rdesktop 1.5.0 or later, and passing --enable-smartcard to rdesktop's
 configure.  Consult the rdesktop documentation for more information.
 
 
+KNOWN ISSUES IN THIS RELEASE
+----------------------------
+
+*) In certain cases, an "access denied" error may be seen when trying to
+   reconnect to a desktop that has been reset or powered off from the
+   administrative UI (bz 330941)
+*) The client may not time out when attempting to reach an unreachable
+   broker (bz 322204, bz 325803)
+*) The client may exit with SEGV (signal 11) after resetting a desktop
+   (bz 407225)
+*) When using smart cards, the view client may hang when quitting
+   (bz 407231)
+*) The status of a checked out desktop may be displayed as "Available"
+   (bz 507211)
+
+
 ISSUES RESOLVED IN THIS RELEASE
 -------------------------------
 
 "gc" denotes issues reported on code.google.com.
 "bz" denotes bugs filed in VMware's bugzilla.
 
-Version 4.0.0 build 215529:
+Version 4.0.1 build 235010:
 
- * Resolved duplicate mnemonics on connection dialog (bz 490680)
+*) Linux: ARM support added
+*) Linux: Administrators can now override preference settings, and set
+   system-wide defaults using
+   /etc/vmware/view-{mandatory,default}-config
+*) Linux: Fix 64-bit Intel architecture name for Debian packages (gc 50)
+*) Linux: Some error messages from the tunnel server were not
+   translated (bz 475239)
+*) Linux/Mac: Updated open-vm-tools files to 2009.10.15-201664
+*) Linux/Mac: Username was not disabled in some cases when using RSA
+   authentication (bz 481862, 483499)
+*) Linux/Mac: 'Retry' and 'Cancel' buttons don't work after network
+   interruption (bz 474562)
+*) Mac: Ethernet address is now correctly sent (bz 402474)
+*) Mac: Display a dialog when MS RDC 2 is missing (bz 472870,474612)
+*) Mac: Don't allow editing of disclaimer (bz 475277)
+*) Mac: Quit when the window is closed (bz 410517)
+*) Mac: Reset/Log Off menu items could be enabled while a desktop is
+   resetting (bz 491802)
+*) Mac: Set the correct application name in menu items (bz 410513)
+*) Mac: Crash connecting to some HTTPS servers on 10.6 (bz 491794)
+*) Mac: Reset dialog when remote desktop session ends (bz 472847)
+*) Mac: Fix certificate authentication (bz 474598)
+*) Mac: 'make dmg' should now work properly
 
 
 ISSUES RESOLVED IN PREVIOUS RELEASES
 ------------------------------------
+
+Version 4.0.0 build 215529 (GA):
+
+*) Resolved duplicate mnemonics on connection dialog (bz 490680)
 
 Version 4.0.0 build 207079 (RC 1):
 
@@ -309,21 +351,6 @@ Version 2.1.0:
 *) Tunnel client assert when restarting connected desktop (bz 325330)
 *) Window manager key bindings are not inhibited on Novell SLETC (bz 313232)
 
-
-KNOWN ISSUES IN THIS RELEASE
-----------------------------
-
-*) In certain cases, an "access denied" error may be seen when trying to
-   reconnect to a desktop that has been reset or powered off from the
-   administrative UI (bz 330941)
-*) The client may not time out when attempting to reach an unreachable
-   broker (bz 322204, bz 325803)
-*) The client may exit with SEGV (signal 11) after resetting a desktop
-   (bz 407225)
-*) When using smart cards, the view client may hang when quitting
-   (bz 407231)
-*) 'Retry' and 'Cancel' buttons don't work after network interruption
-   (bz 474562)
 
 TROUBLESHOOTING
 ---------------

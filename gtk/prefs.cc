@@ -37,6 +37,7 @@
 
 
 #include "prefs.hh"
+#include "protocols.hh"
 
 
 extern "C" {
@@ -47,9 +48,12 @@ extern "C" {
 
 #define VMWARE_HOME_DIR "~/.vmware"
 #define PREFERENCES_FILE_NAME VMWARE_HOME_DIR"/view-preferences"
+
+#define VMWARE_SYS_DIR "/etc/vmware"
+#define SYSTEM_PREFS_FILE_NAME VMWARE_SYS_DIR"/view-default-config"
+#define MANDATORY_PREFS_FILE_NAME VMWARE_SYS_DIR"/view-mandatory-config"
+
 #define MAX_BROKER_MRU 10
-
-
 #define VIEW_DEFAULT_MMR_PATH "/usr/lib/mmr"
 #define VMWARE_VIEW "vmware-view"
 
@@ -90,11 +94,17 @@ Prefs::Prefs()
    ASSERT(!mPrefPath.empty());
    free(prefPath);
 
+   mSysDict = Dictionary_Create();
+   ASSERT_MEM_ALLOC(mSysDict);
+
    mDict = Dictionary_Create();
    ASSERT_MEM_ALLOC(mDict);
 
    mOptDict = Dictionary_Create();
    ASSERT_MEM_ALLOC(mOptDict);
+
+   mMandatoryDict = Dictionary_Create();
+   ASSERT_MEM_ALLOC(mMandatoryDict);
 
    Msg_Reset(true);
    if (!Util_MakeSureDirExistsAndAccessible(VMWARE_HOME_DIR, 0755)) {
@@ -103,7 +113,9 @@ Prefs::Prefs()
    }
 
    // This may fail if the file doesn't exist yet.
+   Dictionary_Load(mSysDict, SYSTEM_PREFS_FILE_NAME, DICT_NOT_DEFAULT);
    Dictionary_Load(mDict, mPrefPath.c_str(), DICT_NOT_DEFAULT);
+   Dictionary_Load(mMandatoryDict, MANDATORY_PREFS_FILE_NAME, DICT_NOT_DEFAULT);
 
    if (GetDefaultUser().empty()) {
       const char *user = g_get_user_name();
@@ -135,7 +147,10 @@ Prefs::Prefs()
 
 Prefs::~Prefs()
 {
+   Dictionary_Free(mMandatoryDict);
+   Dictionary_Free(mOptDict);
    Dictionary_Free(mDict);
+   Dictionary_Free(mSysDict);
 
    if (sPrefs == this) {
       sPrefs = NULL;
@@ -174,6 +189,45 @@ Prefs::GetPrefs()
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Prefs::GetDictionaryForKey --
+ *
+ *      Gets the appropriate dictionary for reading the value of a
+ *      given key.
+ *
+ *      Dictionaries are searched in a way which allows system admins
+ *      to enforce certain options.
+ *
+ * Results:
+ *      The first dictionary containing a value for key in our "path."
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Dictionary *
+Prefs::GetDictionaryForKey(Util::string key) // IN
+   const
+{
+#define CHECK_DICT(dict)                                \
+   if (Dictionary_IsDefined(dict, key.c_str())) {       \
+      return dict;                                      \
+   }
+
+   CHECK_DICT(mMandatoryDict);
+   CHECK_DICT(mOptDict);
+   CHECK_DICT(mDict);
+
+#undef CHECK_DICT
+
+   return mSysDict;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Prefs::GetString --
  *
  *      Private helper to wrap Dict_GetString.
@@ -193,11 +247,8 @@ Prefs::GetString(Util::string key,        // IN
    const
 {
    char *val = NULL;
-   if (Dictionary_IsDefined(mOptDict, key.c_str())) {
-      val = Dict_GetString(mOptDict, defaultVal.c_str(), key.c_str());
-   } else {
-      val = Dict_GetString(mDict, defaultVal.c_str(), key.c_str());
-   }
+   val = Dict_GetString(GetDictionaryForKey(key), defaultVal.c_str(),
+                        key.c_str());
    Util::string retVal = val;
    free(val);
    return retVal;
@@ -225,9 +276,7 @@ Prefs::GetBool(Util::string key, // IN
                bool defaultVal)  // IN
    const
 {
-   return Dictionary_IsDefined(mOptDict, key.c_str())
-      ? Dict_GetBool(mOptDict, defaultVal, key.c_str())
-      : Dict_GetBool(mDict, defaultVal, key.c_str());
+   return Dict_GetBool(GetDictionaryForKey(key), defaultVal, key.c_str());
 }
 
 
@@ -252,9 +301,7 @@ Prefs::GetInt(Util::string key, // IN
               int32 defaultVal) // IN
    const
 {
-   return Dictionary_IsDefined(mOptDict, key.c_str())
-      ? Dict_GetLong(mOptDict, defaultVal, key.c_str())
-      : Dict_GetLong(mDict, defaultVal, key.c_str());
+   return Dict_GetLong(GetDictionaryForKey(key), defaultVal, key.c_str());
 }
 
 
@@ -490,6 +537,7 @@ PREF_STRING(CUSTOM_LOGO,      CustomLogo,      allowCustomLogo,      customLogo,
 PREF_STRING(DEFAULT_BROKER,   DefaultBroker,   allowDefaultBroker,   defaultBroker, "")
 PREF_STRING(DEFAULT_DESKTOP,  DefaultDesktop,  allowDefaultDesktop,  defaultDesktop, "")
 PREF_STRING(DEFAULT_DOMAIN,   DefaultDomain,   allowDefaultDomain,   defaultDomain, "")
+PREF_STRING(DEFAULT_PROTOCOL, DefaultProtocol, allowDefaultProtocol, defaultProtocol, "")
 PREF_STRING(DEFAULT_USER,     DefaultUser,     allowDefaultUser,     defaultUser,   "")
 PREF_STRING(MMR_PATH,         MMRPath,         allowMMRPath,         mmrPath, "")
 PREF_STRING(RDESKTOP_OPTIONS, RDesktopOptions, allowRDesktopOptions, rdesktopOptions, "")
@@ -672,6 +720,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    char *optRDesktop = NULL;
    char **optUsb = NULL;
    gboolean optAllowWMBindings = false;
+   char *optProtocol = NULL;
 
    GOptionEntry optEntries[] = {
       { "keep-wm-bindings", 'K', 0, G_OPTION_ARG_NONE, &optAllowWMBindings,
@@ -705,6 +754,9 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
         N_("<rdesktop options>") },
       { "usb", '\0', 0, G_OPTION_ARG_STRING_ARRAY, &optUsb,
         N_("Options for USB forwarding."), N_("<usb options>") },
+      { "protocol", '\0', 0, G_OPTION_ARG_STRING, &optProtocol,
+        N_("Preferred connection protocol [RDP|PCOIP|RGS|localvm]"),
+        N_("<protocol name>") },
       { NULL }
    };
 
@@ -757,7 +809,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
 "distribution of the Marks requires the prior written consent of VMware.\n"
 "All other marks and names mentioned herein may be trademarks of their\n"
 "respective companies.\n\n"
-"Copyright © 1998-2009 VMware, Inc. All rights reserved.\n"
+"Copyright © 1998-2010 VMware, Inc. All rights reserved.\n"
 "This product is protected by U.S. and international copyright and\n"
 "intellectual property laws.\n"
 "VMware software products are protected by one or more patents listed at\n%s\n\n"),
@@ -895,6 +947,17 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       Dict_SetString(mOptDict, optRDesktop, KEY_RDESKTOP_OPTIONS);
    }
    g_free(optRDesktop);
+
+   if (optProtocol && GetBool(KEY_ALLOW_DEFAULT_PROTOCOL, true)) {
+      Protocols::ProtocolType proto = Protocols::GetProtocolFromName(optProtocol);
+      if (proto != Protocols::UNKNOWN) {
+         Dict_SetString(mOptDict, Protocols::GetName(proto).c_str(),
+                        KEY_DEFAULT_PROTOCOL);
+      } else {
+         Util::UserWarning(_("Unknown protocol: %s\n"), optProtocol);
+      }
+   }
+   g_free(optProtocol);
 
    if (optAllowWMBindings && GetBool(KEY_ALLOW_WM_BINDINGS, true)) {
       Dict_SetBool(mOptDict, optAllowWMBindings, KEY_ALLOW_WM_BINDINGS);

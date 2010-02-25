@@ -878,6 +878,7 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
     * the issue.
     */
    GSList *group = NULL;
+   bool setDefault = false;
    std::vector<Util::string> protocols = desktop->GetProtocols();
    for (std::vector<Util::string>::reverse_iterator iter = protocols.rbegin();
         iter != protocols.rend(); iter++) {
@@ -886,13 +887,20 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
       gtk_widget_show(item);
       gtk_menu_shell_prepend(GTK_MENU_SHELL(submenu), item);
       group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
+      bool active = !setDefault && *iter == desktop->GetProtocol();
 
       // XXX: Need checks to make sure these are actually installed
       switch (Protocols::GetProtocolFromName(*iter)) {
       case Protocols::RDP:
       case Protocols::PCOIP:
-         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
-                                        *iter == desktop->GetProtocol());
+         if (*iter == Prefs::GetPrefs()->GetDefaultProtocol()) {
+            if (!active) {
+               active = true;
+               desktop->SetProtocol(*iter);
+            }
+            setDefault = true;
+         }
+         gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), active);
          g_signal_connect(G_OBJECT(item), "toggled",
                           G_CALLBACK(OnProtocolSelected), desktop);
          break;

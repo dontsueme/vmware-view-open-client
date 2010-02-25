@@ -19,4 +19,4 @@
 noinst_LIBRARIES += libPanicDefault.a
 
 libPanicDefault_a_SOURCES =
-libPanicDefault_a_SOURCES += lib/open-vm-tools/panicDefault/panic.c
+libPanicDefault_a_SOURCES += lib/open-vm-tools/panicDefault/panicDefault.c

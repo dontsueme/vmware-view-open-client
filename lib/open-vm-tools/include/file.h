@@ -49,8 +49,8 @@ extern "C"{
 # ifdef __FreeBSD__
 #  include <sys/param.h> // For __FreeBSD_version
 # endif
-# if defined(__FreeBSD__) && __FreeBSD_version >= 503000
-#  include <syslimits.h>  // PATH_MAX
+# if defined(__FreeBSD__)
+#  include <sys/syslimits.h>  // PATH_MAX
 # else 
 #  include <limits.h>  // PATH_MAX
 # endif 
@@ -58,6 +58,14 @@ extern "C"{
 #endif
 
 #define FILE_SEARCHPATHTOKEN ";"
+
+
+/*
+ * Opaque, platform-specific stucture for supporting the directory walking API.
+ */
+
+typedef struct WalkDirContextImpl WalkDirContextImpl;
+typedef const WalkDirContextImpl *WalkDirContext;
 
 #if defined(__APPLE__)
 typedef enum {
@@ -80,6 +88,9 @@ EXTERN char *FileMacos_DiskDevToDiskName(char const *bsdDiskDev);
 
 EXTERN char *FileMacos_SliceDevToSliceUUID(char const *bsdSliceDev);
 EXTERN char *FileMacos_SliceUUIDToSliceDev(char const *uuid);
+#elif defined VMX86_SERVER
+EXTERN int File_GetVMFSBlockSize(ConstUnicode pathName, uint32 *blockSize);
+EXTERN int File_GetVMFSfsType(ConstUnicode pathName, char **fsType);
 #endif
 
 EXTERN Bool File_Exists(ConstUnicode pathName);
@@ -103,6 +114,9 @@ EXTERN void File_GetPathName(ConstUnicode fullPath,
 
 EXTERN Unicode File_StripSlashes(ConstUnicode path);
 
+EXTERN Unicode File_PathJoin(ConstUnicode dirName,
+                             ConstUnicode baseName);
+
 EXTERN Bool File_CreateDirectory(ConstUnicode pathName);
 EXTERN Bool File_EnsureDirectory(ConstUnicode pathName);
 
@@ -115,7 +129,14 @@ EXTERN Bool File_DeleteDirectoryTree(ConstUnicode pathName);
 EXTERN int File_ListDirectory(ConstUnicode pathName,
                               Unicode **ids);
 
-EXTERN Bool File_IsWritableDir(ConstUnicode dirName);
+/*
+ * Simple file-system walk.
+ */
+
+EXTERN WalkDirContext File_WalkDirectoryStart(ConstUnicode parentPath);
+EXTERN Bool File_WalkDirectoryNext(WalkDirContext context,
+                                   Unicode *path);
+EXTERN void File_WalkDirectoryEnd(WalkDirContext context);
 
 EXTERN Bool File_IsDirectory(ConstUnicode pathName);
 
@@ -135,7 +156,8 @@ EXTERN Unicode File_FullPath(ConstUnicode pathName);
 
 EXTERN Bool File_IsFullPath(ConstUnicode pathName);
 
-EXTERN uint64 File_GetFreeSpace(ConstUnicode pathName);
+EXTERN uint64 File_GetFreeSpace(ConstUnicode pathName,
+                                Bool doNotAscend);
 
 EXTERN uint64 File_GetCapacity(ConstUnicode pathName);
 
@@ -168,10 +190,21 @@ EXTERN Bool File_SetTimes(ConstUnicode pathName,
                           VmTimeType writeTime,
                           VmTimeType attrChangeTime);
 
+EXTERN Bool File_GetFilePermissions(ConstUnicode pathName,
+                                   int *mode);
+
+EXTERN Bool File_SetFilePermissions(ConstUnicode pathName,
+                                    int mode);
+
 EXTERN Bool File_SupportsFileSize(ConstUnicode pathName,
                                   uint64 fileSize);
 
 EXTERN Bool File_SupportsLargeFiles(ConstUnicode pathName);
+
+EXTERN char *File_MapPathPrefix(const char *oldPath,
+                                const char **oldPrefixes,
+                                const char **newPrefixes,
+                                size_t numPrefixes);
 
 EXTERN Bool File_CopyFromFdToFd(FileIODescriptor src, 
                                 FileIODescriptor dst);

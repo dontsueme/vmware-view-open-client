@@ -38,8 +38,11 @@
     CdkDebugAssert(componentNameString, assertionString,                \
                    exceptionLabelString, errorString, fileName, lineNumber, errorCode)
 
-void CdkDebugAssert(const char *componentNameString, const char *assertionString, 
-                    const char *exceptionLabelString, const char *errorString, 
+#ifdef __cplusplus
+extern "C"
+#endif
+void CdkDebugAssert(const char *componentNameString, const char *assertionString,
+                    const char *exceptionLabelString, const char *errorString,
                     const char *fileName, long lineNumber, int errorCode);
 
 #endif CDK_DEBUG_ASSERT_H

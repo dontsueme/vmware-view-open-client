@@ -180,9 +180,9 @@ Desktop::SetConnectionState(ConnectionState state) // IN
  */
 
 void
-Desktop::Connect(Util::AbortSlot onAbort,   // IN
-                 Util::DoneSlot onDone,     // IN
-                 Util::ClientInfoMap &info) // IN
+Desktop::Connect(Util::AbortSlot onAbort,         // IN
+                 Util::DoneSlot onDone,           // IN
+                 const Util::ClientInfoMap &info) // IN
 {
    ASSERT(mConnectionState == STATE_DISCONNECTED);
    ASSERT(!GetID().empty());

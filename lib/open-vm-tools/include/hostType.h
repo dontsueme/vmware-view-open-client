@@ -32,6 +32,7 @@
 
 #define INCLUDE_ALLOW_USERLEVEL
 #define INCLUDE_ALLOW_VMCORE
+#define INCLUDE_ALLOW_VMKERNEL
 #include "includeCheck.h"
 
 #include "vm_basic_types.h"

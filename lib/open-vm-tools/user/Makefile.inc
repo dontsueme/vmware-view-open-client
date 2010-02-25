@@ -19,8 +19,6 @@
 noinst_LIBRARIES += libUser.a
 
 libUser_a_SOURCES =
-libUser_a_SOURCES += lib/open-vm-tools/user/hostinfo.c
-libUser_a_SOURCES += lib/open-vm-tools/user/hostinfoPosix.c
 libUser_a_SOURCES += lib/open-vm-tools/user/util.c
 libUser_a_SOURCES += lib/open-vm-tools/user/utilPosix.c
 

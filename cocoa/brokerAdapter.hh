@@ -60,7 +60,8 @@ public:
    // State change notifications
    virtual void RequestBroker();
    virtual void RequestDisclaimer(const Util::string &disclaimer);
-   virtual void RequestPasscode(const Util::string &username);
+   virtual void RequestPasscode(const Util::string &username,
+                                bool userSelectable);
    virtual void RequestNextTokencode(const Util::string &username);
    virtual void RequestPinChange(const Util::string &pin,
                                  const Util::string &message,
@@ -75,7 +76,7 @@ public:
    // virtual void RequestTransition(const Util::string &message);
    virtual void RequestLaunchDesktop(Desktop *desktop);
 
-   virtual Broker::CertAuthInfo GetCertificateAndKey(SSL *ssl);
+   virtual Broker::CertAuthInfo GetCertAuthInfo(SSL *ssl);
    virtual void TunnelDisconnected(Util::string disconnectReason);
    // virtual void UpdateDesktops();
 

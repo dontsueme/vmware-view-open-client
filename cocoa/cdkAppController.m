@@ -29,12 +29,18 @@
  */
 
 #import "cdkAppController.h"
+#import "cdkRdc.h"
+#import "cdkString.h"
 #import "cdkWindowController.h"
 
 
 @interface CdkAppController () // Private setters
 @property(readwrite, retain) CdkWindowController *windowController;
 @end // @interface CdkAppController ()
+
+
+static NSString *const RDC_URL =
+   @"http://www.microsoft.com/downloads/details.aspx?FamilyID=cd9ec77e-5b07-4332-849f-046611458871";
 
 
 @implementation CdkAppController
@@ -71,21 +77,62 @@
  *
  * -[CdkAppController awakeFromNib] --
  *
- *      Awake handler.  Prompt the user for a server.
+ *      Awake handler.  If RDC is available, prompt the user for a
+ *      broker.  Otherwise, display an error.
  *
  * Results:
  *      None
  *
  * Side effects:
- *      Broker screen is displayed.
+ *      Broker screen is displayed, or an error if RDC is not found.
  *
  *-----------------------------------------------------------------------------
  */
 
 -(void)awakeFromNib
 {
-   [self setWindowController:[CdkWindowController windowController]];
-   [windowController showWindow:self];
+   if ([CdkRdc protocolAvailable]) {
+      [self setWindowController:[CdkWindowController windowController]];
+      [windowController showWindow:self];
+   } else {
+      NSAlert *alert = [NSAlert alertWithMessageText:NS_("Additional Software Required")
+                                       defaultButton:NS_("Download")
+                                     alternateButton:NS_("Quit")
+                                         otherButton:nil
+                           informativeTextWithFormat:
+                                   NS_("Microsoft Remote Desktop Connection "
+                                       "Client 2 is required to connect to "
+                                       "your VMware View desktops. "
+                                       "Would you like to download it now?")];
+
+      if (NSAlertDefaultReturn == [alert runModal]) {
+         [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:RDC_URL]];
+      }
+      [NSApp terminate:self];
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkAppController applicationShouldTerminateAfterLastWindowClosed:] --
+ *
+ *      NSApplication delegate method; indicates that the application
+ *      should close when the last window closes.
+ *
+ * Results:
+ *      YES to terminate when the last window is closed.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApp // IN
+{
+   return YES;
 }
 
 

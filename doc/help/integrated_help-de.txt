@@ -1,0 +1,113 @@
+<span underline="double">VMware View Client-Hilfe</span>
+
+Mit VMware View Client können Sie eine Verbindung zu den virtuellen Desktops herstellen, die Ihnen zur Nutzung zur Verfügung stehen.
+
+Weitere Informationen zu Ihren virtuellen Desktops und der auf den Desktops installierten Software erhalten Sie von Ihrem View-Administrator.
+
+<span underline="single">Herstellen einer Verbindung mit View Connection Server</span>
+
+Der View Client wird als systemeigene Linux-Anwendung ausgeführt, die eine Verbindung zu View Connection Server herstellt. Sie müssen eine Verbindung mit View Connection Server herstellen, bevor Sie sich an einem virtuellen Desktop anmelden und eine Verbindung zu diesem herstellen können.
+
+Hinweis: Der View Client kann zu jedem Zeitpunkt nur mit einer Instanz von View Connection Server verbunden werden. Zur Verbindungsherstellung müssen Sie den Hostnamen oder die IP-Adresse des Servers angeben.
+
+So stellen Sie eine Verbindung mit View Connection Server her:
+1. Starten Sie View Client gemäß den Anweisungen Ihres View-Administrators.
+2. Wählen Sie Ihren View Connection Server aus der Liste <b>Adresse</b> aus oder geben Sie den Hostnamen oder die IP-Adresse des Servers ein.
+3. Klicken Sie auf <b>Optionen</b>, um die Optionen für die Verbindungsherstellung mit dem ausgewählten Server anzuzeigen oder auszublenden. Konfigurieren Sie nur dann Optionen, wenn Sie von Ihrem View-Administrator dazu aufgefordert wurden. Folgende Optionen sind verfügbar:
+
+<b>Port</b> – Als Port wird der für View Connection Server als Standard festgelegte Port ausgewählt.
+<b>SSL</b> – Verwenden Sie eine sichere (SSL) Verbindung, um vertrauliche Unternehmensinformationen zu schützen und sicherzustellen, dass alle Verbindungen vollständig verschlüsselt werden. Ihr View-Administrator hat View Connection Server möglicherweise so konfiguriert, dass immer eine sichere Verbindung verwendet wird – selbst dann, wenn Sie eine nicht sichere Verbindung festlegen.
+
+Hinweis: Sie können auch Port- und SSL-Optionen angeben, indem Sie diese direkt in das Adressfeld eingeben. Für eine Nicht-SSL-Verbindung geben Sie diese Adresse ein: http://&lt;URL&gt;[:Portnummer]. Wenn Sie eine SSL-Verbindung verwenden möchten, geben Sie diese Adresse ein: https://&lt;URL&gt;[:Portnummer].
+
+<b>Automatische Verbindungsherstellung</b> – Stellt beim Start von View Client eine Verbindung zur aktuellen View Connection Server-Instanz her. Wählen Sie diese Option, wenn Sie sich immer mit demselben View Connection Server verbinden. Wird diese Option nicht aktiviert, werden Sie beim Start von View Client zur Auswahl eines View Connection Servers aufgefordert.
+
+Hinweis: Wenn die Verbindung fehlschlägt, wird erneut das Dialogfeld zur Serverauswahl angezeigt. Ist die Verbindung erfolgreich, können Sie zum Dialogfeld für die Serverauswahl zurückkehren, indem Sie im ersten Dialogfeld nach der Verbindung auf <b>Abbrechen</b> klicken.
+
+4. Klicken Sie auf <b>Verbinden</b>.
+
+<span underline="single">Anmelden beim View Connection Server</span>
+
+Nachdem Sie sich beim View Connection Server angemeldet haben, werden Sie zur Eingabe Ihres Benutzernamens und Kennworts aufgefordert (Sie haben diese Anmeldeinformationen von Ihrem View-Administrator erhalten). Je nach der Konfiguration Ihres Systems können Sie sich möglicherweise auch mit einer Remote-Verbindung über RSA SecurID oder unter Verwendung einer Smartcard anmelden. Spezifische Anweisungen zur Anmeldung über eine dieser Methoden erhalten Sie von Ihrem View-Administrator.
+
+So melden Sie sich an:
+1. Stellen Sie eine Verbindung mit View Connection Server her.
+2. Geben Sie im Anmeldefenster Ihren Benutzernamen und das zugehörige Kennwort ein.
+3. Wählen Sie die geeignete Domäne aus der Liste.
+4. Klicken Sie auf <b>Anmelden</b>.
+
+Eine Liste der für Sie autorisierten virtuellen Desktops wird angezeigt.
+
+<span underline="single">Herstellen einer Verbindung mit einem Desktop</span>
+
+Nachdem Sie eine Verbindung mit View Connection Server hergestellt und sich angemeldet haben, können Sie eine Verbindung mit einem virtuellen Desktop herstellen. Im View Client-Fenster wird eine Liste der Desktops angezeigt, für die Sie autorisiert sind. Darüber hinaus wird der aktuelle Status für jeden Desktop angezeigt.
+
+So stellen Sie eine Verbindung mit einem Desktop her:
+1. Wählen Sie einen Desktop aus der Liste im View Client-Fenster.
+2. Doppelklicken Sie auf den Desktop in der Liste und klicken Sie auf <b>Verbinden</b>. Alternativ können Sie auf den nach unten weisenden Pfeil klicken und die Option <b>Verbinden</b> auswählen.
+
+<span underline="single">Festlegen eines Desktops zur Anzeige auf mehreren Monitoren</span>
+
+Wenn Sie eine Verbindung mit einem virtuellen Desktop herstellen, können Sie für die Anzeige den Vollbildmodus auf mehreren Monitoren festlegen. Diese Funktionalität ist nur verfügbar, wenn sie vom View-Administrator aktiviert und das System ordnungsgemäß konfiguriert wurde.
+
+So legen Sie eine Anzeige auf mehreren Monitoren fest:
+1. Wählen Sie einen Desktop aus der Liste im View Client-Fenster.
+2. Wählen Sie <b>Alle Monitore verwenden</b>.
+3. Doppelklicken Sie auf den Desktop in der Liste und klicken Sie auf <b>Verbinden</b>. Alternativ können Sie auf den nach unten weisenden Pfeil klicken und die Option <b>Verbinden</b> auswählen.
+
+Ihre Auswahl wird als Einstellung für die nächste Verbindungsherstellung gespeichert.
+
+<span underline="single">Durchführen eines Rollbacks für einen Desktop</span>
+
+Sie können ein Rollback für einen virtuellen Desktop durchführen, der zur Verwendung auf einem anderen Host ausgecheckt wurde. Wenn Sie ein Rollback für einen ausgecheckten Desktop durchführen, werden alle am Desktop vorgenommenen Änderungen verworfen. Darüber hinaus gehen alle Daten verloren, die nicht auf dem Server gesichert wurden.
+
+So führen Sie ein Rollback für einen Desktop durch:
+1. Klicken Sie auf den nach unten weisenden Pfeil neben dem ausgecheckten Desktop, für den Sie ein Rollback durchführen möchten.
+2. Wählen Sie <b>Rollback</b>.
+
+Das Auschecken auf dem Remote-Host wird widerrufen und Sie können sich auf dem lokalen Host am Desktop anmelden.
+
+<span underline="single">Trennen der Verbindung mit einem Desktop</span>
+
+Wenn Sie die Verbindung mit einem virtuellen Desktop trennen, bleiben Sie dennoch angemeldet. Alle Programme, die auf dem Desktop ausgeführt werden, bleiben geöffnet. Sie können jederzeit eine neue Verbindung mit dem Desktop herstellen und Ihre Sitzung wiederaufnehmen.
+
+So trennen Sie die Verbindung mit einem Desktop:
+1. Speichern Sie alle auf dem Desktop geöffneten Dateien.
+2. Klicken Sie im Desktop-Menü <b>Start</b> auf <b>Trennen</b> oder drücken Sie die Tastenkombination <b>Strg+Alt+Entf</b> und klicken Sie auf <b>Trennen</b>.
+
+<span underline="single">Abmelden von einem Desktop</span>
+
+Wenn Sie sich von einem virtuellen Desktop abmelden, wird die aktuelle Sitzung beendet. Alle Programme werden geschlossen, und nicht gespeicherte Daten gehen verloren. Sie können sich über den Desktop oder über das View Client-Fenster abmelden.
+
+So melden Sie sich über den Desktop ab:
+1. Speichern Sie alle auf dem Desktop geöffneten Dateien.
+2. Wählen Sie im Menü <b>Start</b> die Option <b>Abmelden</b>.
+3. Klicken Sie im Bestätigungsdialogfeld auf <b>Abmelden</b>.
+Sie werden aufgefordert, alle geöffneten Dateien zu speichern, sofern nicht bereits geschehen.
+
+So melden Sie sich über das View Client-Fenster ab:
+1. Klicken Sie auf den nach unten weisenden Pfeil neben dem ausgecheckten Desktop, für den Sie ein Rollback durchführen möchten.
+2. Wählen Sie <b>Abmelden</b>.
+
+<span underline="single">Zurücksetzen eines Desktops</span>
+
+Wenn Sie einen Desktop zurücksetzen, wird der Desktop geschlossen und neu gestartet. Nicht gespeicherte Daten gehen bei diesem Vorgang verloren. Sie müssen am Desktop angemeldet sein, um ihn zurücksetzen zu können.
+
+Sie können einen Desktop über das View Client-Fenster oder über den Desktop selbst zurücksetzen.
+
+So setzen Sie einen Desktop über das View Client-Fenster zurück:
+1. Klicken Sie im View Client-Fenster auf den nach unten weisenden Pfeil neben dem Desktop, den Sie zurücksetzen möchten.
+2. Wählen Sie <b>Zurücksetzen</b>.
+3. Klicken Sie auf <b>Zurücksetzen</b>, um den Vorgang zu bestätigen.
+
+So setzen Sie einen Desktop über den Desktop selbst zurück:
+1. Drücken Sie <b>Strg+Alt+Entf</b>.
+2. Klicken Sie auf <b>Zurücksetzen</b>.
+
+<span underline="single">Aktualisieren der Desktop-Liste</span>
+
+Sie können die Liste der Desktops aktualisieren, um Änderungen anzuzeigen, die seit dem letzten Listenabruf vom View Connection Server vorgenommen wurden. Drücken Sie hierzu die Taste <b>F5</b>.
+
+-------------------
+
+Copyright © 2009 - 2010 VMware, Inc. Alle Rechte vorbehalten. Dieses Produkt ist durch Urheberrechtsgesetze, internationale Verträge und mindestens eines der unter http://www.vmware.com/go/patents-de aufgeführten Patente geschützt.

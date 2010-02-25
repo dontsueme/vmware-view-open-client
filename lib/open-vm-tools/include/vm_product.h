@@ -70,6 +70,7 @@
 #define PRODUCT_WORKSTATION_ENTERPRISE_BRIEF_NAME \
          PRODUCT_WORKSTATION_BRIEF_NAME " " "ACE Edition"
 #define PRODUCT_PLAYER_BRIEF_NAME "Player"
+#define PRODUCT_ACE_PLAYER_BRIEF_NAME "ACE " PRODUCT_PLAYER_BRIEF_NAME
 #define PRODUCT_MAC_DESKTOP_BRIEF_NAME "Fusion"
 #define PRODUCT_ACE_MANAGEMENT_SERVER_BRIEF_NAME "ACE Management Server"
 
@@ -95,6 +96,7 @@
 #define PRODUCT_CONSOLE_NAME MAKE_NAME("Server Console")
 #define PRODUCT_PLAYER_NAME MAKE_NAME(PRODUCT_PLAYER_BRIEF_NAME)
 #define PRODUCT_PLAYER_NAME_FOR_LICENSE PRODUCT_PLAYER_NAME
+#define PRODUCT_ACE_PLAYER_NAME MAKE_NAME(PRODUCT_ACE_PLAYER_BRIEF_NAME)
 #define PRODUCT_ACE_MANAGEMENT_SERVER_NAME MAKE_NAME(PRODUCT_ACE_MANAGEMENT_SERVER_BRIEF_NAME)
 
 #define PRODUCT_VMLS_SHORT_NAME "VMLS"
@@ -133,7 +135,10 @@
 #define PRODUCT_VDM_SHORT_NAME "VDM"
 #define PRODUCT_VDM_NAME MAKE_NAME("Virtual Desktop Manager")
 
-#define PRODUCT_VDM_CLIENT_NAME MAKE_NAME("VDM Client")
+#define PRODUCT_VDDK_SHORT_NAME "VDDK"
+#define PRODUCT_VDDK_NAME MAKE_NAME("VMware Virtual Disk Development Kit")
+
+#define PRODUCT_VDM_CLIENT_NAME MAKE_NAME("View Client")
 #define PRODUCT_VDM_CLIENT_NAME_FOR_LICENSE PRODUCT_VDM_CLIENT_NAME
 
 // XXX VMvisor is the underlying technology for possibly several products,
@@ -193,21 +198,28 @@
 
 /*
  * previously shipped plugin mimetypes (updated as we ship them)
+ *
+ * XXX It is important that the mimetypes be listed in strictly decreasing
+ *     order by version. Server 2.0 Web Access (WBC) only checks the first VMRC
+ *     mimetype for compatibility, and others might make the same mistake in
+ *     the future.
  */
 #define PRODUCT_VMRC_PLUGIN_PREVIOUS_MIMETYPES \
+   "application/x-vmware-vmrc;version=2.5.0.116460" PRODUCT_VMRC_MIMETYPE_SEPARATOR \
    "application/x-vmware-vmrc;version=2.5.0.0"
 
 /*
  * legacy plugin mimetypes (currently unused but here for reference)
  */
 #define PRODUCT_VMRC_PLUGIN_LEGACY_MIMETYPES \
-   "application/x-vmware-mks;version=2.5.0.0" PRODUCT_VMRC_MIMETYPE_SEPARATOR \
    "application/x-vmware-mks;version=2.1.0.0" PRODUCT_VMRC_MIMETYPE_SEPARATOR \
    "application/x-vmware-mks;version=2.0.1.0" PRODUCT_VMRC_MIMETYPE_SEPARATOR \
    "application/x-vmware-mks;version=2.0.0.0" PRODUCT_VMRC_MIMETYPE_SEPARATOR
 
 /*
  * All supported plugin mimetypes
+ *
+ * NB: See above for constraints on the ordering of this list.
  */
 #define PRODUCT_VMRC_PLUGIN_MIMETYPES \
    PRODUCT_VMRC_PLUGIN_CURRENT_MIMETYPE PRODUCT_VMRC_MIMETYPE_SEPARATOR \
@@ -225,7 +237,7 @@
       || defined(VMX86_WGS)      \
       || defined(VMX86_DESKTOP)  \
       || defined(VMX86_ENTERPRISE_DESKTOP) \
-      || defined(VMX86_MUI)  	   \
+      || defined(VMX86_MUI)      \
       || defined(VMX86_API)      \
       || defined(VMX86_VPX)      \
       || defined(VMX86_WBC)      \
@@ -237,8 +249,9 @@
       || defined(VMX86_VMLS)     \
       || defined(VMX86_VLICENSE) \
       || defined(VMX86_P2V)      \
-      || defined(VMX86_DDK))
-#   if defined(_WIN32)
+      || defined(VMX86_DDK)      \
+      || defined(VMX86_VDDK))
+#   if defined(_WIN32) || defined(__APPLE__)
       /*
        * XXX Make the product be Workstation by default if none of the defines
        * XXX above are not defined in defs-globaldefs.mk -- Edward A. Waugh
@@ -300,6 +313,8 @@
 # define PRODUCT_SHORT_NAME PRODUCT_VLICENSE_NAME
 #elif defined(VMX86_DDK)
 # define PRODUCT_SHORT_NAME PRODUCT_DDK_NAME
+#elif defined(VMX86_VDDK)
+# define PRODUCT_SHORT_NAME PRODUCT_VDDK_NAME
 #endif
 
 
@@ -360,7 +375,11 @@
 #      define PRODUCT_NAME_FOR_LICENSE "VMware ESX Server"
 #      define PRODUCT_SMP_NAME_FOR_LICENSE PRODUCT_ESX_SMP_NAME
 #   elif defined(VMX86_DESKTOP)
-#      define PRODUCT_NAME_FOR_LICENSE PRODUCT_NAME " for " PRODUCT_OS
+#      if defined(__APPLE__)
+#         define PRODUCT_NAME_FOR_LICENSE "VMware Fusion for Mac OS"
+#      else
+#         define PRODUCT_NAME_FOR_LICENSE "VMware Workstation"
+#      endif
 #      define PRODUCT_SMP_NAME_FOR_LICENSE "" // None
 #   elif defined(VMX86_WGS_MIGRATION)
 #      define PRODUCT_NAME_FOR_LICENSE PRODUCT_NAME " for " PRODUCT_OS
@@ -462,7 +481,11 @@
  * another flavor of the product to run.
  */
 #   if defined(VMX86_DESKTOP)
-#      define PRODUCT_NAME_FOR_LICENSE PRODUCT_NAME " for Win32"
+#      if defined(__APPLE__)
+#         define PRODUCT_NAME_FOR_LICENSE "VMware Fusion for Mac OS"
+#      else
+#         define PRODUCT_NAME_FOR_LICENSE "VMware Workstation"
+#      endif
 #      define PRODUCT_SMP_NAME_FOR_LICENSE "" // None
 #   elif defined(VMX86_WGS_MIGRATION)
 #      define PRODUCT_NAME_FOR_LICENSE PRODUCT_NAME " for Win32"
@@ -530,12 +553,12 @@
  * For Host Agent (hostd)
  */
 
-#define HOST_AGENT_PRODUCT_NAME		PRODUCT_NAME " Host Agent"
+#define HOST_AGENT_PRODUCT_NAME     PRODUCT_NAME " Host Agent"
 
 /* Used by bora/vim/lib/vmgina module.
  * @todo Use this also in /bora/install/msi/InstUtil/desktop/vmInstUtil.cpp
  *       to guarantee that the service is installed with exactly this name.
  */
-#define HOST_AGENT_SERVICE_NAME		"VMwareHostd"
+#define HOST_AGENT_SERVICE_NAME     "VMwareHostd"
 
 #endif /* VM_PRODUCT_H */

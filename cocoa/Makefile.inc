@@ -161,21 +161,25 @@ ifeq ($(PUBLISH_DIR),)
 		$(appdir)/Contents/Frameworks
 
 stagedir := $(top_builddir)/dmg-stage
+if VIEW_EULAS
+dmgeula := "--license $(stagedir)/$(PACKAGING_NAME)-EULA-en.txt"
+endif
 dmg: app
 	-rm -rf $(stagedir)
 	mkdir -p $(stagedir)/$(appname)
 	cp -r $(top_builddir)/$(appdir) $(stagedir)/$(appname)
 	cp $(top_srcdir)/cocoa/rdc.webloc $(stagedir)/$(appname)/"Download Microsoft RDC.webloc"
 	cp $(ICONS_DIR)/view.icns $(stagedir)
+if VIEW_EULAS
 # XXX: Need to support multiple EULA languages...
 	cp $(top_builddir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir) || \
 		cp $(top_srcdir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir)
-ifeq ($(build_os), darwin)
-	perl $(top_srcdir)/cocoa/pkg-dmg \
+endif
+ifeq ($(findstring darwin,$(build_os)),darwin)
+	perl $(top_srcdir)/cocoa/pkg-dmg $(dmgeula) \
 		--source $(stagedir)/$(appname) \
 		--target $(top_builddir)/$(appdmg) \
-		--icon $(stagedir)/view.icns \
-		--license $(stagedir)/$(PACKAGING_NAME)-EULA-en.txt
+		--icon $(stagedir)/view.icns
 @ELSE@
 	cp $(top_srcdir)/cocoa/pkg-dmg $(stagedir)
-@ENDIF@ # HDIUTIL
+@ENDIF@

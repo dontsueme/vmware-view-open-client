@@ -82,7 +82,8 @@ public:
    // State change actions, implements Broker::Delegate
    virtual void RequestBroker();
    virtual void RequestDisclaimer(const Util::string &disclaimer);
-   virtual void RequestPasscode(const Util::string &username);
+   virtual void RequestPasscode(const Util::string &username,
+                                bool userSelectable);
    virtual void RequestNextTokencode(const Util::string &username);
    virtual void RequestPinChange(const Util::string &pin1,
                                  const Util::string &message,

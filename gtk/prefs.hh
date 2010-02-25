@@ -99,6 +99,9 @@ public:
    Util::string GetRDesktopOptions() const;
    void SetRDesktopOptions(Util::string options);
 
+   Util::string GetDefaultProtocol() const;
+   void SetDefaultProtocol(Util::string protocol);
+
    bool GetDisableMetacityKeybindingWorkaround() const;
 
    bool GetAutoConnect() const;
@@ -144,8 +147,13 @@ private:
    void SetSupportFile(Util::string file);
    void SetDisableMetacityKeybindingWorkaround(bool disable);
 
+   Dictionary *GetDictionaryForKey(Util::string key) const;
+
    Dictionary *mDict;
    Dictionary *mOptDict;
+   Dictionary *mSysDict;
+   Dictionary *mMandatoryDict;
+
    Util::string mPrefPath;
 
    std::vector<Util::string> mRDesktopRedirects;

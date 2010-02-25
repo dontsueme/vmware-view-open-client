@@ -2,26 +2,33 @@ Author: Daniel Baumann <daniel@debian.org>
 Description: Removing pdf documents without source.
 
 diff -Naurp vmware-view-open-client.orig/Makefile.in vmware-view-open-client/Makefile.in
---- vmware-view-open-client.orig/Makefile.in	2009-10-02 20:38:31.000000000 +0000
-+++ vmware-view-open-client/Makefile.in	2009-10-02 20:55:41.000000000 +0000
-@@ -1599,7 +1599,7 @@ dist_noinst_HEADERS := lib/open-vm-tools
- 	lib/bora/include/vthreadBase.h lib/libp11/include/pkcs11.h \
- 	extraTranslations.hh
+--- vmware-view-open-client.orig/Makefile.in	2010-02-19 01:06:19.000000000 +0000
++++ vmware-view-open-client/Makefile.in	2010-02-25 06:45:52.000000000 +0000
+@@ -1612,11 +1612,6 @@ dist_noinst_HEADERS := lib/open-vm-tools
+ 	lib/bora/include/vthread.h lib/bora/include/vthreadBase.h \
+ 	lib/libp11/include/pkcs11.h extraTranslations.hh
  dist_noinst_SCRIPTS := cocoa/pkg-dmg
--dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
-+#dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
+-dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf \
+-	doc/View_Client_Admin_Guide-de.pdf \
+-	doc/View_Client_Admin_Guide-fr.pdf \
+-	doc/View_Client_Admin_Guide-ja.pdf \
+-	doc/View_Client_Admin_Guide-zh_CN.pdf
  noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
  	libPanicDefault.a libString.a libStubs.a libUnicode.a \
  	libUser.a libAsyncSocket.a libBasicHttp.a $(am__append_1) \
 diff -Naurp vmware-view-open-client.orig/doc/Makefile.inc vmware-view-open-client/doc/Makefile.inc
---- vmware-view-open-client.orig/doc/Makefile.inc	2009-10-02 20:38:31.000000000 +0000
-+++ vmware-view-open-client/doc/Makefile.inc	2009-10-02 20:54:36.000000000 +0000
-@@ -18,7 +18,7 @@
+--- vmware-view-open-client.orig/doc/Makefile.inc	2010-02-19 01:05:41.000000000 +0000
++++ vmware-view-open-client/doc/Makefile.inc	2010-02-25 06:46:18.000000000 +0000
+@@ -18,12 +18,6 @@
  # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
  ################################################################################
  
 -dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
-+#dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
- #dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
- #dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
- #dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
+-dist_pdf_DATA += doc/View_Client_Admin_Guide-zh_CN.pdf
+-
+ if VIEW_EULAS
+ doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
+ doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt

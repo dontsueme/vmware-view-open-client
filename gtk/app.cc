@@ -115,6 +115,16 @@ App::Main(int argc,     // IN
    Preference_Init();
 
    /*
+    * Set GDK_NATIVE_WINDOWS=1 so that a native XID is used for all
+    * GdkWindow's on gtk+ 2.18+.  A native XID is required so that our
+    * GtkSocket/GtkPlug widgets can handle mouse and keyboard events.
+    *
+    * Ideally, we would use gdk_window_ensure_native() from a dlsym to force
+    * the native xwindow.  However, that doesn't seem to work.
+    */
+   g_setenv("GDK_NATIVE_WINDOWS", "1", FALSE);
+
+   /*
     * This needs to go after bindtextdomain so it handles GOption localization
     * properly.
     */

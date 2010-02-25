@@ -99,8 +99,8 @@ typedef struct parse_table
  */
 
 static int
-Sleeper(LockValues *myValues, // IN/OUT:
-        uint32 *loopCount)    // IN/OUT:
+Sleeper(LockValues *myValues,  // IN/OUT:
+        uint32 *loopCount)     // IN/OUT:
 {
    uint32 msecSleepTime;
 
@@ -128,7 +128,7 @@ Sleeper(LockValues *myValues, // IN/OUT:
    while (msecSleepTime) {
       uint32 sleepTime = (msecSleepTime > 900) ? 900 : msecSleepTime;
 
-      usleep(1000 * sleepTime);
+      FileSleeper(sleepTime);
 
       msecSleepTime -= sleepTime;
    }
@@ -270,16 +270,17 @@ FileLockParseArgs(char *argv[],       // IN:
 #define FL_MAX_ARGS 16
 
 int
-FileLockMemberValues(ConstUnicode lockDir,     // IN:
-                     ConstUnicode fileName,    // IN:
-                     char *buffer,             // OUT:
-                     uint32 requiredSize,      // IN:
-                     LockValues *memberValues) // OUT:
+FileLockMemberValues(ConstUnicode lockDir,      // IN:
+                     ConstUnicode fileName,     // IN:
+                     char *buffer,              // OUT:
+                     uint32 requiredSize,       // IN:
+                     LockValues *memberValues)  // OUT:
 {
    uint32 argc = 0;
    FILELOCK_FILE_HANDLE handle;
    uint32 len;
    char *argv[FL_MAX_ARGS];
+   char *saveptr = NULL;
    int err;
    Unicode path;
    FileData fileData;
@@ -355,14 +356,15 @@ FileLockMemberValues(ConstUnicode lockDir,     // IN:
 
    /* Extract and validate the lock file data. */
    for (argc = 0; argc < FL_MAX_ARGS; argc++) {
-      argv[argc] = strtok((argc == 0) ? buffer : NULL, " ");
+      argv[argc] = strtok_r((argc == 0) ? buffer : NULL, " ", &saveptr);
 
       if (argv[argc] == NULL) {
          break;
       }
    }
 
-   if ((argc < 4) || ((argc == FL_MAX_ARGS) && (strtok(NULL, " ") != NULL))) {
+   if ((argc < 4) || ((argc == FL_MAX_ARGS) &&
+                       (strtok_r(NULL, " ", &saveptr) != NULL))) {
       goto corrupt;
    }
 
@@ -467,7 +469,7 @@ bail:
  */
 
 Bool
-FileLockValidName(ConstUnicode fileName) // IN:
+FileLockValidName(ConstUnicode fileName)  // IN:
 {
    uint32 i;
 
@@ -885,10 +887,10 @@ Scanner(ConstUnicode lockDir,    // IN:
          ptr = ptr->next;
       }
 
-      usleep(FILELOCK_PROGRESS_SAMPLE * 1000); // relax
+      FileSleeper(FILELOCK_PROGRESS_SAMPLE); // relax
    }
 
-   // Clean up anything still on the list; they are no longer important
+   /* Clean up anything still on the list; they are no longer important */
    while (myValues->lockList != NULL) {
       ptr = myValues->lockList;
       myValues->lockList = ptr->next;
@@ -992,10 +994,10 @@ FileUnlockIntrinsic(ConstUnicode pathName,  // IN:
  */
 
 static int
-WaitForPossession(ConstUnicode lockDir,     // IN:
-                  ConstUnicode fileName,    // IN:
-                  LockValues *memberValues, // IN:
-                  LockValues *myValues)     // IN:
+WaitForPossession(ConstUnicode lockDir,      // IN:
+                  ConstUnicode fileName,     // IN:
+                  LockValues *memberValues,  // IN:
+                  LockValues *myValues)      // IN:
 {
    int err = 0;
 
@@ -1118,8 +1120,8 @@ NumberScan(ConstUnicode lockDir,      // IN:
  */
 
 static uint32
-SimpleRandomNumber(const char *machineID,   // IN:
-                   const char *executionID) // IN:
+SimpleRandomNumber(const char *machineID,    // IN:
+                   const char *executionID)  // IN:
 {
    static Atomic_Ptr atomic; /* Implicitly initialized to NULL. --mbellon */
    char *context;
@@ -1182,12 +1184,10 @@ MakeDirectory(ConstUnicode pathName)  // IN:
 #if !defined(_WIN32)
    mode_t save;
 
-   ASSERT(pathName);
-
    save = umask(0);
-#else
-   ASSERT(pathName);
 #endif
+
+   ASSERT(pathName);
 
    err = FileCreateDirectoryRobust(pathName);
 
@@ -1255,9 +1255,9 @@ CreateEntryDirectory(const char *machineID,    // IN:
 
         if (fileData.fileType == FILE_TYPE_REGULAR) {
            /*
-            * It's a file. Assume this is an (active?) old style lock
-            * and err on the safe side - don't remove it (and
-            * automatically upgrade to a new style lock).
+            * It's a file. Assume this is an (active?) old style lock and
+            * err on the safe side - don't remove it (and automatically
+            * upgrade to a new style lock).
             */
 
             Log(LGPFX" %s: '%s' exists; an old style lock file?\n",
@@ -1377,6 +1377,7 @@ CreateEntryDirectory(const char *machineID,    // IN:
    return err;
 }
 
+
 /*
  *-----------------------------------------------------------------------------
  *
@@ -1477,6 +1478,7 @@ CreateMemberFile(FILELOCK_FILE_HANDLE entryHandle,  // IN:
 
    return 0;
 }
+
 
 /*
  *-----------------------------------------------------------------------------
@@ -1664,6 +1666,71 @@ bail:
 /*
  *-----------------------------------------------------------------------------
  *
+ * FileLockIsLocked --
+ *
+ *      Is a file currently locked (at the time of the call)?
+ *
+ * Results:
+ *      TRUE    YES
+ *      FALSE   NO; if err is not NULL may check *err for an error
+ *
+ * Side effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Bool
+FileLockIsLocked(ConstUnicode pathName,  // IN:
+                 int *err)               // OUT:
+{
+   uint32 i;
+   int errValue;
+   int numEntries;
+   Unicode lockDir;
+
+   Bool isLocked = FALSE;
+   Unicode *fileList = NULL;
+
+   lockDir = Unicode_Append(pathName, FILELOCK_SUFFIX);
+
+   numEntries = FileListDirectoryRobust(lockDir, &fileList);
+
+   if (numEntries == -1) {
+      errValue = errno;
+
+      goto bail;
+   }
+
+   for (i = 0; i < numEntries; i++) {
+      if (Unicode_StartsWith(fileList[i], "M")) {
+         isLocked = TRUE;
+         break;
+      }
+   }
+
+   for (i = 0; i < numEntries; i++) {
+      Unicode_Free(fileList[i]);
+   }
+
+   free(fileList);
+
+   errValue = 0;
+
+bail:
+   Unicode_Free(lockDir);
+
+   if (err != NULL) {
+      *err = errValue;
+   }
+
+   return isLocked;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * ScannerVMX --
  *
  *      VMX hack scanner
@@ -1679,10 +1746,10 @@ bail:
  */
 
 static int
-ScannerVMX(ConstUnicode lockDir,     // IN:
-           ConstUnicode fileName,    // IN:
-           LockValues *memberValues, // IN:
-           LockValues *myValues)     // IN/OUT:
+ScannerVMX(ConstUnicode lockDir,      // IN:
+           ConstUnicode fileName,     // IN:
+           LockValues *memberValues,  // IN:
+           LockValues *myValues)      // IN/OUT:
 {
    ASSERT(lockDir);
    ASSERT(fileName);

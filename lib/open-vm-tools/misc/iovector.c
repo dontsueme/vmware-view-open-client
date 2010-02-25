@@ -113,6 +113,7 @@ IOV_Zero(VMIOVec *iov)   // IN
    while (numBytesLeft > 0) {
       size_t c = MIN(numBytesLeft, iov->entries[i].iov_len);
       void *buf;
+
       ASSERT_NOT_IMPLEMENTED(i < iov->numEntries);
       buf = iov->entries[i].iov_base;
       ASSERT(buf && buf != LAZY_ALLOC_MAGIC);
@@ -263,6 +264,7 @@ IOV_IsZero(VMIOVec* iov)      // IN: the iov to scan
          return FALSE;
       }
    }
+
    return TRUE;
 }
 
@@ -314,15 +316,17 @@ IOVSplitList(VMIOVec *regionV,      // IN/OUT: VMIOVec for this region
       if (regionV->numBytes > regionV->numSectors * sectorSize) {
          int spillover;
          
-         spillover = (int) (regionV->numBytes - regionV->numSectors * sectorSize);
+         spillover = (int) (regionV->numBytes -
+                                            regionV->numSectors * sectorSize);
          ASSERT(spillover < curEntry->iov_len);
          ASSERT(spillover > 0);
 
          /*
-          *  Truncate the last overlapping entry and store the excess. After we
-          *  finish this region, we'll smash this last entry with its remainder
-          *  and just move on to the next region.
+          * Truncate the last overlapping entry and store the excess. After
+          * we finish this region, we'll smash this last entry with its
+          * remainder and just move on to the next region.
           */
+
          regionV->numBytes -= spillover;
          curEntry->iov_len -= spillover;
          overlap->iov_len = spillover;
@@ -330,10 +334,11 @@ IOVSplitList(VMIOVec *regionV,      // IN/OUT: VMIOVec for this region
          break;
       } else if (regionV->numBytes == regionV->numSectors * sectorSize) {
          /*
-          *  Clean finish.  The last entry for this region will be handled with
-          *  no overlap, so increment past it for the start of the next
-          *  region's entries.
+          * Clean finish. The last entry for this region will be handled
+          * with no overlap, so increment past it for the start of the next
+          * region's entries.
           */
+
          overlap->iov_len = 0;
          curEntry++;
          break;
@@ -385,6 +390,7 @@ IOV_Split(VMIOVec *origV,         // IN/OUT: VMIOVec for whole xfer
    /*
     * The resulting iov cannot have more entries than the incoming one.
     */
+
    v = Util_SafeMalloc(sizeof *v + origV->numEntries * sizeof(struct iovec));
    iov = &v->iov;
    memcpy(iov, origV, sizeof *iov);
@@ -394,6 +400,7 @@ IOV_Split(VMIOVec *origV,         // IN/OUT: VMIOVec for whole xfer
    /*
     * Handle lazy allocation of backing store.
     */
+
    if (origV->entries->iov_base == LAZY_ALLOC_MAGIC && 
        origV->entries->iov_len == 0) {
 
@@ -527,6 +534,7 @@ IOV_Duplicate(VMIOVec* iovIn)     // IN
    v->iov.entries = v->e;
    memcpy(v->iov.entries, iovIn->entries,
           iovIn->numEntries * sizeof(struct iovec));
+
    return &v->iov;
 }
 
@@ -648,6 +656,7 @@ IOVFindFirstEntryOffset(struct iovec* entries,        // IN
       Log(LGPFX"%s:%d i %d (of %d), offsets: entry %"FMTSZ"u, iov %"FMTSZ"u "
           "invalid iov offset\n",
           __FILE__, __LINE__, i, numEntries, entryOffset, iovOffset);
+
       return numEntries;
    }
 
@@ -656,6 +665,7 @@ IOVFindFirstEntryOffset(struct iovec* entries,        // IN
    ASSERT(entryOffset < entryLen);
 
    *entryOffsetp = entryOffset;
+
    return i - 1;
 }
 
@@ -828,6 +838,7 @@ IOV_WriteIovToIov(VMIOVec *srcIov,        // IN
       Log(LGPFX"%s:%d iov [%"FMT64"u:%"FMT64"u] and [%"FMT64"u:%"FMT64"u] - "
           "no overlap!\n", __FILE__, __LINE__, srcIov->startSector,
           srcIov->numSectors, dstIov->startSector, dstIov->numSectors);
+
       return 0;
    }
 
@@ -860,11 +871,9 @@ IOV_WriteIovToIov(VMIOVec *srcIov,        // IN
       entryLen = MIN(count, srcEntries[i].iov_len - srcEntryOffset);
 
       copyLen = IOV_WriteBufToIovPlus(
-                     (uint8 *)(srcEntries[i].iov_base) + srcEntryOffset,
-                     entryLen,
-                     dstIov->entries,
-                     dstIov->numEntries,
-                     dstIovOffset);
+                           (uint8 *)(srcEntries[i].iov_base) + srcEntryOffset,
+                                      entryLen, dstIov->entries,
+                                      dstIov->numEntries, dstIovOffset);
 
       if (copyLen == 0) {  /* finished */
          break;

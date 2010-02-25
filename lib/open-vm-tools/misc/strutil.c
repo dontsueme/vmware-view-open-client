@@ -303,11 +303,14 @@ StrUtil_StrToInt(int32 *out,      // OUT
 
    val = strtol(str, &ptr, 0);
    *out = (int32)val;
+
    /*
-    * Input must be complete, no overflow, and value read must fit into 32 bits -
-    * both signed and unsigned values are accepted.
+    * Input must be complete, no overflow, and value read must fit into
+    * 32 bits - both signed and unsigned values are accepted.
     */
-   return *ptr == '\0' && errno != ERANGE && (val == (int32)val || val == (uint32)val);
+
+   return *ptr == '\0' && errno != ERANGE &&
+          (val == (int32)val || val == (uint32)val);
 }
 
 
@@ -342,11 +345,14 @@ StrUtil_StrToUint(uint32 *out,     // OUT
 
    val = strtoul(str, &ptr, 0);
    *out = (uint32)val;
+
    /*
-    * Input must be complete, no overflow, and value read must fit into 32 bits -
-    * both signed and unsigned values are accepted.
+    * Input must be complete, no overflow, and value read must fit into 32
+    * bits - both signed and unsigned values are accepted.
     */
-   return *ptr == '\0' && errno != ERANGE && (val == (uint32)val || val == (int32)val);
+
+   return *ptr == '\0' && errno != ERANGE &&
+          (val == (uint32)val || val == (int32)val);
 }
 
 
@@ -442,6 +448,94 @@ StrUtil_StrToSizet(size_t *out,     // OUT: The output value
 }
 
 
+#ifndef N_PLAT_NLM // NetWare Tools ask for unresolved _GLOBAL_OFFSET_TABLE...
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * StrUtil_CapacityToSectorType --
+ *
+ *      Converts a string containing a measure of disk capacity (such as
+ *      "100MB" or "1.5k") into an unadorned and primitive quantity of sector
+ *      capacity. The comment before the switch statement describes the kinds
+ *      of disk capacity expressible.
+ *
+ * Results:
+ *      TRUE if conversion was successful, FALSE otherwise.
+ *      Value is stored in 'out', which is left undefined in the FALSE case.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Bool
+StrUtil_CapacityToSectorType(SectorType *out,    // OUT: The output value
+                             const char *str,    // IN: String to parse
+                             unsigned int bytes) // IN: Bytes per unit in an
+                                                 //     unadorned string
+
+{
+   double quantity;
+   char *rest;
+
+   ASSERT(out);
+   ASSERT(str);
+
+   errno = 0;
+   quantity = strtod(str, &rest);
+   if (errno == ERANGE) {
+      return FALSE;
+   }
+
+   /* Skip over any whitespace in the suffix. */
+   while (*rest == ' ' || *rest == '\t') {
+      rest++;
+   }
+   if (*rest != '\0') {
+      uint64 shift;
+
+      /*
+       * [kK], [mM], [gG], and [tT] represent kilo, mega, giga, and tera
+       * byte quantities respectively. [bB] represents a singular byte
+       * quantity. [sS] represents a sector quantity. 
+       *
+       * All other suffixes are ignored, which also means a suffix like
+       * "MB" will be treated as 'M'.
+       */
+      switch (*rest) {
+      case 's': case 'S':          shift = 9;  break;
+      case 'k': case 'K':          shift = 10; break;
+      case 'm': case 'M':          shift = 20; break;
+      case 'g': case 'G':          shift = 30; break;
+      case 't': case 'T':          shift = 40; break;
+      case 'b': case 'B': default: shift = 0;  break;
+      }
+      quantity *= (double)(1 << shift);
+   } else {
+      /*
+       * No suffix, so multiply by the number of bytes per unit as specified
+       * by the caller.
+       */
+
+      quantity *= (double)bytes;
+   }
+
+   /*
+    * Convert from "number of bytes" to "number of sectors", rounding up or
+    * down appropriately.
+    *
+    * XXX: We should use DISKLIB_SECTOR_SIZE, but do we really want the
+    * disklib header dependencies in this file?
+    *
+    */
+   *out = (SectorType)((quantity + 256) / 512);
+
+   return TRUE;
+}
+#endif
+                
+
 /*
  *-----------------------------------------------------------------------------
  *
@@ -466,9 +560,10 @@ StrUtil_FormatSizeInBytesUnlocalized(uint64 size) // IN
    /*
     * XXX TODO, BUG 199661:
     * This is a direct copy of Msg_FormatSizeInBytes without localization.
-    * These two functions should ideally share the basic functionality, and just
-    * differ in the string localization
+    * These two functions should ideally share the basic functionality, and
+    * just differ in the string localization
     */
+
    char const *fmt;
    double sizeInSelectedUnit;
    unsigned int precision;
@@ -583,6 +678,7 @@ StrUtil_GetLongestLineLength(const char *buf,   //IN
        bufLength -= len;
        buf = next;
     }
+
     return longest;
 }
 
@@ -609,6 +705,7 @@ StrUtil_StartsWith(const char *s,      // IN
 {
    ASSERT(s != NULL);
    ASSERT(prefix != NULL);
+
    return Str_Strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
@@ -635,6 +732,7 @@ StrUtil_CaselessStartsWith(const char *s,      // IN
 {
    ASSERT(s != NULL);
    ASSERT(prefix != NULL);
+
    return Str_Strncasecmp(s, prefix, strlen(prefix)) == 0;
 }
 
@@ -647,7 +745,8 @@ StrUtil_CaselessStartsWith(const char *s,      // IN
  *      Detects if a string ends with another string.
  *
  * Results:
- *      TRUE if string 'suffix' is found at the end of string 's', FALSE otherwise.
+ *      TRUE  if string 'suffix' is found at the end of string 's'
+ *      FALSE otherwise.
  *
  * Side effects:
  *      None.
@@ -707,6 +806,7 @@ StrUtil_VDynBufPrintf(DynBuf *b,        // IN/OUT
     * Arbitrary lower-limit on buffer size allocation, to avoid doing
     * many tiny enlarge operations.
     */
+
    const size_t minAllocSize = 128;
 
    while (1) {
@@ -724,18 +824,18 @@ StrUtil_VDynBufPrintf(DynBuf *b,        // IN/OUT
       }
 
       /*
-       * Is there any allocated-but-not-occupied space? If so,
-       * try the printf. If there was no space to begin with, or
-       * Str_Vsnprintf() ran out of space, this will fail.
-       *
-       * Note that we don't need to copy the argument list, it's
-       * okay to iterate over the same va_list multiple times.
-       * Str_Vsnprintf() already does a va_copy on platforms that
-       * need it.
+       * Is there any allocated-but-not-occupied space? If so, try the printf.
+       * If there was no space to begin with, or Str_Vsnprintf() ran out of
+       * space, this will fail.
        */
 
       if (allocSize - size > 0) {
-         i = Str_Vsnprintf((char*)DynBuf_Get(b) + size, allocSize - size, fmt, args);
+         va_list tmpArgs;
+
+         va_copy(tmpArgs, args);
+         i = Str_Vsnprintf((char *) DynBuf_Get(b) + size, allocSize - size,
+                           fmt, tmpArgs);
+         va_end(tmpArgs);
       } else {
          i = -1;
       }
@@ -749,7 +849,9 @@ StrUtil_VDynBufPrintf(DynBuf *b,        // IN/OUT
           * happens, believe it or not. See bug 253674.
           */
 
-         ASSERT(i + size == allocSize || ((char*)DynBuf_Get(b))[i + size] == '\0');
+         ASSERT(i + size == allocSize ||
+                ((char *)DynBuf_Get(b))[i + size] == '\0');
+
          DynBuf_SetSize(b, size + i);
          break;
 
@@ -761,6 +863,7 @@ StrUtil_VDynBufPrintf(DynBuf *b,        // IN/OUT
           */
 
          Bool success = DynBuf_Enlarge(b, size + minAllocSize);
+
          if (!success) {
             return FALSE;
          }

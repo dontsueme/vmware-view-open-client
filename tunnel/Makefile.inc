@@ -27,7 +27,11 @@ vmware_view_tunnel_SOURCES += tunnel/tunnelProxy.c
 vmware_view_tunnel_SOURCES += tunnel/tunnelProxy.h
 vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/base64.c
 vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/dynbuf.c
+vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/idLinux.c
 vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/strutil.c
+vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/utilMem.c
+
+vmware_view_tunnel_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS)
 
 vmware_view_tunnel_LDADD :=
 vmware_view_tunnel_LDADD += libAsyncSocket.a
