@@ -20,7 +20,7 @@
 
 # http://www.mail-archive.com/autoconf@gnu.org/msg16720.html
 AC_INIT([VMware-view-open-client],
-	m4_esyscmd([echo ${VDM_VERSION:-e.x.p}-${BUILD_NUMBER:-00000} | tr -d '\n']),
+	m4_esyscmd([echo ${VDM_VERSION_NUM:-e.x.p}-${BUILD_NUMBER:-00000} | tr -d '\n']),
 	[http://code.google.com/p/vmware-view-open-client/issues/entry],
 	[VMware-view-open-client-source])
 echo "Configuring $PACKAGE_STRING"
@@ -49,7 +49,7 @@ esac
 AC_ARG_WITH([toolchain],
    [AS_HELP_STRING([--with-toolchain@<:@=DIR@:>@],
       [search for dependencies in the toolchain root DIR])],
-   [TCROOT=$with_toolchain])
+   [TCROOT=$with_toolchain],[TCROOT="no"])
 AC_SUBST(DISTCHECK_CONFIGURE_FLAGS,["--with-toolchain=$with_toolchain"])
 
 AC_ARG_WITH([buildtype],
@@ -67,34 +67,75 @@ if test $enable_eulas != "no" ; then
 else
    VIEW_RPM_LICENSE="LGPLv2.1 only"
 fi
+AC_SUBST(VIEW_RPM_LICENSE)
 
-ssl_disable_loading="true"
 AC_ARG_ENABLE([static-ssl],
    [AS_HELP_STRING([--enable-static-ssl],
       [statically link against libssl])],
    [],[enable_static_ssl="no"])
 
+AC_ARG_ENABLE([cvp],
+   [AS_HELP_STRING([--enable-cvp],
+      [build the client for use with cvp])],
+   [],[enable_cvp="no"])
+if test "$enable_cvp" != "no" ; then
+   AC_DEFINE(VIEW_CVP)
+fi
+
 AC_MSG_CHECKING([which interface to build])
 use_gtk="no"
 use_cocoa="no"
+use_posix="yes"
+mingw32="no"
 case "$host_os" in
    [darwin*])
       AC_MSG_RESULT([Cocoa])
       AC_DEFINE(VIEW_COCOA)
+      AC_DEFINE(VIEW_POSIX)
       use_cocoa="yes"
+      ;;
+   [mingw32*])
+      AC_MSG_RESULT([Gtk+])
+      AC_DEFINE(VIEW_GTK)
+      AC_DEFINE(_WIN32)
+      AC_DEFINE(__MINGW32__)
+      AC_DEFINE(__MSVCRT__)
+      AC_DEFINE(__MSVCRT_VERSION__,0x0601)
+      AC_DEFINE(WINVER,0x0501)
+      AC_DEFINE(USERLEVEL)
+      AC_DEFINE(U_HAVE_INT8_T)
+      AC_DEFINE(U_HAVE_UINT8_T)
+      AC_DEFINE(U_HAVE_INT16_T)
+      AC_DEFINE(U_HAVE_UINT16_T)
+      AC_DEFINE(U_HAVE_INT32_T)
+      AC_DEFINE(U_HAVE_UINT32_T)
+      AC_DEFINE(U_HAVE_INT64_T)
+      AC_DEFINE(U_HAVE_UINT64_T)
+      mingw32="yes"
+      use_gtk="yes"
+      use_posix="no"
       ;;
    [*])
       AC_MSG_RESULT([Gtk+])
       AC_DEFINE(VIEW_GTK)
+      AC_DEFINE(VIEW_POSIX)
       use_gtk="yes"
       ;;
 esac
 AM_CONDITIONAL([VIEW_GTK], [test "$use_gtk" = "yes"])
 AM_CONDITIONAL([VIEW_COCOA], [test "$use_cocoa" = "yes"])
+AM_CONDITIONAL([VIEW_CVP], [test "$enable_cvp" = "yes"])
+AM_CONDITIONAL([VIEW_WIN32], [test "$mingw32" = "yes"])
+AM_CONDITIONAL([VIEW_POSIX], [test "$use_posix" = "yes"])
 
 AC_MSG_CHECKING([for toolchain])
-if test "$TCROOT" ; then
-   CFLAGS="-gstabs+ -Wall -Werror -Wno-unused-value -fno-strict-aliasing"
+if test "$TCROOT" != "no" ; then
+   CFLAGS="-gstabs+ -Wall -Wno-unused-value -fno-strict-aliasing"
+   if test "$host_os" != "mingw32" ; then
+      # XXX: Move -Werror into CFLAGS (above) when all ming32 warnings have been cleaned up.
+      CFLAGS="$CFLAGS -Werror"
+   fi
+
    CPPFLAGS=
    CXXFLAGS=
    LDFLAGS=
@@ -118,11 +159,16 @@ if test "$TCROOT" ; then
       [i[3456]86-darwin*])
          BUILD_TCROOT="$TCROOT/mac32"
          ;;
+      [i686-mingw32*])
+         BUILD_TCROOT="$TCROOT/mingw32"
+         ;;
       [*])
          AC_MSG_RESULT([not supported])
          AC_MSG_ERROR([$build_cpu-$build_os is not yet supported for a toolchain build.])
 	 ;;
    esac
+   opensslversion="m4_esyscmd([echo ${OPENSSL_VERSION:-0.9.8n} | tr -d '\n'])"
+   curllib="curl"
    case "$host_cpu-$host_os" in
       [i[3456]86-linux*])
 	 binutilsversion="2.17.50.0.15-1"
@@ -138,11 +184,30 @@ if test "$TCROOT" ; then
 	 freetypeversion="2.1.9"
 	 glibversion="2.6.6"
 	 gtkversion="2.4.14"
-	 opensslversion="0.9.8l"
 	 pangoversion="1.4.1"
 	 xmlversion="2.6.30"
 	 xorgversion="7.1"
          HOST_TCROOT="$TCROOT/lin32"
+	 ;;
+      [i686-mingw32*])
+	 binutilsversion="2.17.50.0.15-1"
+	 boostlib="mt"
+	 boostversion="1.34.1"
+	 cairoversion="1.8.8"
+	 ccflavor="i686-mingw32"
+	 ccversion="3.5.4"
+	 # -march=i586 is required to run on some VIA C3 chips
+	 CFLAGS="$CFLAGS -march=i586"
+	 curllib="curldll"
+	 curlversion="7.18.0"
+	 fontconfigversion="2.7.3"
+	 freetypeversion="2.3.9"
+	 glibversion="2.22.2"
+	 gtkversion="2.16.6"
+	 opensslversion="0.9.8h"
+	 pangoversion="1.26.0"
+	 xmlversion="2.6.27"
+         HOST_TCROOT="$TCROOT/mingw32"
 	 ;;
       [x86_64-linux*])
 	 binutilsversion="2.17.50.0.15-1"
@@ -156,7 +221,6 @@ if test "$TCROOT" ; then
 	 gtkversion="2.12.11"
 	 fontconfigversion="2.2.3"
 	 freetypeversion="2.1.9"
-	 opensslversion="0.9.8l"
 	 pangoversion="1.20.5"
 	 xmlversion="2.6.30"
 	 xorgversion="7.1"
@@ -186,7 +250,7 @@ if test "$TCROOT" ; then
 	 boostversion="1.34.1"
          ccflavor="i686-apple-darwin9"
          ccversion="5465"
-	 curlversion="7.19.5-4"
+	 curlversion="7.19.5-3"
 	 glibversion="2.6.6"
 	 xmlversion="2.6.30"
          HOST_TCROOT="$TCROOT/mac32"
@@ -214,10 +278,17 @@ if test "$TCROOT" ; then
          esac
          ;;
    esac
-   CXXFLAGS="$CFLAGS"
+   case "$host_os" in
+      [mingw32*])
+         CXXFLAGS="$CFLAGS -mms-bitfields"
+         CFLAGS="$CFLAGS -Wno-strict-prototypes -mms-bitfields"
+         ;;
+      [*])
+         CXXFLAGS="$CFLAGS"
+         CFLAGS="$CFLAGS -Wno-pointer-sign -Wno-strict-prototypes"
+         ;;
+   esac
    OBJCFLAGS="$CXXFLAGS"
-   # C-only warning options
-   CFLAGS="$CFLAGS -Wno-pointer-sign -Wno-strict-prototypes"
 
    icuversion="3.8"
 
@@ -246,7 +317,14 @@ if test "$TCROOT" ; then
    ICU_CPPFLAGS="-I$HOST_TCROOT/icu4c-$icuversion/include"
    ICU_LIBS="-L$HOST_TCROOT/icu4c-$icuversion/lib"
 
-   XML_CFLAGS="-I$HOST_TCROOT/libxml2-$xmlversion/include/libxml2"
+   case "$host_os" in
+      [mingw32*])
+         XML_CFLAGS="-I$HOST_TCROOT/libxml2-$xmlversion/include"
+      ;;
+      [*])
+      XML_CFLAGS="-I$HOST_TCROOT/libxml2-$xmlversion/include/libxml2"
+      ;;
+   esac
    XML_LIBS="-L$HOST_TCROOT/libxml2-$xmlversion/lib -lxml2"
 
    BOOST_CPPFLAGS="-I$HOST_TCROOT/boost-$boostversion/include"
@@ -254,9 +332,12 @@ if test "$TCROOT" ; then
    GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/include/glib-2.0"
    GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/lib/glib-2.0/include"
    GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/glib-$glibversion/lib -lglib-2.0 -lgobject-2.0 -lgmodule-2.0"
+   if test "$enable_cvp" = "yes" ; then
+      GLIB_LIBS="$GLIB_LIBS -lgio-2.0"
+   fi
 
    case "$host_os" in
-      [linux*])
+      [mingw32*|linux*])
 	 AR="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ar"
 	 for csource in /usr/bin/gdk-pixbuf-csource $BUILD_TCROOT/gtk+-$buildgtkversion/bin/gdk-pixbuf-csource ; do
 	    if test -x  $csource; then
@@ -267,8 +348,80 @@ if test "$TCROOT" ; then
 	 LDFLAGS="$LDFLAGS -Wl,-rpath-link -Wl,$HOST_TCROOT/gcc-$ccversion/lib"
 	 RANLIB="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ranlib"
 	 STRIP="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-strip"
-	 GTK_LIBS="$GTK_LIBS $GLIB_LIBS"
-	 GTK_CFLAGS="$GTK_CFLAGS $GLIB_CFLAGS"
+	 SSL_CFLAGS="-I$HOST_TCROOT/openssl-$opensslversion/include"
+	 if test "$enable_static_ssl" = "no" ; then
+            ssl_link_prefix=
+	    ssl_link_postfix=
+	 else
+	    ssl_link_prefix="-Wl,-Bstatic"
+	    ssl_link_postfix="-Wl,-Bdynamic"
+         fi
+         SSL_LIBS="-L$HOST_TCROOT/openssl-$opensslversion/lib $ssl_link_prefix -lssl -lcrypto $ssl_link_postfix"
+	      CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
+	 if test "$host_cpu" = "arm" ; then
+	    # for clock_gettime
+	    CURL_LIBS="$CURL_LIBS -lrt"
+	 fi
+	      GTK_LIBS="$GTK_LIBS $GLIB_LIBS"
+	      GTK_CFLAGS="$GTK_CFLAGS $GLIB_CFLAGS"
+	      ;;
+      [*])
+         ;;
+   esac
+
+   BOOST_LDFLAGS="-Wl,-rpath-link -Wl,$HOST_TCROOT/boost-$boostversion/lib -L$HOST_TCROOT/boost-$boostversion/lib"
+   BOOST_LDFLAGS="$BOOST_LDFLAGS -Wl,-Bstatic -lboost_signals-$boostlib -Wl,-Bdynamic"
+   CURL_LIBS="-L$HOST_TCROOT/curl-$curlversion/lib -Wl,-Bstatic -l$curllib -Wl,-Bdynamic"
+
+   case "$host_os" in
+      [mingw32*])
+         for dir in \
+            zlib-1.2.3/include \
+            libpng-1.2.39/include \
+            fontconfig-$fontconfigversion/include \
+            freetype-$freetypeversion/include/freetype2 \
+            cairo-$cairoversion/include/cairo \
+            pango-$pangoversion/include/pango-1.0 \
+            atk-1.26.0/include/atk-1.0 \
+            gtk+-$gtkversion/include/gtk-2.0 \
+            gtk+-$gtkversion/lib/gtk-2.0/include \
+            gettext-0.17/include \
+            libiconv-1.9.1/include \
+            openssl-0.9.8h/include \
+         ; do
+            GTK_CFLAGS="$GTK_CFLAGS -I$HOST_TCROOT/$dir"
+         done
+
+         for dir in \
+            zlib-1.2.3/lib \
+            libpng-1.2.39/lib \
+            fontconfig-$fontconfigversion/lib \
+            freetype-$freetypeversion/lib \
+            expat-2.0.1/lib \
+            cairo-$cairoversion/lib \
+            pango-$pangoversion/lib \
+            atk-1.26.0/lib \
+            gtk+-$gtkversion/lib \
+            gettext-0.17/lib \
+            libiconv-1.9.1/lib \
+            openssl-0.9.8h/lib \
+         ; do
+	         GTK_LIBS="$GTK_LIBS -Wl,-rpath-link -Wl,$HOST_TCROOT/$dir"
+            GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/$dir"
+         done
+         GTK_LIBS="$GTK_LIBS -latk-1.0 -lgtk-win32-2.0 -lgdk-win32-2.0 -lgdk_pixbuf-2.0"
+	 if test "$host_cpu" = "arm" ; then
+	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/pixman-0.15.2/lib -lpixman-1"
+	 fi
+	 if test "$host_os" = "mingw32" ; then
+	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/lib -lintl -L$HOST_TCROOT/pango-1.26.0/lib -lpango-1.0"
+	 fi
+      ;;
+      [linux*])
+         if test "$host_cpu" = "arm" ; then
+            # for clock_gettime
+            CURL_LIBS="$CURL_LIBS -lrt"
+         fi
          for dir in \
             xorg-$xorgversion/include \
             zlib-1.2.3-3/include \
@@ -303,42 +456,17 @@ if test "$TCROOT" ; then
 	 if test "$host_cpu" = "arm" ; then
 	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/pixman-0.15.2/lib -lpixman-1"
 	 fi
-	 SSL_CFLAGS="$SSL_CFLAGS -I$HOST_TCROOT/openssl-$opensslversion/include"
-         SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"$HOST_TCROOT/openssl-$opensslversion/lib\\\""
-         SSL_VERSION_NUM="0.9.8"
-         SSL_LIBS="-ldl"
-         SSL_LIBS="$SSL_LIBS -ldl"
-	 if test "$enable_static_ssl" = "no" ; then
-            ssl_disable_loading="false"
-            for sym in `$CC -DOPENSSL_098 -I$srcdir/lib/bora/include -E $srcdir/lib/bora/ssl/sslLinkWrapper.h | \
-               changequote(,)dnl
-               $AWK '/^[^#]/ { print $0 }'` ; do
-               changequote([,])dnl
-               SSL_LIBS="$SSL_LIBS -Wl,--wrap -Wl,$sym"
-            done
-         else
-            SSL_LIBS="$SSL_LIBS -ldl -L$HOST_TCROOT/openssl-$opensslversion/lib -Wl,-Bstatic -lssl -lcrypto -Wl,-Bdynamic"
-            AC_DEFINE(BORA_LINK_SSL_DIRECTLY)
-         fi
-	 CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
-         CURL_LIBS="-L$HOST_TCROOT/curl-$curlversion/lib -Wl,-Bstatic -lcurl -Wl,-Bdynamic"
-	 if test "$host_cpu" = "arm" ; then
-	    # for clock_gettime
-	    CURL_LIBS="$CURL_LIBS -lrt"
-	 fi
-         BOOST_LDFLAGS="-Wl,-rpath-link -Wl,$HOST_TCROOT/boost-$boostversion/lib -L$HOST_TCROOT/boost-$boostversion/lib"
-         BOOST_LDFLAGS="$BOOST_LDFLAGS -Wl,-Bstatic -lboost_signals-$boostlib -Wl,-Bdynamic"
 	 ;;
       [darwin*])
 	 AR="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ar"
 	 glibversion="2.12.12"
 	 RANLIB="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ranlib"
 	 STRIP="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/strip"
-         SSL_VERSION_NUM="0.9.7"
          SSL_LIBS="-lssl -lcrypto"
-	 CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
-         CURL_LIBS="$HOST_TCROOT/curl-$curlversion/lib/libcurl.a -lz"
+         CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
+         CURL_LIBS="$HOST_TCROOT/curl-$curlversion/lib/libcurl.a -L$HOST_TCROOT/c-ares-1.5.1-1/lib -lcares -lz"
          BOOST_LDFLAGS="-L$HOST_TCROOT/boost-$boostversion/lib -lboost_signals-$boostlib"
+         BOOST_LDFLAGS="-L$HOST_TCROOT/boost-1.34.1/lib -lboost_signals-mt-1_34_1"
 	 GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/gettext-0.17/include"
          GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/gettext-0.17/lib -lintl"
          ;;
@@ -371,10 +499,9 @@ else
 
    # Need this manually since the first call is conditional.
    PKG_PROG_PKG_CONFIG
-   if test "$use_cocoa" = "yes" ; then
-      PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.6.0 gmodule-2.0 >= 2.6.0])
-   else
-      PKG_CHECK_MODULES(GTK, [gtk+-x11-2.0 >= 2.4.0])
+   PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.6.0 gmodule-2.0 >= 2.6.0])
+   if test "$use_gtk" = "yes" ; then
+      PKG_CHECK_MODULES(GTK, [gtk+-2.0 >= 2.4.0])
    fi
    PKG_CHECK_MODULES(XML, [libxml-2.0 >= 2.6.0])
    PKG_CHECK_MODULES(CURL, [libcurl >= 7.16.0])
@@ -390,9 +517,6 @@ else
          ;;
    esac
    PKG_CHECK_MODULES(SSL, [openssl >= $OPENSSL_MIN_VER])
-
-   AC_DEFINE(BORA_LINK_SSL_DIRECTLY)
-   SSL_CFLAGS="$SSL_CFLAGS -DSSL_SRC_DIR=\\\"`$PKG_CONFIG --variable libdir openssl`\\\""
 fi
 
 case "$host_os" in
@@ -432,6 +556,7 @@ AC_PATH_PROG([MKSQUASHFS],[mksquashfs])
 AC_PATH_PROG([OTOOL],[otool])
 AC_PATH_PROG([RPMBUILD],[rpmbuild])
 AC_PATH_PROG([STRIP],[strip])
+AC_PATH_PROG([UNZIP],[unzip])
 AC_PROG_INTLTOOL([0.21])
 
 GETTEXT_PACKAGE="vmware-view"
@@ -440,16 +565,6 @@ AC_SUBST(GETTEXT_PACKAGE)
 ALL_LINGUAS="de fr ja zh_CN"
 AC_SUBST(ALL_LINGUAS)
 AM_GLIB_GNU_GETTEXT
-
-# These need to be after AC_PROG_SED
-if test -z "$TCROOT" ; then
-   changequote(,)dnl
-   SSL_VERSION_NUM="`$PKG_CONFIG --modversion openssl | $SED -e 's/[^0-9\.].*$//'`"
-   changequote([,])dnl
-fi
-SSL_CFLAGS="$SSL_CFLAGS -DLIBCRYPTO_SO=libcrypto.$LIBEXT.$SSL_VERSION_NUM"
-SSL_CFLAGS="$SSL_CFLAGS -DLIBSSL_SO=libssl.$LIBEXT.$SSL_VERSION_NUM"
-SSL_CFLAGS="$SSL_CFLAGS -DOPENSSL_`echo $SSL_VERSION_NUM | $SED -e 's/\.//g'`"
 
 AC_ARG_WITH([icons-dir],
    [AS_HELP_STRING([--with-icons-dir=DIR],
@@ -465,6 +580,12 @@ for i in view_16x.png view_32x.png view_48x.png view_client_banner.png ; do
 done
 AC_MSG_RESULT([ all present and accounted for])
 ICONS_DIR="$with_icons_dir"
+have_pcoip_banner="no"
+if test -f $with_icons_dir/view_client_banner_pcoip.png ; then
+   AC_DEFINE(HAVE_PCOIP_BANNER)
+   have_pcoip_banner="yes"
+fi
+AM_CONDITIONAL([VIEW_PCOIP_BANNER], [test "$have_pcoip_banner" = "yes"])
 
 AC_ARG_WITH([packaging-name],
    [AS_HELP_STRING([--with-packages-name=NAME],
@@ -565,6 +686,10 @@ case "$host_os" in
       AC_DEFINE(_FILE_OFFSET_BITS,[64])
       GENCCODE_ASM_TARGET="gcc"
       ;;
+   [mingw32*])
+      GENCCODE_ASM_TARGET="gcc"
+      LIBS="$LIBS -lgdi32 -lws2_32 -L$HOST_TCROOT/lib -lintl"
+      ;;
    [darwin*])
       for fw in AppKit Cocoa CoreData CoreServices Foundation \
                 Security SecurityInterface SystemConfiguration ; do
@@ -612,7 +737,7 @@ vm_grep_value=U_ICUDATA_ENTRY_POINT])])
 fi
 AM_CONDITIONAL([STATIC_ICU],[test "$enable_static_icu" != "no"])
 
-if test ! "$TCROOT" ; then
+if test "$TCROOT" = "no" ; then
    AC_CHECK_FUNCS([lseek],[LIB_FILE_CPPFLAGS="$LIB_FILE_CPPFLAGS -DGLIBC_VERSION_21"])
    AC_CHECK_HEADER([wchar.h],[LIB_STRING_CPPFLAGS="$LIB_STRING_CPPFLAGS -DGLIBC_VERSION_22"])
    # Check to see if SYS_setuid32 is defined. If SYS_setuid32 is unknown, we will
@@ -716,6 +841,10 @@ if test ! "$TCROOT" ; then
     fi
   fi
 fi
+AC_DEFINE(HAVE_UIDNA_IDNTOASCII)
+
+AC_CHECK_HEADERS([dlfcn.h arpa/inet.h])
+AC_CHECK_FUNCS([localtime_r])
 
 RPM_STAGE_ROOT="`pwd`/rpm-stage"
 RPM_OUTPUT_DIR="`pwd`/rpm-output"

@@ -223,6 +223,7 @@ WindowSizeDlg::UpdateWindowSizes(gpointer data) // IN
    APPEND_SIZE(1600, 1200);
    APPEND_SIZE(1680, 1050);
    APPEND_SIZE(1920, 1200);
+   APPEND_SIZE(2560, 1600);
 
 #undef APPEND_SIZE
 

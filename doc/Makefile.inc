@@ -19,10 +19,6 @@
 ################################################################################
 
 dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
-dist_pdf_DATA += doc/View_Client_Admin_Guide-de.pdf
-dist_pdf_DATA += doc/View_Client_Admin_Guide-fr.pdf
-dist_pdf_DATA += doc/View_Client_Admin_Guide-ja.pdf
-dist_pdf_DATA += doc/View_Client_Admin_Guide-zh_CN.pdf
 
 if VIEW_EULAS
 doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
@@ -39,8 +35,22 @@ man_MANS += doc/vmware-view-tunnel.1
 
 dist_noinst_DATA += doc/copyright.Debian
 
-dist_help_DATA += doc/help/integrated_help-en.txt
-dist_help_DATA += doc/help/integrated_help-de.txt
-dist_help_DATA += doc/help/integrated_help-fr.txt
-dist_help_DATA += doc/help/integrated_help-ja.txt
-dist_help_DATA += doc/help/integrated_help-zh_CN.txt
+dist_helpde_DATA += doc/help/de/connect.txt
+dist_helpde_DATA += doc/help/de/list.txt
+dist_helpde_DATA += doc/help/de/login.txt
+
+dist_helpen_DATA += doc/help/en/connect.txt
+dist_helpen_DATA += doc/help/en/list.txt
+dist_helpen_DATA += doc/help/en/login.txt
+
+dist_helpfr_DATA += doc/help/fr/connect.txt
+dist_helpfr_DATA += doc/help/fr/list.txt
+dist_helpfr_DATA += doc/help/fr/login.txt
+
+dist_helpja_DATA += doc/help/ja/connect.txt
+dist_helpja_DATA += doc/help/ja/list.txt
+dist_helpja_DATA += doc/help/ja/login.txt
+
+dist_helpzh_CN_DATA += doc/help/zh_CN/connect.txt
+dist_helpzh_CN_DATA += doc/help/zh_CN/list.txt
+dist_helpzh_CN_DATA += doc/help/zh_CN/login.txt

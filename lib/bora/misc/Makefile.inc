@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 ################################################################################
-# Copyright 2008 VMware, Inc.  All rights reserved.
+# Copyright 2008-2010 VMware, Inc.  All rights reserved.
 #
 # This file is part of VMware View Open Client.
 #
@@ -21,5 +21,10 @@
 libMisc_a_SOURCES += lib/bora/misc/loglevel_tools.c
 libMisc_a_SOURCES += lib/bora/misc/msgfmt.c
 libMisc_a_SOURCES += lib/bora/misc/url.c
+if VIEW_WIN32
+libMisc_a_SOURCES += lib/bora/misc/win32u.c
+libMisc_a_SOURCES += lib/bora/misc/win32uRegistry.c
+libMisc_a_SOURCES += lib/bora/misc/win32util_misc.c
+endif # VIEW_WIN32
 
 libMisc_a_CPPFLAGS += $(ICU_CPPFLAGS)

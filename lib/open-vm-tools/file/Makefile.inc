@@ -21,10 +21,12 @@ noinst_LIBRARIES += libFile.a
 libFile_a_SOURCES =
 libFile_a_SOURCES += lib/open-vm-tools/file/file.c
 libFile_a_SOURCES += lib/open-vm-tools/file/fileIO.c
-libFile_a_SOURCES += lib/open-vm-tools/file/fileIOPosix.c
 libFile_a_SOURCES += lib/open-vm-tools/file/fileInt.h
-libFile_a_SOURCES += lib/open-vm-tools/file/fileLockPosix.c
 libFile_a_SOURCES += lib/open-vm-tools/file/fileLockPrimitive.c
+if VIEW_POSIX
 libFile_a_SOURCES += lib/open-vm-tools/file/filePosix.c
+libFile_a_SOURCES += lib/open-vm-tools/file/fileIOPosix.c
+libFile_a_SOURCES += lib/open-vm-tools/file/fileLockPosix.c
+endif # VIEW_POSIX
 
-libfile_a_CFLAGS = @LIB_FILE_CPPFLAGS@
+libFile_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIB_FILE_CPPFLAGS)

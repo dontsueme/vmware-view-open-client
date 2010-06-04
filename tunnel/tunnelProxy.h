@@ -33,9 +33,7 @@
 #define __TUNNEL_PROXY_H__
 
 
-#include "vm_basic_defs.h"
-#include "vm_basic_types.h"
-#include "asyncsocket.h"
+#include <glib.h>
 
 
 /*
@@ -108,19 +106,19 @@ typedef void (*TunnelProxyDisconnectCb)(TunnelProxy *tp,
                                         const char *reconnectSecret,
                                         const char *reason, void *userData);
 
-typedef Bool (*TunnelProxyMsgHandlerCb)(TunnelProxy *tp, const char *msgId,
-                                        const char *body, int len,
-                                        void *userData);
+typedef gboolean (*TunnelProxyMsgHandlerCb)(TunnelProxy *tp, const char *msgId,
+                                            const char *body, int len,
+                                            void *userData);
 
-typedef Bool (*TunnelProxyNewListenerCb)(TunnelProxy *tp, const char *portName,
-                                         const char *bindAddr, int bindPort,
-                                         void *userData);
+typedef gboolean (*TunnelProxyNewListenerCb)(TunnelProxy *tp, const char *portName,
+                                             const char *bindAddr, int bindPort,
+                                             void *userData);
 
-typedef Bool (*TunnelProxyNewChannelCb)(TunnelProxy *tp, const char *portName,
-                                        AsyncSocket *socket, void *userData);
+typedef gboolean (*TunnelProxyNewChannelCb)(TunnelProxy *tp, const char *portName,
+                                            int fd, void *userData);
 
 typedef void (*TunnelProxyEndChannelCb)(TunnelProxy *tp, const char *portName,
-                                        AsyncSocket *socket, void *userData);
+                                        int fd, void *userData);
 
 
 TunnelProxy *TunnelProxy_Create(const char *connectionId,
@@ -166,10 +164,10 @@ TunnelProxyErr TunnelProxy_CloseListener(TunnelProxy *tp, const char *portName);
  */
 
 void TunnelProxy_HTTPRecv(TunnelProxy *tp, const char *buf, int bufSize,
-                          Bool httpChunked);
+                          gboolean httpChunked);
 void TunnelProxy_HTTPSend(TunnelProxy *tp, char *buf, int *bufSize,
-                          Bool httpChunked);
-Bool TunnelProxy_HTTPSendNeeded(TunnelProxy *tp);
+                          gboolean httpChunked);
+gboolean TunnelProxy_HTTPSendNeeded(TunnelProxy *tp);
 
 
 /*
@@ -189,11 +187,15 @@ Bool TunnelProxy_HTTPSendNeeded(TunnelProxy *tp);
 #define TP_TYPE_EMPTY "=N"
 */
 
-Bool TunnelProxy_ReadMsg(const char *body, int len,
-                         const char* nameTypeKey, ...);
+gboolean TunnelProxy_ReadMsg(const char *body, int len,
+                             const char* nameTypeKey, ...);
 
-Bool TunnelProxy_FormatMsg(char **body, int *len,
-                           const char* nameTypeKey, ...);
+gboolean TunnelProxy_FormatMsg(char **body, int *len,
+                               const char* nameTypeKey, ...);
+
+/* libPoll utility functions. */
+void TunnelProxy_RemovePoll(void (*)(void *f), void *clientData);
+void TunnelProxy_AddPoll(void (*f)(void *), void *clientData, int fd);
 
 
 #endif // __TUNNEL_PROXY_H__

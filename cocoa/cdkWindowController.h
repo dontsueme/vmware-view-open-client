@@ -53,7 +53,9 @@ namespace cdk {
    CdkViewController *viewController;
    NSString *clientName;
    NSString *busyText;
+   NSString *domainPassword;
    BOOL busy;
+   BOOL triedKeychainPassword;
 
    IBOutlet NSBox *box;
    IBOutlet NSButton *goBackButton;
@@ -73,6 +75,7 @@ namespace cdk {
 
 @property(copy) NSString *busyText;
 @property(readonly) BOOL busy;
+@property(readonly) BOOL triedKeychainPassword;
 @property(readonly) BOOL goBackEnabled;
 @property(readonly, assign) CdkViewController *viewController;
 @property(readonly, retain) CdkBroker *broker;
@@ -82,6 +85,11 @@ namespace cdk {
 
 -(IBAction)onContinue:(id)sender;
 -(IBAction)onGoBack:(id)sender;
+
+-(void)alertWithStyle:(NSAlertStyle)style
+          messageText:(NSString *)message
+informativeTextWithFormat:(NSString *)details
+            arguments:(va_list)args;
 
 
 @end // @interface CdkWindowController

@@ -1,3 +1,4 @@
+//depot/vdi/vdm30/framework/cdk/lib/open-vm-tools/panicDefault/panicDefault.c#1 - add change 23244 (text)
 /*********************************************************
  * Copyright (C) 2006 VMware, Inc. All rights reserved.
  *

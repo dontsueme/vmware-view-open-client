@@ -35,6 +35,7 @@
 #include <glib.h>
 
 
+#include "cdkErrors.h"
 #include "util.hh"
 
 
@@ -48,6 +49,13 @@ public:
 
    virtual int Main(int argc, char **argv) = 0;
 
+   static void ShowError(CdkError error,
+                         const Util::string &message,
+                         const Util::string &details, ...);
+   static void ShowInfo(const Util::string &message,
+                        const Util::string &details, ...);
+   static void ShowWarning(const Util::string &message,
+                           const Util::string &details, ...);
 protected:
    BaseApp();
    virtual ~BaseApp() { }
@@ -55,17 +63,38 @@ protected:
    bool Init(int argc, char **argv);
    void Fini();
 
+   virtual void InitLogging();
+   static void IntegrateGLibLogging();
+
    virtual void InitPoll() = 0;
    virtual Util::string GetLocaleDir() = 0;
 
+   // XXX: Cocoa needs to have InitPrefs created
+   virtual void InitPrefs() { }
+
+   virtual void ShowErrorDialog(const Util::string &message,
+                                const Util::string &details,
+                                va_list args) = 0;
+   virtual void ShowInfoDialog(const Util::string &message,
+                               const Util::string &details,
+                               va_list args) = 0;
+   virtual void ShowWarningDialog(const Util::string &message,
+                                  const Util::string &details,
+                                  va_list args) = 0;
+   virtual void TriageError(CdkError error,
+                            const Util::string &message,
+                            const Util::string &details,
+                            va_list args);
 private:
    BaseApp(const BaseApp &app) { }
    BaseApp &operator=(const BaseApp &app) { return *this; }
 
-   static void IntegrateGLibLogging();
    static void OnGLibLog(const gchar *domain,
                          GLogLevelFlags level,
-                         const gchar *message);
+                         const gchar *message,
+                         gpointer user_data);
+
+   static void WarningHelper(const gchar *string);
 
    static BaseApp *sApp;
 };

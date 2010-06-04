@@ -276,6 +276,7 @@ FileLockMemberValues(ConstUnicode lockDir,      // IN:
                      uint32 requiredSize,       // IN:
                      LockValues *memberValues)  // OUT:
 {
+#ifndef __MINGW32__
    uint32 argc = 0;
    FILELOCK_FILE_HANDLE handle;
    uint32 len;
@@ -448,6 +449,11 @@ bail:
    Unicode_Free(path);
 
    return err;
+#else
+   // XXX - incomplete: needs a win/mingw32 implementation, if required.
+   NOT_IMPLEMENTED();
+   return 0;
+#endif
 }
 
 

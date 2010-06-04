@@ -29,9 +29,6 @@
  */
 
 
-#include <glib/gi18n.h>
-
-
 #include "scCertDetailsDlg.hh"
 #include "scPinDlg.hh"
 
@@ -76,6 +73,7 @@ ScPinDlg::ScPinDlg()
    gtk_widget_show(GTK_WIDGET(l));
    gtk_box_pack_start(GTK_BOX(hbox), GTK_WIDGET(l), false, false, 0);
    gtk_misc_set_alignment(GTK_MISC(l), 1.0, 0.5);
+   gtk_label_set_mnemonic_widget(l, GTK_WIDGET(mPin));
 
    gtk_widget_show(GTK_WIDGET(mPin));
    gtk_box_pack_start(GTK_BOX(hbox), GTK_WIDGET(mPin), true, true, 0);

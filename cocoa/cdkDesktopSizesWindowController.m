@@ -96,6 +96,7 @@
                             MAKE_SIZE(1600, 1200),
                             MAKE_SIZE(1680, 1050),
                             MAKE_SIZE(1920, 1200),
+                            MAKE_SIZE(2560, 1600),
                             nil];
    NSUInteger selected = [sizes indexOfObject:[[CdkPrefs sharedPrefs]
                                                  customDesktopSize]];
@@ -145,7 +146,7 @@
 
 -(void)awakeFromNib
 {
-   [slider setNumberOfTickMarks:[sizes count] - 1];
+   [slider setNumberOfTickMarks:[sizes count]];
    [slider setMaxValue:[sizes count] - 1];
    [slider setDoubleValue:selectedSize];
 }

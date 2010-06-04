@@ -60,6 +60,7 @@ public:
    ~Prefs();
 
    static Prefs *GetPrefs();
+   static void SetPrefFilePath(const char *filePath);
 
    void ParseArgs(int *argcp, char ***argvp) { ParseArgs(argcp, argvp, true); }
 
@@ -113,14 +114,10 @@ public:
    bool GetFullScreen() const;
    void SetFullScreen(bool fullScreen);
 
-   /*
-    * Return const ref to our private collections so iterators
-    * created from the collection remain valid over multiple
-    * calls to this method (rather than returning a copy by value).
-    */
-   const std::vector<Util::string> &GetRDesktopRedirects() const
+   std::vector<Util::string> GetRDesktopRedirects() const
       { return mRDesktopRedirects; }
-   const std::vector<Util::string> &GetUsbOptions() const
+
+   std::vector<Util::string> GetUsbOptions() const
       { return mUsbOptions; }
 
    const char *GetPassword() const { return mPassword; }
@@ -131,8 +128,24 @@ public:
    bool GetAllowWMBindings() const;
    void SetAllowWMBindings(bool allow);
 
+   bool GetKioskMode() const;
+   void SetKioskMode(bool kioskMode);
+
+   bool GetOnce() const;
+   void SetOnce(bool once);
+
+   int GetInitialRetryPeriod() const;
+   void SetInitialRetryPeriod(int initialRetryPeriod);
+
+   int GetMaximumRetryPeriod() const;
+   void SetMaximumRetryPeriod(int maximumRetryPeriod);
+
+   Util::string GetKbdLayout() const;
+   void SetKbdLayout(Util::string val);
+
 private:
    static Prefs *sPrefs;
+   static Util::string sFilePath;
 
    void ParseArgs(int *argcp, char ***argvp, bool allowFileOpts);
 
@@ -146,6 +159,8 @@ private:
 
    void SetSupportFile(Util::string file);
    void SetDisableMetacityKeybindingWorkaround(bool disable);
+
+   void PrintEnvironmentInfo();
 
    Dictionary *GetDictionaryForKey(Util::string key) const;
 

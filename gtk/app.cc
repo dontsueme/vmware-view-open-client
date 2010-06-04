@@ -32,8 +32,8 @@
 
 
 #include "app.hh"
+#include "kioskWindow.hh"
 #include "prefs.hh"
-#include "window.hh"
 
 
 extern "C" {
@@ -108,11 +108,16 @@ int
 App::Main(int argc,     // IN
           char *argv[]) // IN
 {
+   Util::string wmname;
+
    if (!Init(argc, argv)) {
       return 1;
    }
 
    Preference_Init();
+
+   Log("Using gtk+ version %d.%d.%d\n",
+       gtk_major_version, gtk_minor_version, gtk_micro_version);
 
    /*
     * Set GDK_NATIVE_WINDOWS=1 so that a native XID is used for all
@@ -130,6 +135,10 @@ App::Main(int argc,     // IN
     */
    gtk_init(&argc, &argv);
 
+   wmname = GetWindowManagerName();
+   Log("Using %s window manager\n",
+       wmname.empty() ? "unknown" : wmname.c_str());
+
    // And then our args.
    Prefs::GetPrefs()->ParseArgs(&argc, &argv);
 
@@ -144,7 +153,7 @@ App::Main(int argc,     // IN
                        "widget \"CtrlAltDelDlg\" style \"ctrl-alt-del-dlg\"");
 
    // Build the UI
-   mWindow = CreateWindow();
+   mWindow = CreateAppWindow();
 
    // Quit when window closes.
    g_signal_connect(G_OBJECT(mWindow->GetWindow()), "destroy",
@@ -158,6 +167,10 @@ App::Main(int argc,     // IN
 
    mWindow->Show();
 
+#ifdef VIEW_POSIX
+   Sig_Callback(SIGTERM, SIG_SAFE, (SigCallbackFunc)SigTermHandler, this);
+#endif
+
    gtk_main();
 
    Fini();
@@ -169,9 +182,9 @@ App::Main(int argc,     // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::App::CreateWindow --
+ * cdk::App::CreateAppWindow --
  *
- *      Creates a new Window.
+ *      Creates a new application Window.
  *
  * Results:
  *      A new Window.
@@ -183,75 +196,87 @@ App::Main(int argc,     // IN
  */
 
 Window *
-App::CreateWindow()
+App::CreateAppWindow()
 {
-   return new Window();
+   return Prefs::GetPrefs()->GetKioskMode() ? new KioskWindow() : new Window();
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::App::Quit --
+ * cdk::App::ShowErrorDialog --
  *
- *      Handle succesful logout command.
+ *      Show an error dialog.
  *
  * Results:
  *      None
  *
  * Side effects:
- *      Destroys main window, which exits the app.
+ *      None
  *
  *-----------------------------------------------------------------------------
  */
 
 void
-App::Quit()
+App::ShowErrorDialog(const Util::string &message, // IN
+                     const Util::string &details, // IN
+                     va_list args)                // IN
 {
-   if (mWindow) {
-      mWindow->Close();
-   } else {
-      exit(0);
-   }
+   ASSERT(mWindow);
+   mWindow->ShowMessageDialog(GTK_MESSAGE_ERROR, message, details, args);
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::App::ShowDialog --
+ * cdk::App::ShowInfoDialog --
  *
- *      Pops up a dialog or shows a transition error message.  The
- *      format argument is a printf format string.
+ *      Show an information dialog.
  *
  * Results:
  *      None
  *
  * Side effects:
- *      A new dialog, or the error transition page, is displayed.
+ *      None
  *
  *-----------------------------------------------------------------------------
  */
 
 void
-App::ShowDialog(GtkMessageType type,       // IN
-                const Util::string format, // IN
-                ...)
+App::ShowInfoDialog(const Util::string &message, // IN
+                    const Util::string &details, // IN
+                    va_list args)                // IN
 {
-   App *app = reinterpret_cast<App *>(GetSharedApp());
-   ASSERT(app);
-   ASSERT(app->mWindow);
+   ASSERT(mWindow);
+   mWindow->ShowMessageDialog(GTK_MESSAGE_INFO, message, details, args);
+}
 
-   /*
-    * It would be nice if there was a va_list variant of
-    * gtk_message_dialog_new().
-    */
-   va_list args;
-   va_start(args, format);
-   Util::string label = Util::FormatV(format.c_str(), args);
-   va_end(args);
 
-   app->mWindow->ShowDialog(type, "%s", label.c_str());
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::App::ShowWarningDialog --
+ *
+ *      Show a warning dialog.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+App::ShowWarningDialog(const Util::string &message, // IN
+                       const Util::string &details, // IN
+                       va_list args)                // IN
+{
+   ASSERT(mWindow);
+   mWindow->ShowMessageDialog(GTK_MESSAGE_WARNING, message, details, args);
 }
 
 
@@ -276,13 +301,202 @@ App::ShowDialog(GtkMessageType type,       // IN
 Util::string
 App::GetLocaleDir()
 {
-   Util::string localeDir = Util::GetUsefulPath(LOCALEDIR, "../share/locale");
+   // XXX - this path is very likely incorrect for Windows.
+   char *localePath = g_build_filename("..", "share", "locale", NULL);
+   Util::string localeDir = Util::GetUsefulPath(LOCALEDIR, localePath);
    if (localeDir.empty()) {
       Util::UserWarning(_("Could not find locale directory; falling back "
                           "to %s\n"), LOCALEDIR);
       localeDir = LOCALEDIR;
    }
+   g_free(localePath);
    return localeDir;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::App::SigTermHandler --
+ *
+ *      Handler for SIGTERM.  Close window so that we exit gracefully.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Program is exited.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef VIEW_POSIX
+void
+App::SigTermHandler(int s,            // IN
+                    siginfo_t *info,  // IN/UNUSED
+                    void *clientData) // IN
+{
+   ASSERT(s == SIGTERM);
+   App *that = reinterpret_cast<App *>(clientData);
+   ASSERT(that);
+
+   Warning("Received signal %d. Exiting.\n", s);
+   that->mWindow->Close();
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::App::TriageError --
+ *
+ *      Analyze error conditions and respond accordingly.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      May exit the process on non-zero error, depending on preferences.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+App::TriageError(CdkError error,
+                 const Util::string &message,
+                 const Util::string &details,
+                 va_list args)
+{
+   if (error != CDK_ERR_SUCCESS && Prefs::GetPrefs()->GetKioskMode() &&
+         Prefs::GetPrefs()->GetOnce()) {
+      Util::string errorMsg = Util::Format("Error %d: %s - %s\n",
+         error, message.c_str(), Util::FormatV(details.c_str(), args).c_str());
+      Util::UserWarning(errorMsg.c_str());
+      Log(errorMsg.c_str());
+      exit(error);
+   }
+
+   ShowErrorDialog(message, details, args);
+}
+
+
+/*
+ *----------------------------------------------------------------------------
+ *
+ * cdk::App::GetWindowManagerName --
+ *
+ *       Determines the active window manager name.
+ *
+ * Returns:
+ *       A newly allocated string containing the window manager name.
+ *
+ * Side effects:
+ *       None.
+ *
+ *----------------------------------------------------------------------------
+ */
+
+Util::string
+App::GetWindowManagerName()
+{
+#ifndef GDK_WINDOWING_X11
+   return "";
+#else
+   GdkScreen *screen;
+   GdkWindow *window;
+   GdkNativeWindow native;
+   GdkAtom atom_wmcheck;
+   GdkAtom atom_wmname;
+   int data_format;
+   int data_length;
+   uint8 *data;
+   GdkDisplay *display;
+
+   /*
+    * Retreive atoms for the properties we need to check.
+    */
+   atom_wmcheck = gdk_atom_intern("_NET_SUPPORTING_WM_CHECK", FALSE);
+   if (atom_wmcheck == GDK_NONE) {
+      return "";
+   }
+   atom_wmname = gdk_atom_intern("_NET_WM_NAME", FALSE);
+   if (atom_wmname == GDK_NONE) {
+      return "";
+   }
+
+   /*
+    * Use the root window and display.
+    */
+   screen = gdk_screen_get_default();
+   window = gdk_screen_get_root_window(screen);
+   display = gdk_screen_get_display(screen);
+
+   /*
+    * Query the X root window for the XWindow that supports checking
+    * the window manager name.
+    */
+   if (!gdk_property_get(window, atom_wmcheck, GDK_NONE, 0, sizeof(data),
+                         FALSE, NULL, &data_format, &data_length, &data)) {
+      return "";
+   }
+
+   /*
+    * Ensure that we retrieved the data in 32-bit mode.
+    */
+   if (data_format != 32 || !data) {
+      g_free(data);
+      return "";
+   }
+
+   /*
+    * Convert the XWindow id to a GdkNativeWindow.
+    */
+   native = *((GdkNativeWindow *)data);
+   g_free(data);
+
+   /*
+    * Make sure we retrieved a valid XWindow.
+    */
+   if (!native) {
+      return "";
+   }
+
+   /*
+    * Retrieve a GdkWindow for the display and GdkNativeWindow.
+    */
+   window = gdk_window_foreign_new_for_display(display, native);
+   if (!window) {
+      return "";
+   }
+
+   /*
+    * Retrieve the _NET_WM_NAME property from the XWindow that supports
+    * the property.
+    */
+   if (!gdk_property_get(window, atom_wmname, GDK_NONE, 0, 1024,
+                         FALSE, NULL, &data_format, &data_length, &data)) {
+      g_object_unref(window);
+      return "";
+   }
+
+   /*
+    * We are done with the foreign window.
+    */
+   g_object_unref(window);
+
+   /*
+    * Ensure that we retrieved the data in 8-bit mode.
+    */
+   if (data_format != 8 || !data) {
+      g_free(data);
+      return "";
+   }
+
+   Util::string ret((char *)data, data_length);
+   g_free(data);
+   return ret;
+#endif
 }
 
 

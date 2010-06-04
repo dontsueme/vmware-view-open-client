@@ -28,9 +28,6 @@
  *      Implementation of cdk::Protocols.
  */
 
-#include <glib/gi18n.h>
-
-
 #include "protocols.hh"
 
 

@@ -26,8 +26,10 @@ vmware_view_SOURCES += gtk/brokerDlg.hh
 vmware_view_SOURCES += gtk/certViewer.hh
 vmware_view_SOURCES += gtk/cryptoki.cc
 vmware_view_SOURCES += gtk/cryptoki.hh
+if !VIEW_WIN32
 vmware_view_SOURCES += gtk/desktopDlg.cc
 vmware_view_SOURCES += gtk/desktopDlg.hh
+endif # !VIEW_WIN32
 vmware_view_SOURCES += gtk/desktopSelectDlg.cc
 vmware_view_SOURCES += gtk/desktopSelectDlg.hh
 vmware_view_SOURCES += gtk/disclaimerDlg.cc
@@ -36,17 +38,27 @@ vmware_view_SOURCES += gtk/dlg.cc
 vmware_view_SOURCES += gtk/dlg.hh
 vmware_view_SOURCES += gtk/helpSupportDlg.cc
 vmware_view_SOURCES += gtk/helpSupportDlg.hh
+vmware_view_SOURCES += gtk/kioskWindow.cc
+vmware_view_SOURCES += gtk/kioskWindow.hh
 vmware_view_SOURCES += gtk/loginDlg.cc
 vmware_view_SOURCES += gtk/loginDlg.hh
+if !VIEW_CVP
 vmware_view_SOURCES += gtk/main.cc
+endif # !VIEW_CVP
+if VIEW_WIN32
+vmware_view_SOURCES += gtk/mstsc.cc
+vmware_view_SOURCES += gtk/mstsc.hh
+endif # VIEW_WIN32
 vmware_view_SOURCES += gtk/passwordDlg.cc
 vmware_view_SOURCES += gtk/passwordDlg.hh
 vmware_view_SOURCES += gtk/prefs.cc
 vmware_view_SOURCES += gtk/prefs.hh
+if !VIEW_WIN32
 vmware_view_SOURCES += gtk/rdesktop.cc
 vmware_view_SOURCES += gtk/rdesktop.hh
 vmware_view_SOURCES += gtk/rmks.cc
 vmware_view_SOURCES += gtk/rmks.hh
+endif # !VIEW_WIN32
 vmware_view_SOURCES += gtk/scCertDetailsDlg.cc
 vmware_view_SOURCES += gtk/scCertDetailsDlg.hh
 vmware_view_SOURCES += gtk/scCertDlg.cc

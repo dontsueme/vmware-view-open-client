@@ -30,13 +30,18 @@
 
 
 #include <boost/bind.hpp>
-#include <glib/gi18n.h>
 
+
+#include "cdkErrors.h"
 #include "tunnel.hh"
-#include "app.hh"
+#include "baseApp.hh"
 
 
+#ifdef _WIN32
+#define VMWARE_VIEW_TUNNEL "vmware-view-tunnel.exe"
+#else
 #define VMWARE_VIEW_TUNNEL "vmware-view-tunnel"
+#endif
 
 // NOTE: Keep up to date with strings in tunnelMain.c
 #define TUNNEL_READY "TUNNEL READY"
@@ -45,9 +50,9 @@
 #define TUNNEL_SYSTEM_MESSAGE "TUNNEL SYSTEM MESSAGE: "
 #define TUNNEL_ERROR "TUNNEL ERROR: "
 
-#define SOCKET_ERROR "SOCKET "
+#define SOCKET_ERROR_PREFIX "SOCKET "
 // lib/bora/asyncsocket/asyncsocket.c:864
-#define SOCKET_ERROR_FAILED_TO_RESOLVE SOCKET_ERROR "Failed to resolve address '"
+#define SOCKET_ERROR_FAILED_TO_RESOLVE SOCKET_ERROR_PREFIX "Failed to resolve address '"
 
 
 namespace cdk {
@@ -163,15 +168,9 @@ Tunnel::Connect(const BrokerXml::Tunnel &tunnelInfo) // IN
    Log("Executing secure HTTP tunnel: %s\n", tunnelPath.c_str());
 
    std::vector<Util::string> args;
-   int argsMask = 0;
-
    args.push_back(GetTunnelUrl());
 
-   // Don't log the connection ID.
-   argsMask |= 1 << args.size();
-   args.push_back(GetConnectionId());
-
-   mProc.Start(VMWARE_VIEW_TUNNEL, tunnelPath, args, argsMask);
+   mProc.Start(VMWARE_VIEW_TUNNEL, tunnelPath, args, 0, NULL, GetConnectionId() + "\n");
 }
 
 
@@ -207,7 +206,8 @@ Tunnel::OnDisconnect(int status) // IN
  *
  *      Stderr callback for the vmware-view-tunnel child process.  If the line
  *      matches the magic TUNNEL_READY string, emit onReady.  For tunnel system
- *      messages and errors, calls App::ShowDialog to display a dialog.
+ *      messages and errors, calls BaseApp::ShowInfo and BaseApp::ShowError to
+ *      display a dialog.
  *
  * Results:
  *      None
@@ -238,19 +238,19 @@ Tunnel::OnErr(Util::string line) // IN: this
                         strlen(TUNNEL_SYSTEM_MESSAGE)) == 0) {
       Util::string msg = Util::string(line, strlen(TUNNEL_SYSTEM_MESSAGE));
       Log("Tunnel system message: %s\n", msg.c_str());
-      App::ShowDialog(GTK_MESSAGE_INFO, _("Message from View Server: %s"),
-                      msg.c_str());
+      BaseApp::ShowInfo(_("Message from View Server"), "%s", msg.c_str());
    } else if (line.find(TUNNEL_ERROR, 0, strlen(TUNNEL_ERROR)) == 0) {
       const char *err = _(Util::string(line, strlen(TUNNEL_ERROR)).c_str());
       Log("Tunnel error message: %s\n", err);
-      App::ShowDialog(GTK_MESSAGE_ERROR, _("Error from View Server: %s"), err);
+      BaseApp::ShowError(CDK_ERR_CONNECTION_SERVER_ERROR,
+                         _("Error from View Connection Server"), "%s", err);
    } else if (line.find(SOCKET_ERROR_FAILED_TO_RESOLVE, 0,
                         strlen(SOCKET_ERROR_FAILED_TO_RESOLVE)) == 0) {
       mDisconnectReason =
          Util::Format(_("Couldn't resolve tunnel address '%s'"),
                       GetTunnelUrl().c_str());
-   } else if (line.find(SOCKET_ERROR, 0, strlen(SOCKET_ERROR)) == 0) {
-      mDisconnectReason = Util::string(line, strlen(SOCKET_ERROR));
+   } else if (line.find(SOCKET_ERROR_PREFIX, 0, strlen(SOCKET_ERROR_PREFIX)) == 0) {
+      mDisconnectReason = Util::string(line, strlen(SOCKET_ERROR_PREFIX));
    }
 }
 

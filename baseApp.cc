@@ -28,18 +28,15 @@
  *      Implementation of BaseApp - program initialization and support.
  */
 
-#include <glib/gi18n.h>
-
-
 #include "baseApp.hh"
 
 
 extern "C" {
+#include "vm_basic_types.h"
 #include "log.h"
 #include "poll.h"
 #include "productState.h"
 #include "sig.h"
-#include "ssl.h"
 #include "vm_atomic.h"
 #include "vm_version.h"
 }
@@ -110,8 +107,8 @@ BaseApp::BaseApp()
 void
 BaseApp::IntegrateGLibLogging(void)
 {
-   g_set_printerr_handler((GPrintFunc)Warning);
-   g_log_set_default_handler((GLogFunc)BaseApp::OnGLibLog, NULL);
+   g_set_printerr_handler(BaseApp::WarningHelper);
+   g_log_set_default_handler(BaseApp::OnGLibLog, NULL);
 }
 
 
@@ -136,7 +133,8 @@ BaseApp::IntegrateGLibLogging(void)
 void
 BaseApp::OnGLibLog(const gchar *domain,  // IN
                    GLogLevelFlags level, // IN
-                   const gchar *message) // IN
+                   const gchar *message, // IN
+                   gpointer user_data)   // IN: ignored
 {
    // Both Panic and Warning implicitly log.
    if (level & (G_LOG_FLAG_FATAL | G_LOG_LEVEL_ERROR)) {
@@ -144,6 +142,29 @@ BaseApp::OnGLibLog(const gchar *domain,  // IN
    } else {
       Warning("%s: %s\n", domain, message);
    }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseApp::WarningHelper --
+ *
+ *      A helper function to call Warning() from a glib callback.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseApp::WarningHelper(const gchar *string) // IN
+{
+   Warning("%s", string);
 }
 
 
@@ -174,7 +195,9 @@ BaseApp::Init(int argc,     // IN
       g_thread_init(NULL);
    }
 #endif
+#ifndef __MINGW32__
    VThread_Init(VTHREAD_UI_ID, VMWARE_VIEW);
+#endif
 
    /*
     * XXX: Should use PRODUCT_VERSION_STRING for the third arg, but
@@ -186,8 +209,34 @@ BaseApp::Init(int argc,     // IN
                     PRODUCT_VIEW_CLIENT_NAME_FOR_LICENSE,
                     PRODUCT_VERSION_STRING_FOR_LICENSE);
 
-   Log_Init(NULL, VMWARE_VIEW ".log.filename", VMWARE_VIEW);
-   IntegrateGLibLogging();
+   // XXX: figure out why arm doesn't have CODESET defined.
+#ifdef CODESET
+   setlocale(LC_ALL, "");
+
+   /*
+    * If the charset isn't supported by unicode, Log_Init() will
+    * Panic(); this attempts to avoid that.
+    */
+   const char *codeset = nl_langinfo(CODESET);
+   bool validEncoding =
+      Unicode_IsEncodingValid(Unicode_EncodingNameToEnum(codeset));
+   if (!validEncoding) {
+      unsetenv("LANG");
+   }
+
+   /*
+    * We want the first line of our log file to be in C format so that
+    * our log collection script can parse it.
+    */
+   setlocale(LC_ALL, "C");
+#endif
+   InitLogging();
+   setlocale(LC_ALL, "");
+#ifdef CODESET
+   if (!validEncoding) {
+      Log("Encoding \"%s\" is not supported; ignoring $LANG.\n", codeset);
+   }
+#endif
 
    Util::string localeDir = GetLocaleDir();
    Log("Using locale directory %s\n", localeDir.c_str());
@@ -196,15 +245,16 @@ BaseApp::Init(int argc,     // IN
    bind_textdomain_codeset(VMWARE_VIEW, "UTF-8");
    textdomain(VMWARE_VIEW);
 
-   setlocale(LC_ALL, "");
-
    printf(_("Using log file %s\n"), Log_GetFileName());
 
    InitPoll();
-   SSL_InitEx(NULL, NULL, NULL, true, false, false);
    BasicHttp_Init(Poll_Callback, Poll_CallbackRemove);
 
+   InitPrefs();
+
+#ifdef VIEW_POSIX
    Sig_Init();
+#endif
 
    Log("Command line: ");
    for (int i = 0; i < argc; i++) {
@@ -243,7 +293,161 @@ void
 BaseApp::Fini()
 {
    Log_Exit();
+#ifdef VIEW_POSIX
    Sig_Exit();
+#endif
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseApp::InitLogging --
+ *
+ *      Perform logging initialization.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Initializes logging.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseApp::InitLogging()
+{
+   if (!Log_Init(NULL, VMWARE_VIEW ".log.filename", VMWARE_VIEW)) {
+      Warning("Could not initialize logging.\n");
+   }
+   IntegrateGLibLogging();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseApp::TriageError --
+ *
+ *      Default implementation of TriageError; simply show the error
+ *      dialog.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Error dialog may be shown.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseApp::TriageError(CdkError error,              // IN/UNUSED
+                     const Util::string &message, // IN
+                     const Util::string &details, // IN
+                     va_list args)                // IN
+{
+   ShowErrorDialog(message, details, args);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseApp::ShowError --
+ *
+ *      Show an error dialog
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      TriageError may exit the process depending on the effective app's error
+ *      handling policy.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseApp::ShowError(CdkError error,              // IN
+                   const Util::string &message, // IN
+                   const Util::string &details, // IN
+                   ...)
+{
+   BaseApp *app = GetSharedApp();
+   ASSERT(app);
+
+   va_list args;
+   va_start(args, details);
+
+   app->TriageError(error, message, details, args);
+
+   va_end(args);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseApp::ShowInfo --
+ *
+ *      Show an information dialog
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseApp::ShowInfo(const Util::string &message, // IN
+                  const Util::string &details, // IN
+                  ...)
+{
+   BaseApp *app = GetSharedApp();
+   ASSERT(app);
+
+   va_list args;
+   va_start(args, details);
+
+   app->ShowInfoDialog(message, details, args);
+   va_end(args);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseApp::ShowWarning --
+ *
+ *      Show a warning dialog
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseApp::ShowWarning(const Util::string &message, // IN
+                     const Util::string &details, // IN
+                     ...)
+{
+   BaseApp *app = GetSharedApp();
+   ASSERT(app);
+
+   va_list args;
+   va_start(args, details);
+
+   app->ShowWarningDialog(message, details, args);
+   va_end(args);
 }
 
 

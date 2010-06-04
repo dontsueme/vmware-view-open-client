@@ -34,10 +34,10 @@
 
 #include <boost/function.hpp>
 #include <exception>
-
-#ifndef _WIN32
+#if !defined(_WIN32) || defined(__MINGW32__)
 #include <glib/gi18n.h>
 #endif
+
 #ifdef VIEW_GTK
 #include <gtk/gtkbutton.h>
 #include <gtk/gtkcomboboxentry.h>
@@ -99,17 +99,21 @@ class exception
    : public std::exception
 {
 public:
-   explicit exception(const string &msg, const string &code = "")
+   explicit exception(const string &msg, const string &code = "",
+                      const string &details = "")
       : mMsg(msg),
-        mCode(code) {}
+        mCode(code),
+        mDetails(details) {}
 
    virtual ~exception() throw () {}
    virtual const char *what() const throw () { return mMsg.c_str(); }
    const string &code() const throw() { return mCode; }
+   const string &details() const throw () { return mDetails; }
 
 private:
    string mMsg;
    string mCode;
+   string mDetails;
 };
 
 
@@ -131,17 +135,18 @@ void OverrideWindowUserTime(GtkWindow *window);
 void UserWarning(const char *format, ...);
 string GetUsefulPath(const string systemPath, const string relativePath);
 
-
-string IDNToASCII(const string &text);
 string ParseHostLabel(const string &label, unsigned short *port, bool *secure);
 string GetHostLabel(const string &hostname, unsigned short port, bool secure);
 
+string GetClientHostName();
 ClientInfoMap GetClientInfo(const string broker, int port);
 string GetMacAddr(int sock, struct sockaddr_in *addr);
 ClientInfoMap GetNICInfo(const string broker, int port);
-bool EnsureFilePermissions(const char *path, int mode);
 
-int Utf8Casecmp (const char *str1, const char *str2);
+int Utf8Casecmp(const char *str1, const char *str2);
+
+int MkdirWithParents(const char *path, int mode);
+bool EnsureFilePermissions(const char *path, int mode);
 
 /*
  *-----------------------------------------------------------------------------

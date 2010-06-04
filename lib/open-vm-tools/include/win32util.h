@@ -1,3 +1,4 @@
+//depot/vdi/vdm30/framework/cdk/lib/open-vm-tools/include/win32util.h#1 - add change 23244 (text)
 /*********************************************************
  * Copyright (C) 1998 VMware, Inc. All rights reserved.
  *
@@ -34,6 +35,9 @@
 
 #include "vm_basic_types.h"
 #include "unicodeTypes.h"
+#ifdef __MINGW32__
+#include "winsidtypes.h"
+#endif
 
 #ifdef _WIN32
 

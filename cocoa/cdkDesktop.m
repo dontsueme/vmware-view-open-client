@@ -54,6 +54,9 @@ static NSString *const KEY_PATH_CAN_CONNECT = @"canConnect";
 static NSString *const KEY_PATH_HAS_SESSION = @"hasSession";
 static NSString *const KEY_PATH_CAN_RESET = @"canReset";
 static NSString *const KEY_PATH_CHECKED_OUT = @"checkedOut";
+static NSString *const KEY_PATH_STATUS = @"status";
+static NSString *const KEY_PATH_STATUS_TEXT = @"statusText";
+
 
 /*
  *-----------------------------------------------------------------------------
@@ -80,6 +83,8 @@ OnDesktopStateChanged(CdkDesktop *self)
       KEY_PATH_HAS_SESSION,
       KEY_PATH_CAN_RESET,
       KEY_PATH_CHECKED_OUT,
+      KEY_PATH_STATUS,
+      KEY_PATH_STATUS_TEXT,
       nil
    };
    for (NSString **key = keys; *key; key++) {
@@ -253,7 +258,7 @@ OnDesktopStateChanged(CdkDesktop *self)
 
 -(void)setProtocol:(NSString *)proto
 {
-   mDesktop->SetProtocol([proto utilString]);
+   mDesktop->SetProtocol([NSString utilStringWithString:proto]);
 }
 
 
@@ -343,8 +348,7 @@ OnDesktopStateChanged(CdkDesktop *self)
 
 -(BOOL)canReset
 {
-   return ![self busy] && mDesktop->CanReset()
-      && mDesktop->CanResetSession();
+   return ![self busy] && mDesktop->CanReset();
 }
 
 
@@ -368,6 +372,96 @@ OnDesktopStateChanged(CdkDesktop *self)
 {
    return ![self busy] &&
       mDesktop->GetOfflineState() == cdk::BrokerXml::OFFLINE_CHECKED_OUT;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkDesktop status] --
+ *
+ *      Return the desktop's status.
+ *
+ * Results:
+ *      Desktop's status (really a cdk::Desktop::Status).
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(int)status
+{
+   return mDesktop->GetStatus();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkDesktop statusText] --
+ *
+ *      Get the appropriate status text for this desktop.
+ *
+ * Results:
+ *      The text corresponding with this object's status.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(NSString *)statusText
+{
+   return [NSString stringWithUtilString:mDesktop->GetStatusMsg(false)];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkDesktop copyWithZone:] --
+ *
+ *      Implement NSCopying by retaining ourself - we're simply a
+ *      wrapper around the C++ object, and don't really own that
+ *      reference anyway.
+ *
+ * Results:
+ *      This object.
+ *
+ * Side effects:
+ *      Self is retained.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(id)copyWithZone:(NSZone *)zone // IN
+{
+   return [self retain];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkDesktop disconnect] --
+ *
+ *      Disconnect from the remote desktop.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Desktop is disconnected.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)disconnect
+{
+   mDesktop->Disconnect();
 }
 
 

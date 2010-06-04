@@ -422,16 +422,21 @@ GetCallerFrameAddr(void)
 
 #ifdef _WIN32 // {
 
+#ifndef __MINGW32__
 #define snprintf  _snprintf
+#endif
 #define strtok_r  strtok_s
 
 #if (_MSC_VER < 1500)
+#ifndef __MINGW32__
 #define	vsnprintf _vsnprintf
+#endif
 #endif
 
 typedef int uid_t;
 typedef int gid_t;
 
+#ifndef __MINGW32__
 static INLINE void
 sleep(unsigned int sec)
 {
@@ -443,8 +448,11 @@ usleep(unsigned long usec)
 {
    Sleep(CEILING(usec, 1000));
 }
+#endif
 
+#ifndef __MINGW32__
 typedef int pid_t;
+#endif
 #define       F_OK          0
 #define       X_OK          1
 #define       W_OK          2
@@ -512,7 +520,9 @@ typedef int pid_t;
  */
 
 #ifdef _WIN32
+#ifndef __MINGW32__
 #define PATH_MAX 256
+#endif
 #ifndef strcasecmp
 #define strcasecmp(_s1,_s2)   _stricmp((_s1),(_s2))
 #endif
@@ -644,7 +654,9 @@ typedef int pid_t;
 
 #ifdef _WIN32
 #define fsync(fd) _commit(fd)
+#ifndef fileno
 #define fileno(f) _fileno(f)
+#endif
 #else
 #endif
 

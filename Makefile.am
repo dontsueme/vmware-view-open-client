@@ -33,6 +33,9 @@ AUTOMAKE_OPTIONS := subdir-objects
 # Tell autoreconf to run aclocal with -I m4
 ACLOCAL_AMFLAGS = -I m4
 
+# Teach intltool about NS_
+export XGETTEXT_ARGS := --keyword=NS_
+
 NULL :=
 
 BUILT_SOURCES :=
@@ -45,6 +48,11 @@ TESTS :=
 AM_CPPFLAGS =
 AM_CPPFLAGS += -I$(srcdir)/lib/open-vm-tools/include
 AM_CPPFLAGS += -I$(srcdir)/lib/bora/include
+if VIEW_GTK
+AM_CPPFLAGS += $(GTK_CFLAGS)
+else
+AM_CPPFLAGS += $(GLIB_CFLAGS)
+endif
 
 dash := -
 colon := :
@@ -55,6 +63,13 @@ applicationdir := $(datadir)/applications
 pixmapsdir := $(datadir)/pixmaps
 
 helpdir := $(docdir)/help
+helpdedir := $(helpdir)/de
+helpendir := $(helpdir)/en
+helpfrdir := $(helpdir)/fr
+helpjadir := $(helpdir)/ja
+helpzh_CNdir := $(helpdir)/zh_CN
+
+patchdir := $(docdir)/patches
 
 application_DATA = $(desktop_in_files:.desktop.in=.desktop)
 bin_PROGRAMS :=
@@ -64,6 +79,12 @@ dist_bin_SCRIPTS :=
 doc_DATA :=
 dist_doc_DATA :=
 dist_help_DATA :=
+dist_helpde_DATA :=
+dist_helpen_DATA :=
+dist_helpfr_DATA :=
+dist_helpja_DATA :=
+dist_helpzh_CN_DATA :=
+dist_patch_DATA :=
 man_MANS :=
 dist_noinst_DATA =
 dist_noinst_HEADERS :=
@@ -95,9 +116,9 @@ include lib/open-vm-tools/stubs/Makefile.inc
 include lib/open-vm-tools/unicode/Makefile.inc
 include lib/open-vm-tools/user/Makefile.inc
 
-include lib/bora/asyncsocket/Makefile.inc
 include lib/bora/basicHttp/Makefile.inc
 include lib/bora/dui/Makefile.inc
+include lib/bora/file/Makefile.inc
 include lib/bora/include/Makefile.inc
 include lib/bora/log/Makefile.inc
 include lib/bora/misc/Makefile.inc
@@ -105,9 +126,9 @@ include lib/bora/nothread/Makefile.inc
 include lib/bora/poll/Makefile.inc
 include lib/bora/pollDefault/Makefile.inc
 include lib/bora/pollGtk/Makefile.inc
+include lib/bora/posix/Makefile.inc
 include lib/bora/productState/Makefile.inc
 include lib/bora/sig/Makefile.inc
-include lib/bora/ssl/Makefile.inc
 include lib/bora/stubs/Makefile.inc
 include lib/bora/user/Makefile.inc
 
@@ -120,3 +141,7 @@ include cocoa/Makefile.inc
 include doc/Makefile.inc
 include gtk/Makefile.inc
 include tunnel/Makefile.inc
+
+if VIEW_CVP
+include cvp/Makefile.inc
+endif

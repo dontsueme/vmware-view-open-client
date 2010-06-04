@@ -31,6 +31,8 @@
 
 #if !defined(_WIN32)
 #include <errno.h>
+#elif defined(__MINGW32__)
+#include <windows.h> // For DWORD
 #endif
 
 #define INCLUDE_ALLOW_USERLEVEL

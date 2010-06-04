@@ -54,8 +54,10 @@ public:
    void Start(const BrokerXml::DesktopConnection &connection,
               const Util::string &windowId,
               const Util::Rect *geometry,
+              bool enableMMR,
               const std::vector<Util::string> &devRedirectArgs =
-                 std::vector<Util::string>());
+                 std::vector<Util::string>(),
+              GdkScreen *screen = NULL);
 
 private:
    static void OnError(Util::string errorString);

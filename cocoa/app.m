@@ -39,6 +39,10 @@ extern "C" {
 
 #import "app.hh"
 #import "cdkString.h"
+#import "cdkWindowController.h"
+
+
+#define VMWARE_VIEW "vmware-view"
 
 
 namespace cdk {
@@ -79,10 +83,9 @@ App::Main(int argc,     // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::App::ShowDialog --
+ * cdk::App::Show*Dialog --
  *
- *      Tells the app controller to display a message to the user.
- *      The format argument is a printf format string.
+ *      Tells the window controller to display a message to the user.
  *
  * Results:
  *      None
@@ -93,28 +96,24 @@ App::Main(int argc,     // IN
  *-----------------------------------------------------------------------------
  */
 
-void
-App::ShowDialog(GtkMessageType msgType,    // IN
-		const Util::string format, // IN
-		...)
-{
-   va_list args;
-   va_start(args, format);
-   NSString *label =
-      [NSString stringWithUtilString:Util::FormatV(format.c_str(), args)];
-   va_end(args);
-
-   NSAlert *alert = [NSAlert alertWithMessageText:nil
-                                    defaultButton:nil
-                                  alternateButton:nil
-                                      otherButton:nil
-                        informativeTextWithFormat:@"%@", label];
-
-   [alert beginSheetModalForWindow:[NSApp mainWindow]
-                     modalDelegate:nil
-                    didEndSelector:nil
-                       contextInfo:nil];
+#define SHOW_DIALOG(fn, style)                                          \
+void                                                                    \
+App::Show##fn##Dialog(const Util::string &message,                      \
+                      const Util::string &details,                      \
+                      va_list args)                                     \
+{                                                                       \
+   CdkWindowController *window = [[NSApp mainWindow] delegate];         \
+   [window alertWithStyle:NS##style##AlertStyle                         \
+              messageText:[NSString stringWithUtilString:message]       \
+           informativeTextWithFormat:                                   \
+              [NSString stringWithUtilString:details]                   \
+                arguments:args];                                        \
 }
+
+
+SHOW_DIALOG(Error, Critical);
+SHOW_DIALOG(Info, Informational);
+SHOW_DIALOG(Warning, Warning);
 
 
 /*
@@ -137,10 +136,52 @@ App::ShowDialog(GtkMessageType msgType,    // IN
 Util::string
 App::GetLocaleDir()
 {
-   NSArray *components =
-      [NSArray arrayWithObjects:[[NSBundle mainBundle] resourcePath],
-               @"locale", nil ];
-   return [[NSString pathWithComponents:components] utilString];
+   return [NSString utilStringWithString:
+                       [[[NSBundle mainBundle] resourcePath]
+                                            stringByAppendingPathComponent:
+                             @"locale"]];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * App::InitLogging --
+ *
+ *      Initialize logging with a log file in ~/Library/Logs.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Initializes Log.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+App::InitLogging()
+{
+   NSString *logFile = nil;
+   NSArray *dirs = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
+                                                       NSUserDomainMask, YES);
+   if ([dirs count] > 0) {
+      logFile = [[dirs objectAtIndex:0]
+                   stringByAppendingPathComponents:@"Logs",
+                   @PRODUCT_VIEW_CLIENT_NAME,
+                   nil];
+      [[NSFileManager defaultManager] createDirectoryAtPath:logFile
+                                withIntermediateDirectories:YES
+                                                 attributes:nil
+                                                      error:nil];
+      logFile = [[logFile stringByAppendingPathComponent:@VMWARE_VIEW]
+                   stringByAppendingPathExtension:@"log"];
+   }
+   if (!Log_Init([logFile UTF8String], VMWARE_VIEW ".log.filename",
+                 VMWARE_VIEW)) {
+      Warning("Could not initialize logging.\n");
+   }
+   IntegrateGLibLogging();
 }
 
 

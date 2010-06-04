@@ -30,10 +30,15 @@
 
 
 #include <sys/types.h>
+#include <unistd.h>     /* For read/write/close */
+
+// XXX - use autoconf HAVE_XXX instead of MINGW32
+#ifndef __MINGW32__
 #include <sys/socket.h> /* For socketpair */
 #include <sys/wait.h>   /* For waitpid */
+#endif
 #include <signal.h>     /* For kill */
-#include <glib.h>       /* For g_find_program_in_path */
+#include <glib.h>
 
 
 #include "procHelper.hh"
@@ -68,7 +73,10 @@ namespace cdk {
  */
 
 ProcHelper::ProcHelper()
-   : mPid(-1),
+   : mPid((GPid)-1),
+#ifdef __MINGW32__
+     mSourceId(0),
+#endif
      mErrFd(-1)
 {
 }
@@ -93,6 +101,13 @@ ProcHelper::ProcHelper()
 ProcHelper::~ProcHelper()
 {
    Kill();
+
+#ifdef __MINGW32__
+   if (mSourceId) {
+      g_source_remove(mSourceId);
+      mSourceId = 0;
+   }
+#endif
 }
 
 
@@ -131,9 +146,9 @@ ProcHelper::GetIsInPath(const Util::string &programName) // IN
  *      process, to be used in Log messages.  procPath is the path to the
  *      binary, passed to Posix_Execvp.
  *
- *      The stdIn string is written all at once to the process's stdin.
+ *      In the case of VIEW_GTK, screen should be a GdkScreen * or NULL.
  *
- *      skipFd1 & skipFd2 are left open in the child process.
+ *      The stdIn string is written all at once to the process's stdin.
  *
  * Results:
  *      None
@@ -149,11 +164,10 @@ ProcHelper::Start(Util::string procName,          // IN
                   Util::string procPath,          // IN
                   std::vector<Util::string> args, // IN/OPT
                   int argsCensorMask,             // IN/OPT
-                  Util::string stdIn,             // IN/OPT
-                  int skipFd1,                    // IN/OPT
-                  int skipFd2)                    // IN/OPT
+                  gpointer screen,                // IN/OPT
+                  Util::string stdIn)             // IN/OPT
 {
-   ASSERT(mPid == -1);
+   ASSERT(mPid == (GPid)-1);
    ASSERT(!procPath.empty());
    ASSERT(!procName.empty());
 
@@ -172,62 +186,53 @@ ProcHelper::Start(Util::string procName,          // IN
    char **argList = (char **)g_new0(char *, args.size() + 2);
    int argIdx = 0;
 
-   argList[argIdx++] = (char *)procName.c_str();
+   argList[argIdx++] = (char *)procPath.c_str();
    for (std::vector<Util::string>::iterator i = args.begin();
         i != args.end(); i++) {
-      argList[argIdx++] = (char *)(*i).c_str();
+      argList[argIdx++] = (char *)i->c_str();
    }
    argList[argIdx++] = NULL;
 
-   int inFds[2];
-   int errFds[2];
+   GPid gpid = (GPid)-1;
+   pid_t pid = -1;
+   int childIn = -1;
+   int childErr = -1;
+   GError *err = NULL;
+   bool spawned;
+   GSpawnFlags flags = (GSpawnFlags)(G_SPAWN_SEARCH_PATH |
+                                     G_SPAWN_DO_NOT_REAP_CHILD);
 
-   if (pipe(inFds) < 0 || pipe(errFds) < 0) {
-      Warning("Pipe call failed: %s\n", Err_ErrString());
-      NOT_IMPLEMENTED();
+#ifdef VIEW_GTK
+   if (GDK_IS_SCREEN(screen)) {
+      spawned = gdk_spawn_on_screen_with_pipes(GDK_SCREEN(screen), NULL,
+                                               argList, NULL, flags, NULL,
+                                               NULL, &pid, &childIn, NULL,
+                                               &childErr, &err);
+   } else
+#endif
+   {
+      spawned = g_spawn_async_with_pipes(NULL, argList, NULL,
+                                         flags, NULL, NULL, &gpid,
+                                         &childIn, NULL, &childErr, &err);
    }
 
-   pid_t pid = fork();
-   switch (pid) {
-   case -1:
-      Warning("Fork call failed: %s\n", Err_ErrString());
-      NOT_IMPLEMENTED();
-
-      close(inFds[0]);
-      close(inFds[1]);
-      close(errFds[0]);
-      close(errFds[1]);
-      break;
-
-   case 0: // child
-      // Handle stdout as if it's stderr (that is, log it).
-      ResetProcessState(inFds[0], errFds[1], errFds[1], skipFd1, skipFd2);
-
-      // Search in $PATH
-      Posix_Execvp(procPath.c_str(), argList);
-
-      // An error occurred
-      Log("Failed to spawn %s: %s\n", procName.c_str(), Err_ErrString());
-      _exit(1);
-      NOT_REACHED();
-
-   default: // parent
-      close(inFds[0]);  // don't want to read
-      close(errFds[1]); // don't want to write
-
+   if (!spawned) {
+      Warning("Spawn of %s failed: %s\n", procName.c_str(), err->message);
+      g_error_free(err);
+   } else {
       if (!stdIn.empty()) {
-         // Write and sync to child stdin
-         write(inFds[1], stdIn.c_str(), stdIn.size());
-         fsync(inFds[1]);
+         write(childIn, stdIn.c_str(), stdIn.size());
       }
-      close(inFds[1]);
+      close(childIn);
 
       mProcName = procName;
-      mPid = pid;
-      mErrFd = errFds[0];
+      mPid = (pid != -1) ? (GPid)pid : gpid;
+      mErrFd = childErr;
 
       Poll_CB_Device(&ProcHelper::OnErr, this, mErrFd, false);
-      break;
+#ifdef __MINGW32__
+      mSourceId = g_child_watch_add(mPid, ProcHelper::OnProcExit, this);
+#endif
    }
 
    g_free(argList);
@@ -260,16 +265,24 @@ ProcHelper::Kill()
       mErrFd = -1;
    }
 
-   if (mPid < 0) {
+   if ((int)mPid < 0) {
       return;
    }
 
+   int status;
+#ifdef _WIN32
+   DWORD exitCode;
+   if (GetExitCodeProcess(mPid, &exitCode) == 0) {
+      exitCode = ~0L;
+   }
+   g_spawn_close_pid(mPid);
+   status = (int)exitCode;
+#else
    if (kill(mPid, SIGTERM) && errno != ESRCH) {
       Log("Unable to kill %s(%d): %s\n", mProcName.c_str(), mPid,
           Err_ErrString());
    }
-   int status;
-   pid_t rv;
+   GPid rv;
    do {
       rv = waitpid(mPid, &status, 0);
    } while (rv < 0 && EINTR == errno);
@@ -293,67 +306,9 @@ ProcHelper::Kill()
       // It wasn't a normal exit, but what value should we use?
       status = 0xff00;
    }
-
-   mPid = -1;
+#endif
+   mPid = (GPid)-1;
    onExit(status);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::ProcHelper::ResetProcessState --
- *
- *      Called in a forked child to reset all signal handlers, remap std
- *      in/out/err, and close all fds.  An fd to remap for each std in/out/err
- *      file descriptor is taken as an argument, with -1 meaning to inherit
- *      from the parent.  The skip1 and skip2 fds are left open.
- *
- *      Taken from Hostinfo_ResetProcessState, to avoid added library
- *      dependencies.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-ProcHelper::ResetProcessState(int stdIn,   // IN
-                              int stdOut,  // IN
-                              int stdErr,  // IN
-                              int skipFd1, // IN
-                              int skipFd2) // IN
-   const
-{
-   struct sigaction sa;
-   int sig;
-   for (sig = 1; sig <= NSIG; sig++) {
-      sa.sa_handler = SIG_DFL;
-      sigfillset(&sa.sa_mask);
-      sa.sa_flags = SA_RESTART;
-      sigaction(sig, &sa, NULL);
-   }
-
-   if (stdIn > -1 && dup2(stdIn, STDIN_FILENO) < 0) {
-      close(STDIN_FILENO);
-   }
-   if (stdOut > -1 && dup2(stdOut, STDOUT_FILENO) < 0) {
-      close(STDOUT_FILENO);
-   }
-   if (stdErr > -1 && dup2(stdErr, STDERR_FILENO) < 0) {
-      close(STDERR_FILENO);
-   }
-
-   int fd;
-   for (fd = (int) sysconf(_SC_OPEN_MAX) - 1; fd > STDERR_FILENO; fd--) {
-      if (fd != skipFd1 && fd != skipFd2) {
-         close(fd);
-      }
-   }
 }
 
 
@@ -421,6 +376,35 @@ ProcHelper::OnErr(void *data) // IN: this
 
    Poll_CB_Device(&ProcHelper::OnErr, that, that->mErrFd, false);
 }
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::ProcHelper::OnProcExit --
+ *
+ *      Handle process termination on Windows/MingW32.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef __MINGW32__
+void
+ProcHelper::OnProcExit(GPid pid,      // IN/UNUSED
+                       int status,    // IN/UNUSED
+                       gpointer data) // IN
+{
+   ProcHelper *helper = reinterpret_cast<ProcHelper *>(data);
+   ASSERT(helper);
+   helper->Kill();
+}
+#endif
 
 
 } // namespace cdk

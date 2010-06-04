@@ -46,9 +46,6 @@ namespace cdk {
 @protocol CdkBrokerDelegate
 
 
-@property(copy) NSString *busyText;
-
-
 -(void)brokerDidRequestBroker:(CdkBroker *)broker;
 
 -(void)broker:(CdkBroker *)broker
@@ -65,6 +62,9 @@ userSelectable:(BOOL)userSelectable;
 
 -(void)broker:(CdkBroker *)broker
 didRequestDisclaimer:(NSString *)disclaimer;
+
+-(void)broker:(CdkBroker *)broker
+didRequestCertificateWithIssuers:(NSArray *)issuers;
 
 -(void)broker:(CdkBroker *)broker
 didRequestPassword:(NSString *)username
@@ -86,8 +86,7 @@ didRequestLaunchDesktop:(CdkDesktop *)desktop;
 -(void)broker:(CdkBroker *)broker
 didDisconnectTunnelWithReason:(NSString *)reason;
 
--(SecIdentityRef)broker:(CdkBroker *)broker
-didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs;
+-(void)brokerDidRequestUpdateDesktops:(CdkBroker *)broker;
 
 
 @end // @protocol CdkBrokerDelegate
@@ -117,6 +116,7 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs;
 
 -(void)reset;
 -(void)acceptDisclaimer;
+-(void)submitCertificateFromIdentity:(SecIdentityRef)identity;
 -(void)submitUsername:(NSString *)username
              passcode:(NSString *)passcode;
 -(void)submitNextTokencode:(NSString *)tokencode;

@@ -47,7 +47,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <MSWSock.h>
+#include <mswsock.h>
 #else
 #include <sys/types.h>
 #include <sys/poll.h>
@@ -255,7 +255,7 @@ BasicHttp_InitEx(PollCallbackProc *pollCbProc,              // IN
       NOT_IMPLEMENTED();
    }
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
    code = curl_global_init(CURL_GLOBAL_WIN32);
 #else
    code = curl_global_init(CURL_GLOBAL_ALL);
@@ -893,12 +893,18 @@ BasicHttpCompleteRequestCallback(void *clientData)          // IN
    BasicHttpResponse *response;
    BasicHttpErrorCode errorCode;
    size_t contentLength;
+   char *effectiveURL;
 
    ASSERT(NULL != clientData);
 
    request = (BasicHttpRequest *) clientData;
    response = (BasicHttpResponse *) Util_SafeCalloc(1, sizeof *response);
    curl_easy_getinfo(request->curl, CURLINFO_RESPONSE_CODE, &response->responseCode);
+
+   if (CURLE_OK == curl_easy_getinfo(request->curl, CURLINFO_EFFECTIVE_URL,
+                                     &effectiveURL)) {
+      response->effectiveURL = strdup(effectiveURL);
+   }
 
    /* Map error codes. */
    switch (request->result) {
@@ -970,6 +976,8 @@ BasicHttpCompleteRequestCallback(void *clientData)          // IN
       Log("  Content-Length: %"FMTSZ"u.\n", contentLength);
       Log("  Content: %s\n\n", response->content);
    }
+
+   curl_easy_setopt(request->curl, CURLOPT_COOKIELIST, "FLUSH");
 
    (request->onSentProc)(request, response, request->clientData);
 
@@ -1504,6 +1512,33 @@ BasicHttp_SetProxy(BasicHttpRequest *request,    // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ *  BasicHttp_SetConnectTimeout --
+ *
+ *     Sets the maximum time in seconds to allow connecting to the server to take.
+ *     Once the connection has been made, this option is of no use.
+ *     Set to 0 to disable connection timeout.
+ *
+ * Results:
+ *     None.
+ *
+ * Side effects:
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BasicHttp_SetConnectTimeout(BasicHttpRequest *request,      // IN:
+                            unsigned long seconds)          // IN:
+{
+   if (0 != seconds) {
+      NOT_IMPLEMENTED();
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * BasicHttpSslCtxCb --
  *
  *      Callback from curl, after all of its ssl options have been
@@ -1617,6 +1652,10 @@ BasicHttpStartRequest(BasicHttpRequest *request)            // IN
    if (NULL == request->cookieJar) {
       curl_easy_setopt(request->curl, CURLOPT_COOKIEFILE, "");
    } else {
+      if (request->cookieJar->newSession) {
+         curl_easy_setopt(request->curl, CURLOPT_COOKIESESSION, (long)1);
+         request->cookieJar->newSession = FALSE;
+      }
       if (NULL != request->cookieJar->curlShare) {
          curl_easy_setopt(request->curl, CURLOPT_SHARE, request->cookieJar->curlShare);
          curl_easy_setopt(request->curl, CURLOPT_COOKIEFILE, "");
@@ -1638,19 +1677,6 @@ BasicHttpStartRequest(BasicHttpRequest *request)            // IN
                           request->cookieJar->initialCookie);
          free(request->cookieJar->initialCookie);
          request->cookieJar->initialCookie = NULL;
-      }
-
-      if (request->cookieJar->newSession) {
-         /*
-          * If we really want to start a new session before the
-          * connection becomes active, we must "flush" the cookie
-          * list.  Otherwise, the cookies get loaded after the
-          * connection is "active," and it will load session cookies,
-          * even though we politely asked it not to.
-          */
-         curl_easy_setopt(request->curl, CURLOPT_COOKIESESSION, (long)1);
-         curl_easy_setopt(request->curl, CURLOPT_COOKIELIST, "FLUSH");
-         request->cookieJar->newSession = FALSE;
       }
    }
 
@@ -3052,6 +3078,7 @@ BasicHttp_FreeResponse(BasicHttpResponse *response)         // IN
    }
 
    free(response->content);
+   free(response->effectiveURL);
    free(response);
 } // BasicHttp_FreeResponse
 

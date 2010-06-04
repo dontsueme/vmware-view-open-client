@@ -51,6 +51,8 @@ NSString *const CDK_PREFS_USER                  = @"user";
 
 
 static unsigned int const BROKERS_MRU_LEN = 10;
+static int const MIN_DESKTOP_WIDTH = 640;
+static int const MIN_DESKTOP_HEIGHT = 480;
 
 
 @interface CdkPrefs ()
@@ -115,9 +117,9 @@ static unsigned int const BROKERS_MRU_LEN = 10;
    [defaults setObject:NSUserName() forKey:CDK_PREFS_USER];
    [defaults setObject:[NSNumber numberWithInt:CDK_PREFS_LARGE_WINDOW]
                 forKey:CDK_PREFS_DESKTOP_SIZE];
-   [defaults setObject:[NSNumber numberWithInt:0]
+   [defaults setObject:[NSNumber numberWithInt:MIN_DESKTOP_HEIGHT]
                 forKey:CDK_PREFS_CUSTOM_DESKTOP_HEIGHT];
-   [defaults setObject:[NSNumber numberWithInt:0]
+   [defaults setObject:[NSNumber numberWithInt:MIN_DESKTOP_WIDTH]
                 forKey:CDK_PREFS_CUSTOM_DESKTOP_WIDTH];
    [defaults setObject:[NSNumber numberWithBool:NO]
 	     forKey:CDK_PREFS_SHOW_BROKER_OPTIONS];
@@ -223,7 +225,12 @@ static unsigned int const BROKERS_MRU_LEN = 10;
       (CdkPrefsDesktopSize)[[NSUserDefaults standardUserDefaults]
                               integerForKey:CDK_PREFS_DESKTOP_SIZE];
    if (![CdkPrefs validDesktopSize:size]) {
-      Warning("Invalid size preference: %u; defaulting to large screen.\n", size);
+      Warning("Invalid size preference: %u; defaulting to large window.\n", size);
+      size = CDK_PREFS_LARGE_WINDOW;
+   }
+   if (size == CDK_PREFS_CUSTOM_SIZE && ![self customDesktopSize]) {
+      Warning("Size set to custom, but no custom size available; defaulting "
+              "to large window.\n");
       size = CDK_PREFS_LARGE_WINDOW;
    }
    return size;
@@ -276,13 +283,18 @@ static unsigned int const BROKERS_MRU_LEN = 10;
 
 -(CdkDesktopSize *)customDesktopSize
 {
-   // [CdkDesktop initWithWidth:height:] handle's invalid sizes.
-   return [CdkDesktopSize desktopSizeWithWidth:
-                             [[NSUserDefaults standardUserDefaults]
-                                integerForKey:CDK_PREFS_CUSTOM_DESKTOP_WIDTH]
-                                        height:
-                              [[NSUserDefaults standardUserDefaults]
-                                 integerForKey:CDK_PREFS_CUSTOM_DESKTOP_HEIGHT]];
+   int width;
+   int height;
+   width = [[NSUserDefaults standardUserDefaults]
+                                integerForKey:CDK_PREFS_CUSTOM_DESKTOP_WIDTH];
+   height = [[NSUserDefaults standardUserDefaults]
+                                 integerForKey:CDK_PREFS_CUSTOM_DESKTOP_HEIGHT];
+   // Just ignore invalid sizes.
+   if (width >= MIN_DESKTOP_WIDTH && height >= MIN_DESKTOP_HEIGHT) {
+      return [CdkDesktopSize desktopSizeWithWidth:width height:height];
+   }
+   Warning("Invalid desktop size found: %dx%d.\n", width, height);
+   return nil;
 }
 
 

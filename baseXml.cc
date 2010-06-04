@@ -30,19 +30,21 @@
 
 
 #include <boost/bind.hpp>
+#include <boost/foreach.hpp>
 #include <gmodule.h>
 #include <libxml/parser.h>
 #include <libxml/xmlsave.h>
+#include <algorithm>
 #include <list>
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
 #define _(String) (String)
-#else
-#include <glib/gi18n.h>
+#define NOMINMAX
 #endif
 
 
 #include "baseXml.hh"
+#include "cdkProxy.h"
 
 
 #define XML_V1_HDR "<?xml version=\"1.0\"?>"
@@ -77,7 +79,7 @@ BaseXml::BaseXml(const Util::string &docName,  // IN
      mPort(port),
      mSecure(secure),
      mCookieJar(BasicHttp_CreateCookieJar()),
-     mVersion(VERSION_4),
+     mVersion(VERSION_4_5),
      mMulti(NULL),
      mResetWatch(NULL),
      mDocElementName(docName),
@@ -220,7 +222,7 @@ BaseXml::GetChildContent(xmlNode *parentNode,    // IN
  *       Get the int content from a named child node.
  *
  * Results:
- *       Integer value or -1 if invalid content or empty.
+ *       Integer value or 0 if invalid content or empty.
  *
  * Side effects:
  *       None.
@@ -234,7 +236,7 @@ BaseXml::GetChildContentInt(xmlNode *parentNode,    // IN
 {
    Util::string strval = GetChildContent(parentNode, targetName);
    if (strval.empty()) {
-      return -1;
+      return 0;
    }
    return strtol(strval.c_str(), NULL, 10);
 }
@@ -295,8 +297,8 @@ BaseXml::Result::Parse(xmlNode *parentNode,     // IN
 
    result = GetChildContent(parentNode, "result");
    if (result.empty()) {
-      onAbort(false, Util::exception(_("Invalid response: "
-                                       "Invalid \"result\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response"), "",
+                                     _("Invalid \"result\" in XML.")));
       return false;
    }
 
@@ -319,7 +321,7 @@ BaseXml::Result::Parse(xmlNode *parentNode,     // IN
          onAbort(false, Util::exception(errorMessage, errorCode));
       } else {
          onAbort(false, Util::exception(Util::Format(_("Unknown error: %s"),
-                                                     errorCode.c_str()),
+                                                       errorCode.c_str()),
                                         errorCode));
       }
       return false;
@@ -335,7 +337,7 @@ BaseXml::Result::Parse(xmlNode *parentNode,     // IN
  * cdk::BaseXml::Param::Parse --
  *
  *       Parse a <param> node parentNode containing a name element and
- *       possibly multiple value elements.
+ *       zero or more value elements.
  *
  * Results:
  *       true if parsed successfully, false otherwise and the onAbort handler
@@ -353,8 +355,8 @@ BaseXml::Param::Parse(xmlNode *parentNode,     // IN
 {
    name = GetChildContent(parentNode, "name");
    if (name.empty()) {
-      onAbort(false, Util::exception(_("Invalid response: "
-                                       "Parameter with no name.")));
+      onAbort(false, Util::exception(_("Invalid response"), "",
+                                     _("Parameter with no name.")));
       return false;
    }
 
@@ -478,16 +480,104 @@ BaseXml::SendRequest(RequestState *req) // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::BaseXml::OnResponse --
+ * cdk::BaseXml::InvokeAbortOnConnectError --
  *
- *      Parse an XML API response based on the response operation.  Invokes the
- *      onAbort/onDone handler passed to the initial request.
+ *      Helper method to invoke onAbort handler when there is an HTTP error
+ *      connecting to server.  This method is 'protected' therefore subclasses
+ *      may invoke it from ResponseDispatch, if alwaysDispatchResponse is set on
+ *      the RequestState.
  *
  * Results:
  *      None
  *
  * Side effects:
- *      Frees the BasicHttpRequest.
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseXml::InvokeAbortOnConnectError(BasicHttpErrorCode errorCode,       // IN
+                                   BasicHttpResponseCode responseCode, // IN
+                                   RequestState *state)                // IN
+{
+   Util::string code;
+   Util::string detail;
+
+#define ERR_CASE(c, d) case c: code = #c; detail = d; break
+
+   /*
+    * Treat unsuccessful HTTP responses (e.g. "503 Service unavailable")
+    * as an HTTP errors.  This can also be done in basicHttp by using
+    * CURLOPT_FAILONERROR.
+    */
+   if (errorCode == BASICHTTP_ERROR_NONE && !HTTP_IS_SUCCESS(responseCode)) {
+      errorCode = BASICHTTP_ERROR_HTTP_RETURNED_ERROR;
+   }
+
+   switch (errorCode) {
+   case BASICHTTP_ERROR_NONE:
+      NOT_REACHED();
+      break;
+      ERR_CASE(BASICHTTP_ERROR_UNSUPPORTED_PROTOCOL,
+               _("Unsupported protocol"));
+      ERR_CASE(BASICHTTP_ERROR_URL_MALFORMAT,
+               _("Invalid URL"));
+      ERR_CASE(BASICHTTP_ERROR_COULDNT_RESOLVE_PROXY,
+               _("The proxy could not be resolved"));
+      ERR_CASE(BASICHTTP_ERROR_COULDNT_RESOLVE_HOST,
+               _("The host could not be resolved"));
+      ERR_CASE(BASICHTTP_ERROR_COULDNT_CONNECT,
+               _("Could not connect to server"));
+      ERR_CASE(BASICHTTP_ERROR_HTTP_RETURNED_ERROR,
+               Util::Format(_("HTTP error %d"), responseCode));
+      ERR_CASE(BASICHTTP_ERROR_OPERATION_TIMEDOUT,
+               _("Connection timed out"));
+      ERR_CASE(BASICHTTP_ERROR_SSL_CONNECT_ERROR,
+               _("SSL connection error"));
+      ERR_CASE(BASICHTTP_ERROR_TOO_MANY_REDIRECTS,
+               _("Too many redirects"));
+
+      /* n:1 mapped curl errors. */
+      ERR_CASE(BASICHTTP_ERROR_TRANSFER,
+               _("Transfer error"));
+      ERR_CASE(BASICHTTP_ERROR_SSL_SECURITY,
+               _("SSL security error"));
+
+   default:
+      /* generic error. */
+      ERR_CASE(BASICHTTP_ERROR_GENERIC,
+               _("Unknown error"));
+   }
+
+#undef ERR_CASE
+
+   state->onAbort(
+      false,
+      Util::exception(
+         _("The View Connection Server connection failed."), code.c_str(),
+         Util::Format(_("%s.\n\n"
+                        "Verify that the view connection server address, "
+                        "port, network settings, and SSL settings are "
+                        "correct and try again."), detail.c_str())));
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseXml::OnResponse --
+ *
+ *      Find the request's state, and set its response.  Add an idle
+ *      callback to process the response after curl has processed its
+ *      headers and freed this connection up in case we need to issue
+ *      another RPC.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
  *
  *-----------------------------------------------------------------------------
  */
@@ -497,8 +587,89 @@ BaseXml::OnResponse(BasicHttpRequest *request,   // IN
                     BasicHttpResponse *response, // IN
                     void *data)                  // IN
 {
-   BaseXml *that = reinterpret_cast<BaseXml*>(data);
+   BaseXml *that = reinterpret_cast<BaseXml *>(data);
    ASSERT(that);
+
+   for (std::list<RequestState *>::iterator i = that->mActiveRequests.begin();
+        i != that->mActiveRequests.end(); i++) {
+      RequestState *state = *i;
+      if (state->request == request) {
+         state->response = response;
+         Poll_CallbackRemove(POLL_CS_MAIN, 0, OnIdleProcessResponses, that,
+                             POLL_REALTIME);
+         Poll_Callback(POLL_CS_MAIN, 0, OnIdleProcessResponses, that,
+                       POLL_REALTIME, 0, NULL);
+         break;
+      }
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseXml::OnIdleProcessResponses --
+ *
+ *      Process any pending responses (probably at most one).
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BaseXml::OnIdleProcessResponses(void *data) // IN
+{
+   BaseXml *that = reinterpret_cast<BaseXml *>(data);
+   ASSERT(that);
+
+   std::list<RequestState *>::iterator i = that->mActiveRequests.begin();
+   while (i != that->mActiveRequests.end()) {
+      RequestState *state = *i;
+      if (!state->response) {
+         ++i;
+      } else {
+         i = that->mActiveRequests.erase(i);
+         bool wasDeleted = that->ProcessResponse(state);
+         delete state;
+         if (wasDeleted) {
+            break;
+         }
+      }
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BaseXml::ProcessResponse --
+ *
+ *      Parse an XML API response based on the response operation.  Invokes the
+ *      onAbort/onDone handler passed to the initial request.
+ *
+ * Results:
+ *      TRUE if no more responses should be processed.
+ *
+ * Side effects:
+ *      Callbacks called from this function may have deleted this
+ *      object before they return.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+BaseXml::ProcessResponse(RequestState *state) // IN
+{
+   // XXX: keep code churn down (this was originally static)
+   BaseXml *that = this;
+
+   BasicHttpRequest *request = state->request;
+   BasicHttpResponse *response = state->response;
 
    xmlDoc *doc = NULL;
    xmlNode *docNode;
@@ -509,41 +680,52 @@ BaseXml::OnResponse(BasicHttpRequest *request,   // IN
 
    that->mRequestId++;
 
-   RequestState *state = NULL;
-   for (std::list<RequestState *>::iterator i = that->mActiveRequests.begin();
-        i != that->mActiveRequests.end(); i++) {
-      if ((*i)->request == request) {
-         state = *i;
-         that->mActiveRequests.erase(i);
-         break;
-      }
-   }
-
    if (that->mResetWatch) {
       resetWatch = that->mResetWatch;
    } else {
       that->mResetWatch = resetWatch;
    }
 
-   ASSERT(state->request == request);
-   state->request = request;
-   state->response = response;
+   /*
+    * If we've been redirected and we're not using a proxy, then we can run into
+    * long delays due to cURL leaving connections open.  Thus, we need to use
+    * the redirected protocol and port in the future.  See bz 513320.
+    */
+#if !defined(_WIN32) || defined(__MINGW32__)
+   if (response->effectiveURL) {
+      unsigned short port;
+      bool secure;
+
+      Util::string host =
+         Util::ParseHostLabel(response->effectiveURL, &port, &secure);
+      if (!host.empty()) {
+         mHostname = host;
+         mPort = port;
+         mSecure = secure;
+      }
+   }
+#endif // !defined(_WIN32) || defined(__MINGW32)
 
    MultiRequestState *multi = dynamic_cast<MultiRequestState *>(state);
    std::list<RequestState *> requests;
 
    if (response->errorCode != BASICHTTP_ERROR_NONE
        || !HTTP_IS_SUCCESS(response->responseCode)) {
-      Util::string msg;
-      if (response->errorCode == BASICHTTP_ERROR_SSL_SECURITY) {
-         msg = Util::Format(_("SSL Security Error."));
-      } else {
-         msg = Util::Format(_("Could not connect to server."));
-      }
-
       Log("Could not connect to server. (BasicHttp error=%u, response=%ld)\n",
-	  response->errorCode, response->responseCode);
-      state->onAbort(false, Util::exception(msg));
+          response->errorCode, response->responseCode);
+      /*
+       * If alwaysDispatchResponse is true, dispatch response without a node and
+       * with an empty Result object.  Only call abort slot if dispatch response
+       * somehow does not process response.
+       */
+      bool doAbort = true;
+      if (state->alwaysDispatchResponse) {
+         doAbort = !(that->ResponseDispatch(NULL, *state, result));
+      }
+      if (doAbort) {
+         InvokeAbortOnConnectError(response->errorCode,
+                                   response->responseCode, state);
+      }
       goto exit;
    }
 
@@ -572,8 +754,8 @@ BaseXml::OnResponse(BasicHttpRequest *request,   // IN
       Log("%s XML general error: %s\n", that->mDocElementName.c_str(),
           errCode.c_str());
       if (result.Parse(docNode, state->onAbort)) {
-         state->onAbort(false, Util::exception(_("Invalid response: "
-                                                 "General error.")));
+         state->onAbort(false, Util::exception(_("Invalid response"), "",
+                                               _("General error.")));
       }
       goto exit;
    }
@@ -667,10 +849,13 @@ exit:
          that->mResetWatch = NULL;
       }
       BasicHttp_FreeRequest(request);
+      state->request = NULL;
       BasicHttp_FreeResponse(response);
+      state->response = NULL;
    }
    xmlFreeDoc(doc);
-   delete state;
+
+   return *resetWatch;
 }
 
 
@@ -729,19 +914,29 @@ BaseXml::SendRawCommand(Util::string command,    // IN
 int
 BaseXml::CancelRequests()
 {
+   // Remove any pending completed responses.
+   Poll_CallbackRemove(POLL_CS_MAIN, 0, OnIdleProcessResponses, this,
+                       POLL_REALTIME);
+
+   std::list<RequestState*> &pendingRequests = mMulti ? mMulti->requests
+                                                      : mActiveRequests;
+
    std::list<Util::AbortSlot> slots;
    /*
     * It is extremely likely that an onAbort() handler will delete
     * this object, which will re-enter here and double-free things, so
     * clear the list, and then call the abort handlers.
     */
-   for (std::list<RequestState *>::iterator i = mActiveRequests.begin();
-        i != mActiveRequests.end(); i++) {
+   for (std::list<RequestState *>::iterator i = pendingRequests.begin();
+        i != pendingRequests.end(); i++) {
       BasicHttp_FreeRequest((*i)->request);
       slots.push_back((*i)->onAbort);
       delete *i;
    }
-   mActiveRequests.clear();
+   pendingRequests.clear();
+   delete mMulti;
+   mMulti = NULL;
+
    Log("Cancelling %d %s XML requests.\n", (int)slots.size(),
        mDocElementName.c_str());
    for (std::list<Util::AbortSlot>::iterator i = slots.begin();
@@ -1054,12 +1249,12 @@ BaseXml::SendHttpRequest(RequestState *req,        // IN:
 #endif
 
    // NOTE: We get a 404 if we access "/<base name>/xml/"
-   Util::string url = Util::Format("%s://%s:%d/%s/xml",
+   Util::string url = Util::Format("%s://%s:%hu/%s/xml",
                                    mSecure ? "https" : "http",
                                    mHostname.c_str(), mPort,
                                    mDocElementName.c_str());
 
-#ifdef  VMX86_DEBUG
+#ifdef VMX86_DEBUG
    Warning("BROKER REQUEST: %s\n", CensorXml(body).c_str());
 #endif
 
@@ -1083,10 +1278,33 @@ BaseXml::SendHttpRequest(RequestState *req,        // IN:
 
    BasicHttp_SetSslCtxProc(req->request, OnSslCtx);
 
+   if (req->proxy.empty()) {
+      CdkProxyType proxyType = CDK_PROXY_NONE;
+      char *proxy = CdkProxy_GetProxyForUrl(url.c_str(), &proxyType);
+      if (proxy) {
+         switch (proxyType) {
+         case CDK_PROXY_HTTP:
+            req->proxyType = BASICHTTP_PROXY_HTTP;
+	    break;
+         case CDK_PROXY_SOCKS4:
+            req->proxyType = BASICHTTP_PROXY_SOCKS4;
+	    break;
+         default:
+	    NOT_REACHED();
+	    break;
+         }
+         req->proxy = proxy;
+         free(proxy);
+      } else {
+         req->proxyType = BASICHTTP_PROXY_NONE;
+      }
+   }
    if (req->proxyType != BASICHTTP_PROXY_NONE) {
       ASSERT(!req->proxy.empty());
       BasicHttp_SetProxy(req->request, req->proxy.c_str(), req->proxyType);
    }
+
+   BasicHttp_SetConnectTimeout(req->request, CalculateConnectTimeout(req));
 
    for (size_t i = 0; i < req->extraHeaders.size(); i++) {
       BasicHttp_AppendRequestHeader(req->request,
@@ -1133,6 +1351,51 @@ BaseXml::GetProtocolVersionStr()
    NOT_IMPLEMENTED();
 }
 
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ *  cdk::BaseXml::CalculateConnectTimeout --
+ *
+ *     Calculates the minimum request timeout of all the requests in a multi-request.
+ *
+ * Results:
+ *     The timeout to be used for the entire multi-rpc. 0 implies no timeout.
+ *
+ * Side effects:
+ *     None.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+unsigned long
+BaseXml::CalculateConnectTimeout(const cdk::BaseXml::RequestState *req)  // IN:
+   const
+{
+   unsigned long timeoutSec = 0;
+
+   if (const MultiRequestState *multiReq =
+         dynamic_cast<const MultiRequestState *>(req)) {
+      /*
+       * This is a multi-request.
+       * Compute the minimum non-zero timeout of all the requests in the multi-request
+       */
+      BOOST_FOREACH(const RequestState *reqState, multiReq->requests) {
+         if (reqState->connectTimeoutSec != 0) {
+            timeoutSec = timeoutSec == 0 ? reqState->connectTimeoutSec
+                                         : std::min(timeoutSec,
+                                                    reqState->connectTimeoutSec);
+         }
+      }
+   } else {
+      // Uni-request. Simply return the request timeout from reqState.
+      timeoutSec = req->connectTimeoutSec;
+   }
+
+   return timeoutSec;
+}
+
+
 /*
  *-----------------------------------------------------------------------------
  *
@@ -1168,7 +1431,7 @@ BaseXml::GetDocumentElementTag()
  *     Get the uint64 content from a named child node.
  *
  * Results:
- *     Integer value or -1 if invalid content or empty.
+ *     Integer value or 0 if invalid content or empty.
  *
  * Side effects:
  *     None.
@@ -1181,7 +1444,7 @@ BaseXml::GetChildContentUInt64(xmlNode *parentNode,    // IN
 {
    Util::string strVal = GetChildContent(parentNode, targetName);
    if (strVal.empty()) {
-      return -1;
+      return 0;
    }
 
    return g_ascii_strtoull(strVal.c_str(), NULL, 10);
@@ -1205,13 +1468,13 @@ BaseXml::GetChildContentUInt64(xmlNode *parentNode,    // IN
  *
  *-----------------------------------------------------------------------------
  */
-#ifdef VMX86_DEBUG
+#ifdef  VMX86_DEBUG
 Util::string
 BaseXml::CensorXml(const Util::string &xmlStr) // IN
 {
     Util::string censored;
 
-    if (xmlStr.empty()) {
+    if (xmlStr.c_str()[0] == '\0') {
         return censored;
     }
 
@@ -1219,6 +1482,7 @@ BaseXml::CensorXml(const Util::string &xmlStr) // IN
 
     static const char *params[] = {
                                     "<name>password</name>",
+                                    "<name>passcode</name>",
                                     "<name>pin",
                                     "<name>smartCardPIN</name>"
     };

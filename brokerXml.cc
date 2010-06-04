@@ -35,15 +35,12 @@
 #include <set>
 
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
 #define _(String) (String)
-#else
-#include <glib/gi18n.h>
 #endif
 
 
 #include "brokerXml.hh"
-#include "cdkProxy.h"
 
 
 #define BROKER_NODE_NAME "broker"
@@ -95,53 +92,6 @@ BrokerXml::BrokerXml(Util::string hostname, // IN
 
 BrokerXml::~BrokerXml()
 {
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::BrokerXml::SendHttpRequest --
- *
- *      Set the proxy configuration on this request before it gets
- *      sent.
- *
- * Results:
- *      Returns value from BaseXml::SendHttpRequest.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-bool
-BrokerXml::SendHttpRequest(BaseXml::RequestState *req, // IN
-			   const Util::string &body)   // IN
-{
-   Util::string url = Util::Format("%s://%s", GetSecure() ? "https" : "http",
-				   GetHostname().c_str());
-
-   CdkProxyType proxyType = CDK_PROXY_NONE;
-   char *proxy = CdkProxy_GetProxyForUrl(url.c_str(), &proxyType);
-   if (proxy) {
-      switch (proxyType) {
-      case CDK_PROXY_HTTP:
-	 req->proxyType = BASICHTTP_PROXY_HTTP;
-	 break;
-      case CDK_PROXY_SOCKS4:
-	 req->proxyType = BASICHTTP_PROXY_SOCKS4;
-	 break;
-      default:
-	 NOT_REACHED();
-	 break;
-      }
-      req->proxy = proxy;
-      free(proxy);
-   } else {
-      req->proxyType = BASICHTTP_PROXY_NONE;
-   }
-   return BaseXml::SendHttpRequest(req, body);
 }
 
 
@@ -254,23 +204,23 @@ BrokerXml::AuthInfo::Parse(xmlNode *parentNode,     // IN
 
    xmlNode *authNode = GetChild(parentNode, "authentication");
    if (!authNode) {
-      onAbort(false, Util::exception(_("Invalid response from broker: "
-                                       "Invalid \"authentication\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker"), "",
+                                     _("Invalid \"authentication\" in XML.")));
       return false;
    }
 
    xmlNode *screenNode = GetChild(authNode, "screen");
    if (!screenNode) {
-      onAbort(false, Util::exception(_("Invalid response from broker: "
-                                       "Invalid \"screen\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker"), "",
+                                     _("Invalid \"screen\" in XML.")));
       return false;
    }
 
    name = GetChildContent(screenNode, "name");
    if (GetAuthType() == AUTH_NONE) {
       Log("Broker XML AuthInfo name unknown: \"%s\"\n", name.c_str());
-      onAbort(false, Util::exception(_("Invalid response from broker: "
-                                       "Invalid \"name\" in XML.")));
+      onAbort(false, Util::exception(_("Invalid response from broker"), "",
+                                     _("Invalid \"name\" in XML.")));
       return false;
    }
 
@@ -625,6 +575,7 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
    state = GetChildContent(parentNode, "state");
 
    offlineEnabled = GetChildContentBool(parentNode, "offline-enabled");
+   endpointEnabled = GetChildContentBool(parentNode, "endpoint-enabled");
    Util::string offline = GetChildContent(parentNode, "offline-state");
    if (offline == "checked in") {
       offlineState = OFFLINE_CHECKED_IN;
@@ -636,11 +587,12 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
       offlineState = OFFLINE_CHECKING_OUT;
    } else if (offline == "background checking in") {
       offlineState = OFFLINE_BACKGROUND_CHECKING_IN;
+   } else if (offline == "rolling back") {
+      offlineState = OFFLINE_ROLLING_BACK;
    } else if (offline.empty()) {
       offlineState = OFFLINE_CHECKED_IN;
    } else {
-      Log("Unknown offline state \"%s\" in XML.", offline.c_str());
-      NOT_IMPLEMENTED();
+      Log("Unknown local state \"%s\" in XML.\n", offline.c_str());
       offlineState = OFFLINE_NONE;
    }
 
@@ -650,7 +602,18 @@ BrokerXml::Desktop::Parse(xmlNode *parentNode,     // IN
    resetAllowedOnSession = GetChildContentBool(parentNode,
                                                "reset-allowed-on-session");
    inMaintenance = GetChildContentBool(parentNode, "in-maintenance-mode");
-   inLocalRollback = GetChildContentBool(parentNode, "in-local-rollback");
+   expired = GetChildContentBool(parentNode, "expired");
+   checkedOutHereAndDisabled =
+      GetChildContentBool(parentNode, "checked-out-here-and-disabled");
+
+#ifdef VIEW_CVP
+   if (offlineState == OFFLINE_CHECKING_OUT) {
+      progressWorkDoneSoFar =
+         GetChildContentUInt64(parentNode, "progress-work-done-so-far");
+      progressTotalWork =
+         GetChildContentUInt64(parentNode, "progress-total-work");
+   }
+#endif // VIEW_CVP
 
    xmlNode *protocolNode = GetChild(parentNode, "protocols");
    if (protocolNode) {
@@ -779,8 +742,8 @@ BrokerXml::Listener::Parse(xmlNode *parentNode,     // IN
 
    Util::string::size_type colonIdx = hostAndPort.find(":");
    if (colonIdx == std::string::npos) {
-      onAbort(false, Util::exception(_("Invalid response from broker: "
-                                       "Listener with invalid host name.")));
+      onAbort(false, Util::exception(_("Invalid response from broker"), "",
+                                     _("Listener with invalid host name.")));
       return false;
    }
 
@@ -1644,8 +1607,9 @@ BrokerXml::Desktop::Desktop()
      resetAllowed(false),
      resetAllowedOnSession(false),
      inMaintenance(false),
-     inLocalRollback(false),
-     defaultProtocol(0)
+     defaultProtocol(0),
+     progressWorkDoneSoFar(0),
+     progressTotalWork(0)
 {
 }
 

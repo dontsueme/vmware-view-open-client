@@ -28,14 +28,20 @@
  *      Implementation of CdkProxy based on environment variables.
  */
 
+#ifndef _WIN32
+#include <glib.h>
+#include <string.h>
+#endif
+
 
 #include "cdkProxy.h"
 
 
-#ifndef _WIN32
-#include "str.h"
-#include "util.h"
-#endif
+#define SCHEME_HTTP "http://"
+#define SCHEME_HTTP_LEN (sizeof(SCHEME_HTTP) - 1)
+
+#define SCHEME_HTTP_SEC "https://"
+#define SCHEME_HTTP_SEC_LEN (sizeof(SCHEME_HTTP_SEC) - 1)
 
 
 /*
@@ -72,17 +78,18 @@ CdkProxy_GetProxyForUrl(const char *aUrl,        // IN
    const char *proxy = NULL;
    const unsigned char *c;
 
-   ASSERT(aUrl);
-   ASSERT(proxyType);
+   g_assert(aUrl);
+   g_assert(proxyType);
 
    *proxyType = CDK_PROXY_NONE;
 
-   if (Str_Strncmp(aUrl, "http://", 7) == 0) {
-      proxy = getenv("http_proxy");
-   } else if (Str_Strncmp(aUrl, "https://", 8) == 0) {
-      proxy = getenv("https_proxy");
+   if (!g_ascii_strncasecmp(aUrl, SCHEME_HTTP, SCHEME_HTTP_LEN)) {
+      proxy = g_getenv("http_proxy");
+   } else if (!g_ascii_strncasecmp(aUrl, SCHEME_HTTP_SEC,
+                                   SCHEME_HTTP_SEC_LEN)) {
+      proxy = g_getenv("https_proxy");
       if (!proxy || !*proxy) {
-         proxy = getenv("HTTPS_PROXY");
+         proxy = g_getenv("HTTPS_PROXY");
       }
    }
 
@@ -96,13 +103,13 @@ CdkProxy_GetProxyForUrl(const char *aUrl,        // IN
          static int warned = 0;
          if (!warned) {
             warned = 1;
-            Warning("Non-ASCII character found in proxy environment variable.\n");
+            g_debug("Non-ASCII character found in proxy environment variable.\n");
          }
          return NULL;
       }
    }
 
    *proxyType = CDK_PROXY_HTTP;
-   return Util_SafeStrdup(proxy);
+   return g_strdup(proxy);
 #endif
 }

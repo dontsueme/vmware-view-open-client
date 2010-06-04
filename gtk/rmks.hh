@@ -37,6 +37,12 @@
 #include "procHelper.hh"
 
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <winsockerr.h>
+#endif
+
+
 namespace cdk {
 
 
@@ -51,7 +57,10 @@ public:
 
    void Start(const BrokerXml::DesktopConnection &connection,
               const Util::string &windowId,
-              const Util::Rect *geometry);
+              const Util::Rect *geometry,
+              GdkScreen *screen = NULL);
+
+   virtual bool GetIsErrorExitStatus(int exitCode);
 
 private:
    static void OnError(Util::string errorString, bool tunneledRdpAvailable);

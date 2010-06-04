@@ -94,6 +94,8 @@ gtk/dlg.cc
 gtk/dlg.hh
 gtk/helpSupportDlg.cc
 gtk/helpSupportDlg.hh
+gtk/kioskWindow.cc
+gtk/kioskWindow.hh
 gtk/loginDlg.cc
 gtk/loginDlg.hh
 gtk/main.cc

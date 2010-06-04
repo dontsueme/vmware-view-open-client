@@ -31,36 +31,51 @@
 
 
 #include <sys/time.h>   /* For gettimeofday */
-#include <time.h>       /* For gettimeofday */
-#include <sys/types.h>  /* For getsockname */
+#include <time.h>
+#include <sys/types.h>
+#ifndef __MINGW32__
 #include <sys/socket.h> /* For getsockname */
-#include <netinet/in.h> /* For getsockname */
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#else
+#include "ws2tcpip.h"
+#include "winsockerr.h"
+#endif
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+#include <glib/gi18n.h>
+#include <fcntl.h>
 
 
-#include "tunnelProxy.h"
 #include "base64.h"
-#include "circList.h"
-#include "dynbuf.h"
-#include "msg.h"
+#include "tunnelProxy.h"
 #include "poll.h"
-#include "str.h"
-#include "strutil.h"
-#include "util.h"
 
 
 #if 0
-#define DEBUG_DATA(x) DEBUG_ONLY(Warning x)
+#define DEBUG_DATA(x) g_debug x
 #else
 #define DEBUG_DATA(x)
 #endif
-#define DEBUG_MSG(x) DEBUG_ONLY(Warning x)
 
+#ifdef VMX86_DEBUG
+#define DEBUG_MSG(x) g_debug x
+#else
+#define DEBUG_MSG(x)
+#endif
 
 typedef enum {
    TP_CHUNK_TYPE_ACK     = 65, // 'A'
    TP_CHUNK_TYPE_DATA    = 68, // 'D'
    TP_CHUNK_TYPE_MESSAGE = 77, // 'M'
 } TPChunkType;
+
+#ifdef __MINGW32__
+typedef gint32 in_addr_t;
+#endif
 
 
 #define TP_MSGID_MAXLEN 24
@@ -73,7 +88,6 @@ typedef enum {
 
 
 typedef struct {
-   ListItem list;
    char type;
    unsigned int ackId;
    unsigned int chunkId;
@@ -85,7 +99,6 @@ typedef struct {
 
 
 typedef struct {
-   ListItem list;
    char msgId[TP_MSGID_MAXLEN];
    TunnelProxyMsgHandlerCb cb;
    void *userData;
@@ -93,21 +106,19 @@ typedef struct {
 
 
 typedef struct {
-   ListItem list;
    TunnelProxy *tp;
    char portName[TP_PORTNAME_MAXLEN];
    unsigned int port;
-   AsyncSocket *listenSock;
-   Bool singleUse;
+   int fd;
+   gboolean singleUse;
 } TPListener;
 
 
 typedef struct {
-   ListItem list;
    TunnelProxy *tp;
    unsigned int channelId;
    char portName[TP_PORTNAME_MAXLEN];
-   AsyncSocket *socket;
+   int fd;
    char recvByte;
 } TPChannel;
 
@@ -118,9 +129,12 @@ struct TunnelProxy
    char *hostIp;   // From TunnelProxy_Connect
    char *hostAddr; // From TunnelProxy_Connect
    char *reconnectSecret;     // From TP_MSG_AUTHENTICATED
-   int64 lostContactTimeout;  // From TP_MSG_AUTHENTICATED
-   int64 disconnectedTimeout; // From TP_MSG_AUTHENTICATED
-   int64 sessionTimeout;      // From TP_MSG_AUTHENTICATED
+   gint64 lostContactTimeout;  // From TP_MSG_AUTHENTICATED
+   gint64 disconnectedTimeout; // From TP_MSG_AUTHENTICATED
+   gint64 sessionTimeout;      // From TP_MSG_AUTHENTICATED
+
+   guint lostContactTimeoutId;
+   guint echoTimeoutId;
 
    struct timeval lastConnect;
 
@@ -136,7 +150,7 @@ struct TunnelProxy
    void *disconnectCbData;
 
    unsigned int maxChannelId;
-   Bool flowStopped;
+   gboolean flowStopped;
 
    unsigned int lastChunkIdSeen;
    unsigned int lastChunkAckSeen;
@@ -144,62 +158,120 @@ struct TunnelProxy
    unsigned int lastChunkAckSent;
 
    // Outgoing fifo
-   ListItem *queueOut;
-   ListItem *queueOutNeedAck;
+   GQueue *queueOut;
+   GQueue *queueOutNeedAck;
 
-   ListItem *listeners;
-   ListItem *channels;
-   ListItem *msgHandlers;
+   GList *listeners;
+   GList *channels;
+   GList *msgHandlers;
 
-   DynBuf readBuf;
-   DynBuf writeBuf;
+   GByteArray *readBuf;
+   GByteArray *writeBuf;
 };
 
 
 /* Helpers */
 
 static TunnelProxyErr TunnelProxyDisconnect(TunnelProxy *tp, const char *reason,
-                                            Bool closeSockets, Bool notify);
+                                            gboolean closeSockets, gboolean notify);
 static void TunnelProxyFireSendNeeded(TunnelProxy *tp);
 static void TunnelProxySendChunk(TunnelProxy *tp, TPChunkType type,
                                  unsigned int channelId, const char *msgId,
                                  char *body, int bodyLen);
-static void TunnelProxyFreeChunk(TPChunk *chunk, ListItem **list);
-static void TunnelProxyFreeMsgHandler(TPMsgHandler *handler, ListItem **list);
-static void TunnelProxyResetTimeouts(TunnelProxy *tp, Bool requeue);
+static void TunnelProxyFreeChunk(TPChunk *chunk);
+static void TunnelProxyFreeMsgHandler(TPMsgHandler *handler);
+static void TunnelProxyResetTimeouts(TunnelProxy *tp, gboolean requeue);
 
 
 /* Default Msg handler callbacks */
 
-static Bool TunnelProxyEchoRequestCb(TunnelProxy *tp, const char *msgId,
-                                     const char *body, int len, void *userData);
-static Bool TunnelProxyEchoReplyCb(TunnelProxy *tp, const char *msgId,
-                                   const char *body, int len, void *userData);
-static Bool TunnelProxyStopCb(TunnelProxy *tp, const char *msgId,
-                              const char *body, int len, void *userData);
-static Bool TunnelProxyAuthenticatedCb(TunnelProxy *tp, const char *msgId,
-                                       const char *body, int len, void *userData);
-static Bool TunnelProxyReadyCb(TunnelProxy *tp, const char *msgId,
-                               const char *body, int len, void *userData);
-static Bool TunnelProxySysMsgCb(TunnelProxy *tp, const char *msgId,
-                                const char *body, int len, void *userData);
-static Bool TunnelProxyErrorCb(TunnelProxy *tp, const char *msgId,
-                               const char *body, int len, void *userData);
-static Bool TunnelProxyPleaseInitCb(TunnelProxy *tp, const char *msgId,
-                                    const char *body, int len, void *userData);
-static Bool TunnelProxyRaiseReplyCb(TunnelProxy *tp, const char *msgId,
-                                    const char *body, int len, void *userData);
-static Bool TunnelProxyListenRequestCb(TunnelProxy *tp, const char *msgId,
-                                       const char *body, int len, void *userData);
-static Bool TunnelProxyUnlistenRequestCb(TunnelProxy *tp, const char *msgId,
+static gboolean TunnelProxyEchoRequestCb(TunnelProxy *tp, const char *msgId,
                                          const char *body, int len, void *userData);
-static Bool TunnelProxyLowerCb(TunnelProxy *tp, const char *msgId,
-                               const char *body, int len, void *userData);
+static gboolean TunnelProxyEchoReplyCb(TunnelProxy *tp, const char *msgId,
+                                       const char *body, int len, void *userData);
+static gboolean TunnelProxyStopCb(TunnelProxy *tp, const char *msgId,
+                                  const char *body, int len, void *userData);
+static gboolean TunnelProxyAuthenticatedCb(TunnelProxy *tp, const char *msgId,
+                                           const char *body, int len, void *userData);
+static gboolean TunnelProxyReadyCb(TunnelProxy *tp, const char *msgId,
+                                   const char *body, int len, void *userData);
+static gboolean TunnelProxySysMsgCb(TunnelProxy *tp, const char *msgId,
+                                    const char *body, int len, void *userData);
+static gboolean TunnelProxyErrorCb(TunnelProxy *tp, const char *msgId,
+                                   const char *body, int len, void *userData);
+static gboolean TunnelProxyPleaseInitCb(TunnelProxy *tp, const char *msgId,
+                                        const char *body, int len, void *userData);
+static gboolean TunnelProxyRaiseReplyCb(TunnelProxy *tp, const char *msgId,
+                                        const char *body, int len, void *userData);
+static gboolean TunnelProxyListenRequestCb(TunnelProxy *tp, const char *msgId,
+                                           const char *body, int len, void *userData);
+static gboolean TunnelProxyUnlistenRequestCb(TunnelProxy *tp, const char *msgId,
+                                             const char *body, int len, void *userData);
+static gboolean TunnelProxyLowerCb(TunnelProxy *tp, const char *msgId,
+                                   const char *body, int len, void *userData);
 
 /* Timer callbacks */
 
 static void TunnelProxyEchoTimeoutCb(void *userData);
 static void TunnelProxyLostContactTimeoutCb(void *userData);
+
+/* Poll callbacks */
+
+static void TunnelProxySocketConnectCb(void *userData);
+static void TunnelProxySocketRecvCb(void *userData);
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * TunnelProxy_RemovePoll --
+ *
+ *      Remove a poll callback and data.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+TunnelProxy_RemovePoll(PollerFunction f, /* IN */
+                       void *clientData) /* IN */
+{
+   Poll_CallbackRemove(POLL_CS_MAIN, POLL_FLAG_READ | POLL_FLAG_SOCKET,
+                       f, clientData, POLL_DEVICE);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * TunnelProxy_PollAdd --
+ *
+ *      Add a poll callback and data.  They are removed first if
+ *      already present.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+TunnelProxy_AddPoll(PollerFunction f, /* IN */
+                    void *clientData, /* IN */
+                    int fd)           /* IN */
+{
+   TunnelProxy_RemovePoll(f, clientData);
+   Poll_Callback(POLL_CS_MAIN, POLL_FLAG_READ | POLL_FLAG_SOCKET, f,
+                 clientData, POLL_DEVICE, fd, NULL);
+}
 
 
 /*
@@ -227,9 +299,9 @@ TunnelProxy_Create(const char *connectionId,             // IN
                    TunnelProxyEndChannelCb endChannelCb, // IN/OPT
                    void *endChannelCbData)               // IN/OPT
 {
-   TunnelProxy *tp = Util_SafeCalloc(1, sizeof(TunnelProxy));
+   TunnelProxy *tp = g_new0(TunnelProxy, 1);
 
-   tp->capID = Util_SafeStrdup(connectionId);
+   tp->capID = g_strdup(connectionId);
 
    tp->listenerCb = listenerCb;
    tp->listenerCbData = listenerCbData;
@@ -237,6 +309,9 @@ TunnelProxy_Create(const char *connectionId,             // IN
    tp->newChannelCbData = newChannelCbData;
    tp->endChannelCb = endChannelCb;
    tp->endChannelCbData = endChannelCbData;
+
+   tp->queueOut = g_queue_new();
+   tp->queueOutNeedAck = g_queue_new();
 
 #define TP_AMH(_msg, _cb) TunnelProxy_AddMsgHandler(tp, _msg, _cb, NULL)
    TP_AMH(TP_MSG_AUTHENTICATED, TunnelProxyAuthenticatedCb);
@@ -277,7 +352,7 @@ TunnelProxy_Create(const char *connectionId,             // IN
 static void
 TunnelProxyFireSendNeeded(TunnelProxy *tp) // IN
 {
-   ASSERT(tp);
+   g_assert(tp);
    if (tp->sendNeededCb && TunnelProxy_HTTPSendNeeded(tp)) {
       tp->sendNeededCb(tp, tp->sendNeededCbData);
    }
@@ -313,23 +388,23 @@ TunnelProxySendChunk(TunnelProxy *tp,        // IN
 {
    TPChunk *newChunk;
 
-   ASSERT(tp);
+   g_assert(tp);
 
-   newChunk = Util_SafeCalloc(1, sizeof(TPChunk));
+   newChunk = g_new0(TPChunk, 1);
    newChunk->type = type;
 
    newChunk->channelId = channelId;
    if (msgId) {
-      Str_Strcpy(newChunk->msgId, msgId, TP_MSGID_MAXLEN);
+      strncpy(newChunk->msgId, msgId, TP_MSGID_MAXLEN);
    }
    if (body) {
       newChunk->len = bodyLen;
-      newChunk->body = Util_SafeMalloc(bodyLen + 1);
+      newChunk->body = g_malloc(bodyLen + 1);
       newChunk->body[bodyLen] = 0;
       memcpy(newChunk->body, body, bodyLen);
    }
 
-   LIST_QUEUE(&newChunk->list, &tp->queueOut);
+   g_queue_push_tail(tp->queueOut, newChunk);
 
    TunnelProxyFireSendNeeded(tp);
 }
@@ -355,31 +430,32 @@ TunnelProxySendChunk(TunnelProxy *tp,        // IN
 void
 TunnelProxy_Free(TunnelProxy *tp) // IN
 {
-   ListItem *li;
-   ListItem *liNext;
+   TPChunk *chunk;
 
-   ASSERT(tp);
+   g_assert(tp);
 
    TunnelProxyDisconnect(tp, NULL, TRUE, FALSE);
 
-   LIST_SCAN_SAFE(li, liNext, tp->queueOut) {
-      TunnelProxyFreeChunk(LIST_CONTAINER(li, TPChunk, list), &tp->queueOut);
+   while ((chunk = (TPChunk *)g_queue_pop_head(tp->queueOut))) {
+      TunnelProxyFreeChunk(chunk);
    }
-   LIST_SCAN_SAFE(li, liNext, tp->queueOutNeedAck) {
-      TunnelProxyFreeChunk(LIST_CONTAINER(li, TPChunk, list),
-                           &tp->queueOutNeedAck);
+   g_queue_free(tp->queueOut);
+
+   while ((chunk = (TPChunk *)g_queue_pop_head(tp->queueOutNeedAck))) {
+      TunnelProxyFreeChunk(chunk);
+   }
+   g_queue_free(tp->queueOutNeedAck);
+
+   while (tp->msgHandlers) {
+      TunnelProxyFreeMsgHandler((TPMsgHandler *)tp->msgHandlers->data);
+      tp->msgHandlers = g_list_delete_link(tp->msgHandlers, tp->msgHandlers);
    }
 
-   LIST_SCAN_SAFE(li, liNext, tp->msgHandlers) {
-      TunnelProxyFreeMsgHandler(LIST_CONTAINER(li, TPMsgHandler, list),
-                                &tp->msgHandlers);
-   }
-
-   free(tp->capID);
-   free(tp->hostIp);
-   free(tp->hostAddr);
-   free(tp->reconnectSecret);
-   free(tp);
+   g_free(tp->capID);
+   g_free(tp->hostIp);
+   g_free(tp->hostAddr);
+   g_free(tp->reconnectSecret);
+   g_free(tp);
 }
 
 
@@ -400,14 +476,11 @@ TunnelProxy_Free(TunnelProxy *tp) // IN
  */
 
 static void
-TunnelProxyFreeChunk(TPChunk *chunk,  // IN
-                     ListItem **list) // IN/OUT
+TunnelProxyFreeChunk(TPChunk *chunk) // IN
 {
-   ASSERT(chunk);
-   ASSERT(list);
-   LIST_DEL(&chunk->list, list);
-   free(chunk->body);
-   free(chunk);
+   g_assert(chunk);
+   g_free(chunk->body);
+   g_free(chunk);
 }
 
 
@@ -428,12 +501,10 @@ TunnelProxyFreeChunk(TPChunk *chunk,  // IN
  */
 
 static void
-TunnelProxyFreeMsgHandler(TPMsgHandler *handler, // IN
-                          ListItem **list)       // IN/OUT
+TunnelProxyFreeMsgHandler(TPMsgHandler *handler) // IN
 {
-   ASSERT(handler);
-   LIST_DEL(&handler->list, list);
-   free(handler);
+   g_assert(handler);
+   g_free(handler);
 }
 
 
@@ -462,58 +533,15 @@ TunnelProxy_AddMsgHandler(TunnelProxy *tp,            // IN
 {
    TPMsgHandler *msgHandler;
 
-   ASSERT(tp);
-   ASSERT(msgId);
+   g_assert(tp);
+   g_assert(msgId);
 
-   msgHandler = Util_SafeCalloc(1, sizeof(TPMsgHandler));
-   Str_Strcpy(msgHandler->msgId, msgId, TP_MSGID_MAXLEN);
+   msgHandler = g_new0(TPMsgHandler, 1);
+   strncpy(msgHandler->msgId, msgId, TP_MSGID_MAXLEN);
    msgHandler->userData = userData;
    msgHandler->cb = cb;
 
-   LIST_QUEUE(&msgHandler->list, &tp->msgHandlers);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * TunnelProxy_RemoveMsgHandler --
- *
- *       Free an existing msg handler which handles messages of the given
- *       msgId, and remove it from the TunnelProxy handler queue.
- *
- *       Handlers are matched based on msgId and cb/userData.  If no
- *       cb/userData is passed, all message handlers for the given msgId will
- *       be removed.
- *
- * Results:
- *       None.
- *
- * Side effects:
- *       None.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-TunnelProxy_RemoveMsgHandler(TunnelProxy *tp,            // IN
-                             const char *msgId,          // IN
-                             TunnelProxyMsgHandlerCb cb, // IN
-                             void *userData)             // IN/OPT
-{
-   ListItem *li;
-   ListItem *liNext;
-
-   ASSERT(tp);
-   ASSERT(msgId);
-
-   LIST_SCAN_SAFE(li, liNext, tp->msgHandlers) {
-      TPMsgHandler *handler = LIST_CONTAINER(li, TPMsgHandler, list);
-      if (Str_Strcmp(handler->msgId, msgId) == 0 &&
-          (!cb || (handler->cb == cb && handler->userData == userData))) {
-         TunnelProxyFreeMsgHandler(handler, &tp->msgHandlers);
-      }
-   }
+   tp->msgHandlers = g_list_append(tp->msgHandlers, msgHandler);
 }
 
 
@@ -541,8 +569,8 @@ TunnelProxy_SendMsg(TunnelProxy *tp,   // IN
                     const char *body,  // IN
                     int len)           // IN
 {
-   ASSERT(tp);
-   ASSERT(msgId && strlen(msgId) < TP_MSGID_MAXLEN);
+   g_assert(tp);
+   g_assert(msgId && strlen(msgId) < TP_MSGID_MAXLEN);
 
    TunnelProxySendChunk(tp, TP_CHUNK_TYPE_MESSAGE, 0, msgId, (char*) body, len);
 }
@@ -577,7 +605,7 @@ TunnelProxy_SendMsg(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-Bool
+gboolean
 TunnelProxy_ReadMsg(const char *body,        // IN
                     int len,                 // IN
                     const char* nameTypeKey, // IN
@@ -585,16 +613,17 @@ TunnelProxy_ReadMsg(const char *body,        // IN
 {
    va_list args;
    va_start(args, nameTypeKey);
-   Bool success = TRUE;
+   gboolean success = TRUE;
    char *valueStr = NULL;
 
    while (nameTypeKey) {
       int nameLen = strlen(nameTypeKey);
       char *prefix = strstr(body, nameTypeKey);
-      int idx;
-      int32 *I;
-      int64 *L;
-      Bool *B;
+      char *start;
+      char *end;
+      gint32 *I;
+      gint64 *L;
+      gboolean *B;
 
       if (!prefix || prefix[nameLen] != ':' ||
           (prefix != body && prefix[-1] != '|')) {
@@ -607,18 +636,19 @@ TunnelProxy_ReadMsg(const char *body,        // IN
        * colon ':' after nameTypeKey, separating the type-id char from the value
        * string.
        */
-      idx = nameLen + 1;
-      valueStr = StrUtil_GetNextToken(&idx, prefix, "|");
+      start = prefix + nameLen + 1;
+      end = strchr(start, '|');
+      valueStr = end ? g_strndup(start, end - start) : g_strdup(start);
 
       switch (prefix[nameLen-1]) {
       case 'S':
       case 'E': {
          char **S = va_arg(args, char**);
          size_t decodeLen;
-         uint8 *decodeBuf = NULL;
+         guint8 *decodeBuf = NULL;
 
          decodeLen = Base64_DecodedLength(valueStr, strlen(valueStr));
-         decodeBuf = Util_SafeMalloc(decodeLen + 1);
+         decodeBuf = g_malloc(decodeLen + 1);
 
          success = Base64_Decode(valueStr, decodeBuf, decodeLen, &decodeLen);
 
@@ -626,34 +656,34 @@ TunnelProxy_ReadMsg(const char *body,        // IN
             decodeBuf[decodeLen] = '\0';
             *S = (char*) decodeBuf;
          } else {
-            free(decodeBuf);
+            g_free(decodeBuf);
             *S = NULL;
             goto exit;
          }
          break;
       }
       case 'I':
-         I = va_arg(args, int32*);
-         StrUtil_StrToInt(I, valueStr);
+         I = va_arg(args, gint32*);
+         *I = strtol(valueStr, NULL, 10);
          break;
       case 'L':
-         L = va_arg(args, int64*);
-         StrUtil_StrToInt64(L, valueStr);
+         L = va_arg(args, gint64*);
+         *L = strtoll(valueStr, NULL, 10);
          break;
       case 'B':
-         B = va_arg(args, Bool*);
+         B = va_arg(args, gboolean*);
          *B = FALSE;
-         if (Str_Strcmp(valueStr, "1") == 0 ||
-             Str_Strcasecmp(valueStr, "true") == 0 ||
-             Str_Strcasecmp(valueStr, "yes") == 0) {
+         if (strcmp(valueStr, "1") == 0 ||
+             g_ascii_strcasecmp(valueStr, "true") == 0 ||
+             g_ascii_strcasecmp(valueStr, "yes") == 0) {
             *B = TRUE;
          }
          break;
       default:
-         NOT_IMPLEMENTED();
+         g_assert_not_reached();
       }
 
-      free(valueStr);
+      g_free(valueStr);
       valueStr = NULL;
 
       nameTypeKey = va_arg(args, char*);
@@ -661,7 +691,7 @@ TunnelProxy_ReadMsg(const char *body,        // IN
 
 exit:
    va_end(args);
-   free(valueStr);
+   g_free(valueStr);
 
    return success;
 }
@@ -689,68 +719,64 @@ exit:
  *-----------------------------------------------------------------------------
  */
 
-Bool
+gboolean
 TunnelProxy_FormatMsg(char **body,             // OUT
                       int *len,                // OUT
                       const char* nameTypeKey, // IN
                       ...)                     // IN
 {
    va_list args;
-   DynBuf builder;
-   Bool success = TRUE;
+   GString *builder;
+   gboolean success = TRUE;
 
    *body = NULL;
    *len = -1;
 
-   DynBuf_Init(&builder);
+   builder = g_string_new(NULL);
    va_start(args, nameTypeKey);
 
    while (nameTypeKey) {
       int nameLen = strlen(nameTypeKey);
-      char numStr[128];
       const char *S;
       char *SEncoded;
-      int32 I;
-      int64 L;
-      Bool B;
+      gint32 I;
+      gint64 L;
+      gboolean B;
 
-      DynBuf_Append(&builder, nameTypeKey, nameLen);
-      DynBuf_Append(&builder, ":", 1);
+      g_string_append(builder, nameTypeKey);
+      g_string_append_c(builder, ':');
 
       switch (nameTypeKey[nameLen-1]) {
       case 'S':
       case 'E':
          // Strings are always Base64 encoded
          S = va_arg(args, const char*);
-         ASSERT(S);
+         g_assert(S);
          success = Base64_EasyEncode(S, strlen(S), &SEncoded);
          if (!success) {
-            Log("Failed to base64-encode \"%s\"\n", S);
+            g_debug("Failed to base64-encode \"%s\"", S);
             goto exit;
          }
-         DynBuf_Append(&builder, SEncoded, strlen(SEncoded));
-         free(SEncoded);
+         g_string_append(builder, SEncoded);
+         g_free(SEncoded);
          break;
       case 'I':
-         I = va_arg(args, int32);
-         Str_Sprintf(numStr, sizeof(numStr), "%d", I);
-         DynBuf_Append(&builder, numStr, strlen(numStr));
+         I = va_arg(args, gint32);
+         g_string_append_printf(builder, "%d", I);
          break;
       case 'L':
-         L = va_arg(args, int64);
-         Str_Sprintf(numStr, sizeof(numStr), "%"FMT64"d", L);
-         DynBuf_Append(&builder, numStr, strlen(numStr));
+         L = va_arg(args, gint64);
+         g_string_append_printf(builder, "%"G_GINT64_MODIFIER"d", L);
          break;
       case 'B':
          B = va_arg(args, int);
-         S = B ? "true" : "false";
-         DynBuf_Append(&builder, S, strlen(S));
+         g_string_append(builder, B ? "true" : "false");
          break;
       default:
-         NOT_IMPLEMENTED();
+         g_assert_not_reached();
       }
 
-      DynBuf_Append(&builder, "|", 1);
+      g_string_append_c(builder, '|');
 
       nameTypeKey = va_arg(args, char*);
    }
@@ -759,13 +785,11 @@ exit:
    va_end(args);
 
    if (success) {
-      /* Null terminate for safety */
-      DynBuf_Append(&builder, "\0", 1);
-
-      *len = DynBuf_GetSize(&builder) - 1;
-      *body = (char*) DynBuf_Detach(&builder);
+      *len = builder->len;
+      *body = g_string_free(builder, FALSE);
+   } else {
+      g_string_free(builder, TRUE);
    }
-   DynBuf_Destroy(&builder);
 
    return success;
 }
@@ -794,17 +818,16 @@ char *
 TunnelProxy_GetConnectUrl(TunnelProxy *tp,       // IN
                           const char *serverUrl) // IN
 {
-   size_t len = 0;
    if (tp->capID) {
       if (tp->reconnectSecret) {
-         return Str_Asprintf(&len, "%s"TP_RECONNECT_URL_PATH"?%s&%s", serverUrl,
-                             tp->capID, tp->reconnectSecret);
+         return g_strdup_printf("%s"TP_RECONNECT_URL_PATH"?%s&%s", serverUrl,
+                                tp->capID, tp->reconnectSecret);
       } else {
-         return Str_Asprintf(&len, "%s"TP_CONNECT_URL_PATH"?%s", serverUrl,
-                             tp->capID);
+         return g_strdup_printf("%s"TP_CONNECT_URL_PATH"?%s", serverUrl,
+                                tp->capID);
       }
    } else {
-      return Str_Asprintf(&len, "%s"TP_CONNECT_URL_PATH, serverUrl);
+      return g_strdup_printf("%s"TP_CONNECT_URL_PATH, serverUrl);
    }
 }
 
@@ -834,9 +857,9 @@ TunnelProxy_Connect(TunnelProxy *tp,                      // IN
                     TunnelProxyDisconnectCb disconnectCb, // IN/OPT
                     void *disconnectCbData)               // IN/OPT
 {
-   Bool isReconnect;
+   gboolean isReconnect;
 
-   ASSERT(tp);
+   g_assert(tp);
 
    isReconnect = (tp->lastConnect.tv_sec > 0);
    if (isReconnect && !tp->reconnectSecret) {
@@ -845,26 +868,33 @@ TunnelProxy_Connect(TunnelProxy *tp,                      // IN
 
    gettimeofday(&tp->lastConnect, NULL);
 
-   free(tp->hostIp);
-   free(tp->hostAddr);
-   tp->hostIp = strdup(hostIp ? hostIp : "127.0.0.1");
-   tp->hostAddr = strdup(hostAddr ? hostAddr : "localhost");
+   g_free(tp->hostIp);
+   g_free(tp->hostAddr);
+   tp->hostIp = g_strdup(hostIp ? hostIp : "127.0.0.1");
+   tp->hostAddr = g_strdup(hostAddr ? hostAddr : "localhost");
 
    tp->sendNeededCb = sendNeededCb;
    tp->sendNeededCbData = sendNeededCbData;
    tp->disconnectCb = disconnectCb;
    tp->disconnectCbData = disconnectCbData;
 
-   DynBuf_Destroy(&tp->readBuf);
-   DynBuf_Init(&tp->readBuf);
-   DynBuf_Destroy(&tp->writeBuf);
-   DynBuf_Init(&tp->writeBuf);
+   if (tp->readBuf) {
+      g_byte_array_free(tp->readBuf, TRUE);
+   }
+   tp->readBuf = g_byte_array_new();
+   if (tp->writeBuf) {
+      g_byte_array_free(tp->writeBuf, TRUE);
+   }
+   tp->writeBuf = g_byte_array_new();
 
    if (isReconnect) {
+      TPChunk *chunk;
       TunnelProxyResetTimeouts(tp, TRUE);
 
-      tp->queueOut = LIST_SPLICE(tp->queueOutNeedAck, tp->queueOut);
-      tp->queueOutNeedAck = NULL;
+      while ((chunk = g_queue_pop_head(tp->queueOut))) {
+         g_queue_push_tail(tp->queueOutNeedAck, chunk);
+      }
+
       /* Want to ACK the last chunk ID we saw */
       tp->lastChunkAckSent = 0;
 
@@ -879,7 +909,7 @@ TunnelProxy_Connect(TunnelProxy *tp,                      // IN
                             "cid=S", "1234",
                             NULL);
       TunnelProxy_SendMsg(tp, TP_MSG_INIT, initBody, initLen);
-      free(initBody);
+      g_free(initBody);
    }
 
    return TP_ERR_OK;
@@ -906,10 +936,10 @@ TunnelProxy_Connect(TunnelProxy *tp,                      // IN
  */
 
 TunnelProxyErr
-TunnelProxyDisconnect(TunnelProxy *tp,    // IN
-                      const char *reason, // IN
-                      Bool closeSockets,  // IN
-                      Bool notify)        // IN
+TunnelProxyDisconnect(TunnelProxy *tp,       // IN
+                      const char *reason,    // IN
+                      gboolean closeSockets, // IN
+                      gboolean notify)       // IN
 {
    TunnelProxyErr err;
 
@@ -921,19 +951,16 @@ TunnelProxyDisconnect(TunnelProxy *tp,    // IN
    TunnelProxyResetTimeouts(tp, FALSE);
 
    if (closeSockets) {
-      ListItem *li;
-      ListItem *liNext;
-
-      LIST_SCAN_SAFE(li, liNext, tp->listeners) {
-         TPListener *listener = LIST_CONTAINER(li, TPListener, list);
+      while (tp->listeners) {
+         TPListener *listener = (TPListener *)tp->listeners->data;
          /* This will close all the channels as well */
          err = TunnelProxy_CloseListener(tp, listener->portName);
-         ASSERT(TP_ERR_OK == err);
+         g_assert(TP_ERR_OK == err);
       }
    }
 
    if (notify && tp->disconnectCb) {
-      ASSERT(reason);
+      g_assert(reason);
       tp->disconnectCb(tp, tp->reconnectSecret, reason, tp->disconnectCbData);
    }
 
@@ -988,18 +1015,17 @@ TunnelProxy_CloseListener(TunnelProxy *tp,      // IN
                           const char *portName) // IN
 {
    TPListener *listener = NULL;
-   ListItem *li;
-   ListItem *liNext;
    char *unlisten = NULL;
    int unlistenLen = 0;
    TunnelProxyErr err;
+   GList *li;
 
-   ASSERT(tp);
-   ASSERT(portName);
+   g_assert(tp);
+   g_assert(portName);
 
-   LIST_SCAN(li, tp->listeners) {
-      TPListener *listenerIter = LIST_CONTAINER(li, TPListener, list);
-      if (Str_Strcmp(listenerIter->portName, portName) == 0) {
+   for (li = tp->listeners; li; li = li->next) {
+      TPListener *listenerIter = (TPListener *)li->data;
+      if (strcmp(listenerIter->portName, portName) == 0) {
          listener = listenerIter;
          break;
       }
@@ -1008,9 +1034,11 @@ TunnelProxy_CloseListener(TunnelProxy *tp,      // IN
       return TP_ERR_INVALID_LISTENER;
    }
 
-   AsyncSocket_Close(listener->listenSock);
-   LIST_DEL(&listener->list, &tp->listeners);
-   free(listener);
+   TunnelProxy_RemovePoll(TunnelProxySocketConnectCb, listener);
+   close(listener->fd);
+
+   tp->listeners = g_list_remove(tp->listeners, listener);
+   g_free(listener);
 
    /*
     * Send an UNLISTEN_RQ in any case of closing.  It might not be an actual
@@ -1018,14 +1046,16 @@ TunnelProxy_CloseListener(TunnelProxy *tp,      // IN
     */
    TunnelProxy_FormatMsg(&unlisten, &unlistenLen, "portName=S", portName, NULL);
    TunnelProxy_SendMsg(tp, TP_MSG_UNLISTEN_RP, unlisten, unlistenLen);
-   free(unlisten);
+   g_free(unlisten);
 
    /* Close all the channels */
-   LIST_SCAN_SAFE(li, liNext, tp->channels) {
-      TPChannel *channel = LIST_CONTAINER(li, TPChannel, list);
-      if (Str_Strcmp(channel->portName, portName) == 0) {
+   li = tp->channels;
+   while (li) {
+      TPChannel *channel = (TPChannel *)li->data;
+      li = li->next;
+      if (strcmp(channel->portName, portName) == 0) {
          err = TunnelProxy_CloseChannel(tp, channel->channelId);
-         ASSERT(TP_ERR_OK == err);
+         g_assert(TP_ERR_OK == err);
       }
    }
 
@@ -1056,13 +1086,13 @@ TunnelProxy_CloseChannel(TunnelProxy *tp,        // IN
                          unsigned int channelId) // IN
 {
    TPChannel *channel = NULL;
-   ListItem *li;
    TunnelProxyErr err;
+   GList *li;
 
-   ASSERT(tp);
+   g_assert(tp);
 
-   LIST_SCAN(li, tp->channels) {
-      TPChannel *chanIter = LIST_CONTAINER(li, TPChannel, list);
+   for (li = tp->channels; li; li = li->next) {
+      TPChannel *chanIter = (TPChannel *)li->data;
       if (chanIter->channelId == channelId) {
          channel = chanIter;
          break;
@@ -1072,16 +1102,16 @@ TunnelProxy_CloseChannel(TunnelProxy *tp,        // IN
       return TP_ERR_INVALID_CHANNELID;
    }
 
-   LIST_SCAN(li, tp->listeners) {
-      TPListener *listener = LIST_CONTAINER(li, TPListener, list);
+   for (li = tp->listeners; li; li = li->next) {
+      TPListener *listener = (TPListener *)li->data;
 
       if (listener->singleUse &&
-          Str_Strcmp(listener->portName, channel->portName) == 0) {
-         Log("Closing single-use listener \"%s\" after channel \"%d\" "
-             "disconnect.\n", channel->portName, channelId);
+          strcmp(listener->portName, channel->portName) == 0) {
+         g_debug("Closing single-use listener \"%s\" after channel \"%d\" "
+                 "disconnect.", channel->portName, channelId);
 
          err = TunnelProxy_CloseListener(tp, channel->portName);
-         ASSERT(TP_ERR_OK == err);
+         g_assert(TP_ERR_OK == err);
 
          /* Channel is no more */
          channel = NULL;
@@ -1093,16 +1123,17 @@ TunnelProxy_CloseChannel(TunnelProxy *tp,        // IN
       char *lower = NULL;
       int lowerLen = 0;
 
-      if (channel->socket) {
-         AsyncSocket_Close(channel->socket);
+      if (channel->fd >= 0) {
+         TunnelProxy_RemovePoll(TunnelProxySocketRecvCb, channel);
+         close(channel->fd);
       }
 
       TunnelProxy_FormatMsg(&lower, &lowerLen, "chanID=I", channelId, NULL);
       TunnelProxy_SendMsg(tp, TP_MSG_LOWER, lower, lowerLen);
-      free(lower);
+      g_free(lower);
 
-      LIST_DEL(&channel->list, &tp->channels);
-      free(channel);
+      tp->channels = g_list_remove(tp->channels, channel);
+      g_free(channel);
    }
 
    return TP_ERR_OK;
@@ -1141,110 +1172,50 @@ TunnelProxy_CloseChannel(TunnelProxy *tp,        // IN
  */
 
 static void
-TunnelProxySocketRecvCb(void *buf,          // IN/OPT: read data
-                        int len,            // IN/OPT: buf length
-                        AsyncSocket *asock, // IN
-                        void *clientData)   // IN: TPChannel
+TunnelProxySocketRecvCb(void *clientData) /* IN: TPChannel */
 {
    TPChannel *channel = clientData;
-   TunnelProxy *tp;
    int throttle = 3;
-
-   ASSERT(channel);
-   ASSERT(channel->socket == asock);
-
-   tp = channel->tp;
-   ASSERT(tp);
-
-   while (throttle--) {
-      int asockErr = ASOCKERR_SUCCESS;
-      TunnelProxyErr err;
-      char recvBuf[TP_BUF_MAXLEN];
-      int recvLen = 0;
-
-      /*
-       * Non-blocking read with 0 timeout to drain queued data.  Offset into
-       * readBuf by the size of the buf argument.
-       */
-      asockErr = AsyncSocket_RecvBlocking(asock, &recvBuf[len],
-                                          sizeof(recvBuf) - len, &recvLen,
-                                          0);
-
-      /* Prepend the buf argument the first time through this loop */
-      if (len) {
-         ASSERT(buf);
-         memcpy(recvBuf, buf, len);
-         recvLen += len;
-         len = 0;
-      }
-
-      if (recvLen != 0) {
-         /* Send the data we have, regardless of recv success */
-         TunnelProxySendChunk(tp, TP_CHUNK_TYPE_DATA, channel->channelId,
-                              NULL, recvBuf, recvLen);
-      }
-
-      if (asockErr != ASOCKERR_SUCCESS && asockErr != ASOCKERR_TIMEOUT) {
-         Log("Error reading from channel \"%d\": %s\n", channel->channelId,
-             AsyncSocket_Err2String(asockErr));
-
-         err = TunnelProxy_CloseChannel(tp, channel->channelId);
-         ASSERT(TP_ERR_OK == err);
-         return;
-      }
-
-      if (recvLen == 0) {
-         break;
-      }
-   }
-
-   /* Recv at least 1-byte before calling this callback again */
-   AsyncSocket_Recv(asock, &channel->recvByte, 1,
-                    TunnelProxySocketRecvCb, channel);
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * TunnelProxySocketErrorCb --
- *
- *       Error handler for a socket channel.  Calls TunnelProxy_CloseChannel
- *       to notify the server the local side of the channel has closed.
- *
- * Results:
- *       None.
- *
- * Side effects:
- *       Calls the TunnelProxy's endChannelCb to notify of channel death.
- *
- *-----------------------------------------------------------------------------
- */
-
-static void
-TunnelProxySocketErrorCb(int error,          // IN
-                         AsyncSocket *asock, // IN
-                         void *clientData)   // IN
-{
-   TPChannel *channel = clientData;
-   TunnelProxy *tp;
+   char recvBuf[TP_BUF_MAXLEN];
+   ssize_t recvLen = 0;
    TunnelProxyErr err;
 
-   ASSERT(channel);
-   ASSERT(channel->socket == asock);
+   g_assert(channel);
 
-   tp = channel->tp;
-   ASSERT(tp);
-
-   if (tp->endChannelCb) {
-      tp->endChannelCb(tp, channel->portName, asock, tp->endChannelCbData);
+   while (throttle--) {
+      recvLen = read(channel->fd, recvBuf, sizeof(recvBuf));
+      switch (recvLen) {
+      case -1:
+         switch (errno) {
+         case EINTR:
+            goto loopAgain;
+         case EAGAIN:
+            goto pollAgain;
+         default:
+            break;
+         }
+         g_printerr("Error reading from channel \"%d\": %s\n",
+                    channel->channelId, strerror(errno));
+         /* fall through... */
+      case 0:
+         if (channel->tp->endChannelCb) {
+            channel->tp->endChannelCb(channel->tp, channel->portName,
+                                      channel->fd,
+                                      channel->tp->endChannelCbData);
+         }
+         err = TunnelProxy_CloseChannel(channel->tp, channel->channelId);
+         g_assert(TP_ERR_OK == err);
+         return;
+      default:
+         TunnelProxySendChunk(channel->tp, TP_CHUNK_TYPE_DATA,
+                              channel->channelId, NULL, recvBuf, recvLen);
+         break;
+      }
+   loopAgain:
+      ;
    }
-
-   Log("Closing channel \"%d\" socket for listener \"%s\": %s.\n",
-       channel->channelId, channel->portName, AsyncSocket_Err2String(error));
-
-   err = TunnelProxy_CloseChannel(tp, channel->channelId);
-   ASSERT(TP_ERR_OK == err);
+pollAgain:
+   TunnelProxy_AddPoll(TunnelProxySocketRecvCb, channel, channel->fd);
 }
 
 
@@ -1270,8 +1241,7 @@ TunnelProxySocketErrorCb(int error,          // IN
  */
 
 static void
-TunnelProxySocketConnectCb(AsyncSocket *asock, // IN
-                           void *clientData)   // IN
+TunnelProxySocketConnectCb(void *clientData) /* IN */
 {
    TPListener *listener = clientData;
    TunnelProxy *tp;
@@ -1279,41 +1249,64 @@ TunnelProxySocketConnectCb(AsyncSocket *asock, // IN
    int raiseLen;
    TPChannel *newChannel;
    int newChannelId;
+   int fd;
+   int nodelay = 1;
+   long flags;
 
-   ASSERT(listener);
+   g_assert(listener);
 
    tp = listener->tp;
-   ASSERT(tp);
+   g_assert(tp);
 
-   if (tp->newChannelCb && !tp->newChannelCb(tp, listener->portName, asock,
+   fd = accept(listener->fd, NULL, NULL);
+   if (fd < 0) {
+      if (errno != EWOULDBLOCK) {
+         g_printerr("Could not accept client socket: %s\n", strerror(errno));
+      }
+      goto fin;
+   }
+
+   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+              (const void *)&nodelay, sizeof(nodelay));
+
+#ifndef __MINGW32__
+#ifdef O_NONBLOCK
+   flags = O_NONBLOCK;
+#else
+   flags = O_NDELAY;
+#endif
+   fcntl(fd, F_SETFL, flags);
+#endif
+
+   if (tp->newChannelCb && !tp->newChannelCb(tp, listener->portName, fd,
                                              tp->newChannelCbData)) {
-      Log("Rejecting new channel connection to listener \"%s\"",
-          listener->portName);
-      AsyncSocket_Close(asock);
-      return;
+      g_debug("Rejecting new channel connection to listener \"%s\"",
+              listener->portName);
+      close(fd);
+      goto fin;
    }
 
    newChannelId = ++tp->maxChannelId;
 
-   Log("Creating new channel \"%d\" to listener \"%s\".\n",
-       newChannelId, listener->portName);
+   g_debug("Creating new channel \"%d\" to listener \"%s\".",
+           newChannelId, listener->portName);
 
-   newChannel = Util_SafeCalloc(1, sizeof(TPChannel));
+   newChannel = g_new0(TPChannel, 1);
    newChannel->channelId = newChannelId;
-   Str_Strcpy(newChannel->portName, listener->portName, TP_PORTNAME_MAXLEN);
-   newChannel->socket = asock;
+   strncpy(newChannel->portName, listener->portName, TP_PORTNAME_MAXLEN);
+   newChannel->fd = fd;
    newChannel->tp = tp;
 
-   LIST_QUEUE(&newChannel->list, &tp->channels);
-
-   AsyncSocket_SetErrorFn(asock, TunnelProxySocketErrorCb, newChannel);
-   AsyncSocket_UseNodelay(asock, TRUE);
+   tp->channels = g_list_append(tp->channels, newChannel);
 
    TunnelProxy_FormatMsg(&raiseBody, &raiseLen,
                          "chanID=I", newChannel->channelId,
                          "portName=S", newChannel->portName, NULL);
    TunnelProxy_SendMsg(tp, TP_MSG_RAISE_RQ, raiseBody, raiseLen);
-   free(raiseBody);
+   g_free(raiseBody);
+
+fin:
+   TunnelProxy_AddPoll(TunnelProxySocketConnectCb, listener, listener->fd);
 }
 
 
@@ -1340,7 +1333,7 @@ TunnelProxySocketConnectCb(AsyncSocket *asock, // IN
  *-----------------------------------------------------------------------------
  */
 
-static inline Bool
+static inline gboolean
 TunnelProxyReadHex(char *buf,  // IN
                    int len,    // IN
                    char trail, // IN
@@ -1370,7 +1363,7 @@ TunnelProxyReadHex(char *buf,  // IN
       } else if (digit >= 'a' && digit <= 'f') {
          value += digit - 'a' + 10; /* Character range 10..15 */
       } else {
-         Log("TunnelProxyReadHex: Invalid number character: %u\n", digit);
+         g_debug("TunnelProxyReadHex: Invalid number character: %u", digit);
          return FALSE;
       }
    }
@@ -1398,7 +1391,7 @@ TunnelProxyReadHex(char *buf,  // IN
  *-----------------------------------------------------------------------------
  */
 
-static inline Bool
+static inline gboolean
 TunnelProxyReadStr(char *buf,    // IN
                    int len,      // IN
                    int *idx,     // IN/OUT: current index
@@ -1439,7 +1432,7 @@ TunnelProxyReadStr(char *buf,    // IN
 static unsigned int
 TunnelProxyReadChunk(char *buf,        // IN
                      int len,          // IN
-                     Bool httpChunked, // IN
+                     gboolean httpChunked, // IN
                      TPChunk *chunk)   // IN/OUT
 {
    int minLen = httpChunked ? 10 : 3;
@@ -1450,7 +1443,7 @@ TunnelProxyReadChunk(char *buf,        // IN
 #define READSTR(_out, _len) \
    if (!TunnelProxyReadStr(buf, len, &readLen, _out, _len)) { return 0; }
 
-   ASSERT(chunk);
+   g_assert(chunk);
 
    if (len < minLen) {
       return 0;
@@ -1464,7 +1457,7 @@ TunnelProxyReadChunk(char *buf,        // IN
          return FALSE;
       }
 
-      ASSERT(buf[readLen] == '\n');
+      g_assert(buf[readLen] == '\n');
       readLen++;
    }
 
@@ -1477,7 +1470,7 @@ TunnelProxyReadChunk(char *buf,        // IN
    switch (chunk->type) {
    case TP_CHUNK_TYPE_ACK:
       READHEX(&chunk->ackId)
-      DEBUG_DATA(("RECV-ACK(ackId=%d)\n", chunk->ackId));
+      DEBUG_DATA(("RECV-ACK(ackId=%d)", chunk->ackId));
       break;
    case TP_CHUNK_TYPE_MESSAGE: {
       char *hdr = NULL;
@@ -1494,14 +1487,14 @@ TunnelProxyReadChunk(char *buf,        // IN
       READSTR(&chunk->body, chunk->len)
 
       if (!TunnelProxy_ReadMsg(hdr, hdrLen, "messageType=S", &msgId, NULL)) {
-         Log("Invalid messageType in tunnel message header!\n");
+         g_debug("Invalid messageType in tunnel message header!");
          return FALSE;
       }
 
-      Str_Strcpy(chunk->msgId, msgId, TP_MSGID_MAXLEN);
-      free(msgId);
+      strncpy(chunk->msgId, msgId, TP_MSGID_MAXLEN);
+      g_free(msgId);
 
-      DEBUG_DATA(("RECV-MSG(id=%d, ack=%d, msgid=%s, length=%d): %.*s\n",
+      DEBUG_DATA(("RECV-MSG(id=%d, ack=%d, msgid=%s, length=%d): %.*s",
                   chunk->chunkId, chunk->ackId,
                   chunk->msgId,
                   chunk->len, chunk->len, chunk->body));
@@ -1515,18 +1508,18 @@ TunnelProxyReadChunk(char *buf,        // IN
       READHEX(&chunk->len)
       READSTR(&chunk->body, chunk->len)
 
-      DEBUG_DATA(("RECV-DATA(id=%d, ack=%d, channel=%d, length=%d)\n",
+      DEBUG_DATA(("RECV-DATA(id=%d, ack=%d, channel=%d, length=%d)",
                   chunk->chunkId, chunk->ackId, chunk->channelId, chunk->len));
       break;
    default:
-      Log("Invalid tunnel message type identifier \"%c\" (%d).\n",
-          chunk->type, chunk->type);
-      NOT_IMPLEMENTED();
+      g_debug("Invalid tunnel message type identifier \"%c\" (%d).",
+              chunk->type, chunk->type);
+      g_assert_not_reached();
    }
 
    if (httpChunked) {
-      ASSERT(buf[readLen] == '\r');
-      ASSERT(buf[readLen + 1] == '\n');
+      g_assert(buf[readLen] == '\r');
+      g_assert(buf[readLen + 1] == '\n');
 
       /* Move past trailing \r\n */
       readLen += 2;
@@ -1565,36 +1558,30 @@ static void
 TunnelProxyHandleInChunk(TunnelProxy *tp, // IN
                          TPChunk *chunk)  // IN
 {
-   ListItem *li;
-   ListItem *liNext;
-
-   ASSERT(tp);
-   ASSERT(chunk);
+   g_assert(tp);
+   g_assert(chunk);
 
    if (chunk->chunkId > 0) {
       if (chunk->chunkId <= tp->lastChunkIdSeen) {
          /* This chunk has been replayed... skip it. */
-         Log("Skipping replayed chunk ID '%d'.\n", chunk->chunkId);
+         g_debug("Skipping replayed chunk ID '%d'.", chunk->chunkId);
          return;
       }
       tp->lastChunkIdSeen = chunk->chunkId;
    }
 
    if (chunk->ackId > 0) {
+      TPChunk *outChunk;
+
       if (chunk->ackId > tp->lastChunkIdSent) {
-         Log("Unknown ACK ID '%d' in received tunnel message.\n", chunk->ackId);
+         g_debug("Unknown ACK ID '%d' in received tunnel message.", chunk->ackId);
       }
 
-      LIST_SCAN_SAFE(li, liNext, tp->queueOutNeedAck) {
-         TPChunk *outChunk = LIST_CONTAINER(li, TPChunk, list);
-         ASSERT(outChunk);
-
-         /* queueOutNeedAck is sorted in ascending chunk ID order. */
-         if (chunk->ackId >= outChunk->chunkId) {
-            TunnelProxyFreeChunk(outChunk, &tp->queueOutNeedAck);
-         } else {
-            break;
-         }
+      for (outChunk = g_queue_peek_head(tp->queueOutNeedAck);
+           outChunk && chunk->chunkId >= outChunk->chunkId;
+           outChunk = g_queue_peek_head(tp->queueOutNeedAck)) {
+         g_queue_pop_head(tp->queueOutNeedAck);
+         TunnelProxyFreeChunk(outChunk);
       }
 
       tp->lastChunkAckSeen = chunk->ackId;
@@ -1602,14 +1589,14 @@ TunnelProxyHandleInChunk(TunnelProxy *tp, // IN
 
    switch (chunk->type) {
    case TP_CHUNK_TYPE_MESSAGE: {
-      Bool found = FALSE;
+      gboolean found = FALSE;
+      GList *li;
 
-      ASSERT(chunk->msgId);
-      LIST_SCAN_SAFE(li, liNext, tp->msgHandlers) {
-         TPMsgHandler *handler = LIST_CONTAINER(li, TPMsgHandler, list);
-
-         if (Str_Strcasecmp(handler->msgId, chunk->msgId) == 0) {
-            ASSERT(handler->cb);
+      g_assert(chunk->msgId);
+      for (li = tp->msgHandlers; li; li = li->next) {
+         TPMsgHandler *handler = (TPMsgHandler *)li->data;
+         if (g_ascii_strcasecmp(handler->msgId, chunk->msgId) == 0) {
+            g_assert(handler->cb);
             found = TRUE;
             if (handler->cb(tp, chunk->msgId, chunk->body, chunk->len,
                             handler->userData)) {
@@ -1620,31 +1607,50 @@ TunnelProxyHandleInChunk(TunnelProxy *tp, // IN
       }
 
       if (!found) {
-         DEBUG_MSG(("Unhandled message type '%s' received.\n", chunk->msgId));
+         DEBUG_MSG(("Unhandled message type '%s' received.", chunk->msgId));
       }
       break;
    }
    case TP_CHUNK_TYPE_DATA: {
-      Bool found = FALSE;
+      gboolean found = FALSE;
+      GList *li;
 
-      LIST_SCAN(li, tp->channels) {
-         TPChannel *channel = LIST_CONTAINER(li, TPChannel, list);
+      for (li = tp->channels; li; li = li->next) {
+         TPChannel *channel = (TPChannel *)li->data;
 
          if (channel->channelId == chunk->channelId) {
-            char *body = Util_SafeMalloc(chunk->len);
-            memcpy(body, chunk->body, chunk->len);
-
-            /* Send the copied body, to be freed on completion */
-            AsyncSocket_Send(channel->socket, body, chunk->len,
-                             (AsyncSocketSendFn) free, NULL);
-
+            ssize_t bytesWritten = 0;
+            char *buf = chunk->body;
+            int len = chunk->len;
+            /*
+             * XXX: Yes, this is a blocking write.  The data is
+             * usually small, and IOChannels are buffered, so maybe it
+             * doesn't matter? If it becomes a problem we'll need to
+             * add a writeBuf to our channel, and an G_IO_OUT callback
+             * that drains it.
+             */
+            while (len) {
+               bytesWritten = write(channel->fd, buf, len);
+               if (bytesWritten < 0) {
+                  if (errno != EAGAIN &&
+                      errno != EINTR &&
+                      errno != EWOULDBLOCK) {
+                     g_printerr("Error writing to chunk: %s\n", strerror(errno));
+                     len = 0;
+                     break;
+                  }
+               } else {
+                  len -= bytesWritten;
+                  buf += bytesWritten;
+               }
+            }
             found = TRUE;
             break;
          }
       }
 
       if (!found) {
-         DEBUG_MSG(("Data received for unknown channel id '%d'.\n",
+         DEBUG_MSG(("Data received for unknown channel id '%d'.",
                     chunk->channelId));
       }
       break;
@@ -1653,7 +1659,7 @@ TunnelProxyHandleInChunk(TunnelProxy *tp, // IN
       /* Let the common ACK handling happen */
       break;
    default:
-      NOT_IMPLEMENTED();
+      g_assert_not_reached();
    }
 }
 
@@ -1687,22 +1693,22 @@ void
 TunnelProxy_HTTPRecv(TunnelProxy *tp,  // IN
                      const char *buf,  // IN
                      int bufSize,      // IN
-                     Bool httpChunked) // IN
+                     gboolean httpChunked) // IN
 {
    int totalReadLen = 0;
 
-   ASSERT(tp);
-   ASSERT(buf && bufSize > 0);
+   g_assert(tp);
+   g_assert(buf && bufSize > 0);
 
-   DynBuf_Append(&tp->readBuf, buf, bufSize);
+   g_byte_array_append(tp->readBuf, buf, bufSize);
 
    while (TRUE) {
       unsigned int readLen;
       TPChunk chunk;
 
       memset(&chunk, 0, sizeof(chunk));
-      readLen = TunnelProxyReadChunk(&tp->readBuf.data[totalReadLen],
-                                     tp->readBuf.size - totalReadLen,
+      readLen = TunnelProxyReadChunk(tp->readBuf->data + totalReadLen,
+                                     tp->readBuf->len - totalReadLen,
                                      httpChunked, &chunk);
       if (!readLen) {
          break;
@@ -1717,9 +1723,7 @@ TunnelProxy_HTTPRecv(TunnelProxy *tp,  // IN
    }
 
    /* Shrink the front of the read buffer */
-   memcpy(tp->readBuf.data, &tp->readBuf.data[totalReadLen],
-          tp->readBuf.size - totalReadLen);
-   tp->readBuf.size -= totalReadLen;
+   g_byte_array_remove_range(tp->readBuf, 0, totalReadLen);
 
    /* Reset timeouts after successfully reading a chunk. */
    TunnelProxyResetTimeouts(tp, TRUE);
@@ -1729,11 +1733,11 @@ TunnelProxy_HTTPRecv(TunnelProxy *tp,  // IN
       unsigned int unackCnt = tp->lastChunkIdSent - tp->lastChunkAckSeen;
 
       if ((unackCnt > TP_MAX_START_FLOW_CONTROL) && !tp->flowStopped) {
-         DEBUG_MSG(("Starting flow control (%d unacknowledged chunks)\n",
+         DEBUG_MSG(("Starting flow control (%d unacknowledged chunks)",
                     unackCnt));
          tp->flowStopped = TRUE;
       } else if ((unackCnt < TP_MIN_END_FLOW_CONTROL) && tp->flowStopped) {
-         DEBUG_MSG(("Ending flow control\n"));
+         DEBUG_MSG(("Ending flow control"));
          tp->flowStopped = FALSE;
          TunnelProxyFireSendNeeded(tp);
       }
@@ -1769,19 +1773,19 @@ TunnelProxy_HTTPRecv(TunnelProxy *tp,  // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyWriteNextOutChunk(TunnelProxy *tp,  // IN
-                             Bool httpChunked) // IN
+                             gboolean httpChunked) // IN
 {
-   ListItem *li;
    TPChunk *chunk = NULL;
    char *msg = NULL;
+   GList *li;
    size_t msgLen = 0;
 
-   ASSERT(tp);
+   g_assert(tp);
 
-   LIST_SCAN(li, tp->queueOut) {
-      TPChunk *chunkIter = LIST_CONTAINER(li, TPChunk, list);
+   for (li = g_queue_peek_head_link(tp->queueOut); li; li = li->next) {
+      TPChunk *chunkIter = (TPChunk *)li->data;
       if (!tp->flowStopped || chunkIter->type != TP_CHUNK_TYPE_DATA) {
          chunk = chunkIter;
          break;
@@ -1809,54 +1813,58 @@ TunnelProxyWriteNextOutChunk(TunnelProxy *tp,  // IN
       int hdrLen = 0;
       if (!TunnelProxy_FormatMsg(&hdr, &hdrLen, "messageType=S", chunk->msgId,
                                  NULL)) {
-         Log("Failed to create tunnel msg header chunkId=%d.\n",
-             chunk->chunkId);
+         g_debug("Failed to create tunnel msg header chunkId=%d.",
+                 chunk->chunkId);
          return FALSE;
       }
-      msg = Str_Asprintf(&msgLen, "M;%X;%.0X;%X;%.*s;%X;%.*s;", chunk->chunkId,
-                         chunk->ackId, hdrLen, hdrLen, hdr, chunk->len,
-                         chunk->len, chunk->body);
-      free(hdr);
+      msg = g_strdup_printf("M;%X;%.0X;%X;%.*s;%X;%.*s;",
+                            chunk->chunkId, chunk->ackId,
+                            hdrLen, hdrLen, hdr, chunk->len,
+                            chunk->len, chunk->body);
+      msgLen = strlen(msg);
+      g_free(hdr);
 
-      DEBUG_DATA(("SEND-MSG(id=%d, ack=%d, msgid=%s, length=%d): %.*s\n",
+      DEBUG_DATA(("SEND-MSG(id=%d, ack=%d, msgid=%s, length=%d): %.*s",
                   chunk->chunkId, chunk->ackId,
                   chunk->msgId,
                   chunk->len, chunk->len, chunk->body));
       break;
    }
    case TP_CHUNK_TYPE_DATA: {
-      msg = Str_Asprintf(&msgLen, "D;%X;%.0X;%X;%X;", chunk->chunkId,
-                         chunk->ackId, chunk->channelId, chunk->len);
+      msg = g_strdup_printf("D;%X;%.0X;%X;%X;", chunk->chunkId,
+                            chunk->ackId, chunk->channelId, chunk->len);
+      msgLen = strlen(msg);
 
-      msg = Util_SafeRealloc(msg, msgLen + chunk->len + 1);
-      memcpy(&msg[msgLen], chunk->body, chunk->len);
+      msg = g_realloc(msg, msgLen + chunk->len + 1);
+      memcpy(msg + msgLen, chunk->body, chunk->len);
       msg[msgLen + chunk->len] = ';';
       msgLen += chunk->len + 1;
 
-      DEBUG_DATA(("SEND-DATA(id=%d, ack=%d, channel=%d, length=%d)\n",
+      DEBUG_DATA(("SEND-DATA(id=%d, ack=%d, channel=%d, length=%d)",
                   chunk->chunkId, chunk->ackId, chunk->channelId, chunk->len));
       break;
    }
    case TP_CHUNK_TYPE_ACK:
-      ASSERT(chunk->ackId > 0);
-      msg = Str_Asprintf(&msgLen, "A;%X;", chunk->ackId);
+      g_assert(chunk->ackId > 0);
+      msg = g_strdup_printf("A;%X;", chunk->ackId);
+      msgLen = strlen(msg);
 
-      DEBUG_DATA(("SEND-ACK(ackId=%d)\n", chunk->ackId));
+      DEBUG_DATA(("SEND-ACK(ackId=%d)", chunk->ackId));
       break;
    default:
-      NOT_REACHED();
+      g_assert_not_reached();
    }
 
-   ASSERT(msg);
+   g_assert(msg);
 
    if (httpChunked) {
-      char chunkHdr[32];
-      Str_Sprintf(chunkHdr, sizeof(chunkHdr), "%X\r\n", (int)msgLen);
-      DynBuf_Append(&tp->writeBuf, chunkHdr, strlen(chunkHdr));
-      DynBuf_Append(&tp->writeBuf, msg, msgLen);
-      DynBuf_Append(&tp->writeBuf, "\r\n", 2);
+      char *chunkHdr = g_strdup_printf("%X\r\n", (int)msgLen);
+      g_byte_array_append(tp->writeBuf, chunkHdr, strlen(chunkHdr));
+      g_free(chunkHdr);
+      g_byte_array_append(tp->writeBuf, msg, msgLen);
+      g_byte_array_append(tp->writeBuf, "\r\n", 2);
    } else {
-      DynBuf_Append(&tp->writeBuf, msg, msgLen);
+      g_byte_array_append(tp->writeBuf, msg, msgLen);
    }
 
    /*
@@ -1864,10 +1872,10 @@ TunnelProxyWriteNextOutChunk(TunnelProxy *tp,  // IN
     * TunnelProxyHandleInChunk assumes queueOutNeedAck is sorted by
     * ascending chunk ID, so queue at the end.
     */
-   LIST_DEL(&chunk->list, &tp->queueOut);
-   LIST_QUEUE(&chunk->list, &tp->queueOutNeedAck);
+   g_queue_remove(tp->queueOut, chunk);
+   g_queue_push_tail(tp->queueOutNeedAck, chunk);
 
-   free(msg);
+   g_free(msg);
    return TRUE;
 }
 
@@ -1901,10 +1909,10 @@ void
 TunnelProxy_HTTPSend(TunnelProxy *tp,  // IN
                      char *buf,        // IN/OUT
                      int *bufSize,     // IN/OUT
-                     Bool httpChunked) // IN
+                     gboolean httpChunked) // IN
 {
-   ASSERT(tp);
-   ASSERT(buf && *bufSize > 0);
+   g_assert(tp);
+   g_assert(buf && *bufSize > 0);
 
    /*
     * If we don't do the HTTP chunked encoding ourselves, the caller has to,
@@ -1915,13 +1923,13 @@ TunnelProxy_HTTPSend(TunnelProxy *tp,  // IN
       /* Do nothing. */
    }
 
-   *bufSize = MIN(tp->writeBuf.size, *bufSize);
-   memcpy(buf, tp->writeBuf.data, *bufSize);
+   *bufSize = MIN(tp->writeBuf->len, *bufSize);
+   memcpy(buf, tp->writeBuf->data, *bufSize);
 
-   /* Shrink the front of the write buffer */
-   memcpy(tp->writeBuf.data, &tp->writeBuf.data[*bufSize],
-          tp->writeBuf.size - *bufSize);
-   tp->writeBuf.size -= *bufSize;
+   if (*bufSize) {
+      /* Shrink the front of the write buffer */
+      g_byte_array_remove_range(tp->writeBuf, 0, *bufSize);
+   }
 }
 
 
@@ -1942,16 +1950,16 @@ TunnelProxy_HTTPSend(TunnelProxy *tp,  // IN
  *-----------------------------------------------------------------------------
  */
 
-Bool
+gboolean
 TunnelProxy_HTTPSendNeeded(TunnelProxy *tp) // IN
 {
-   ListItem *li;
    TPChunk *chunk = NULL;
+   GList *li;
 
-   ASSERT(tp);
+   g_assert(tp);
 
-   LIST_SCAN(li, tp->queueOut) {
-      chunk = LIST_CONTAINER(li, TPChunk, list);
+   for (li = g_queue_peek_head_link(tp->queueOut); li; li = li->next) {
+      chunk = (TPChunk *)li->data;
       if (!tp->flowStopped || chunk->type != TP_CHUNK_TYPE_DATA) {
          return TRUE;
       }
@@ -1980,9 +1988,9 @@ TunnelProxy_HTTPSendNeeded(TunnelProxy *tp) // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyEchoRequestCb(TunnelProxy *tp,   // IN
-                         const char *msgId, // IN
+                         const char *msgId, // IN/UNUSED
                          const char *body,  // IN
                          int len,           // IN
                          void *userData)    // IN: not used
@@ -2009,7 +2017,7 @@ TunnelProxyEchoRequestCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyEchoReplyCb(TunnelProxy *tp,   // IN
                        const char *msgId, // IN
                        const char *body,  // IN
@@ -2036,7 +2044,7 @@ TunnelProxyEchoReplyCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyStopCb(TunnelProxy *tp,   // IN
                   const char *msgId, // IN
                   const char *body,  // IN
@@ -2047,16 +2055,16 @@ TunnelProxyStopCb(TunnelProxy *tp,   // IN
    char *reason;
 
    TunnelProxy_ReadMsg(body, len, "reason=S", &reason, NULL);
-   Warning("TUNNEL STOPPED: %s\n", reason);
+   g_printerr("TUNNEL STOPPED: %s\n", reason);
 
    /* Reconnect secret isn't valid after a STOP */
-   free(tp->reconnectSecret);
+   g_free(tp->reconnectSecret);
    tp->reconnectSecret = NULL;
 
    err = TunnelProxyDisconnect(tp, reason, TRUE, TRUE);
-   ASSERT(TP_ERR_OK == err);
+   g_assert(TP_ERR_OK == err);
 
-   free(reason);
+   g_free(reason);
    return TRUE;
 }
 
@@ -2078,7 +2086,7 @@ TunnelProxyStopCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyAuthenticatedCb(TunnelProxy *tp,   // IN
                            const char *msgId, // IN
                            const char *body,  // IN
@@ -2086,7 +2094,7 @@ TunnelProxyAuthenticatedCb(TunnelProxy *tp,   // IN
                            void *userData)    // IN: not used
 {
    char *capID = NULL;
-   Bool allowAutoReconnection = FALSE;
+   gboolean allowAutoReconnection = FALSE;
 
    /* Ignored body contents:
     *    "sessionTimeout" long, time until the session will die
@@ -2097,32 +2105,32 @@ TunnelProxyAuthenticatedCb(TunnelProxy *tp,   // IN
                             "lostContactTimeout=L", &tp->lostContactTimeout,
                             "disconnectedTimeout=L", &tp->disconnectedTimeout,
                             NULL)) {
-      NOT_IMPLEMENTED();
+      g_assert_not_reached();
    }
 
-   if (tp->capID && Str_Strcmp(capID, tp->capID) != 0) {
-      Warning("Tunnel authenticated capID \"%s\" does not match expected "
-              "value \"%s\".\n", capID, tp->capID);
+   if (tp->capID && strcmp(capID, tp->capID) != 0) {
+      g_printerr("Tunnel authenticated capID \"%s\" does not match expected "
+                 "value \"%s\".\n", capID, tp->capID);
    } else {
       tp->capID = capID;
       capID = NULL;
    }
 
-   free(tp->reconnectSecret);
+   g_free(tp->reconnectSecret);
    tp->reconnectSecret = NULL;
 
    if (allowAutoReconnection &&
        !TunnelProxy_ReadMsg(body, len,
                             "reconnectSecret=S", &tp->reconnectSecret,
                             NULL)) {
-      Warning("Tunnel automatic reconnect disabled: no reconnect secret in "
-              "auth_rp.\n");
+      g_printerr("Tunnel automatic reconnect disabled: no reconnect secret in "
+                 "auth_rp.\n");
    }
 
    /* Kick off echo & disconnect timeouts */
    TunnelProxyResetTimeouts(tp, TRUE);
 
-   free(capID);
+   g_free(capID);
    return TRUE;
 }
 
@@ -2143,14 +2151,14 @@ TunnelProxyAuthenticatedCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyReadyCb(TunnelProxy *tp,   // IN: not used
                    const char *msgId, // IN: not used
                    const char *body,  // IN: not used
                    int len,           // IN: not used
                    void *userData)    // IN: not used
 {
-   Warning("TUNNEL READY\n");
+   g_printerr("TUNNEL READY\n");
    return TRUE;
 }
 
@@ -2173,9 +2181,9 @@ TunnelProxyReadyCb(TunnelProxy *tp,   // IN: not used
  *-----------------------------------------------------------------------------
  */
 
-static Bool
-TunnelProxySysMsgCb(TunnelProxy *tp,   // IN
-                    const char *msgId, // IN
+static gboolean
+TunnelProxySysMsgCb(TunnelProxy *tp,   // IN/UNUSED
+                    const char *msgId, // IN/UNUSED
                     const char *body,  // IN
                     int len,           // IN
                     void *userData)    // IN: not used
@@ -2183,8 +2191,8 @@ TunnelProxySysMsgCb(TunnelProxy *tp,   // IN
    char *msg;
 
    TunnelProxy_ReadMsg(body, len, "msg=S", &msg, NULL);
-   Warning("TUNNEL SYSTEM MESSAGE: %s\n", msg ? msg : "<Invalid Message>");
-   free(msg);
+   g_printerr("TUNNEL SYSTEM MESSAGE: %s\n", msg ? msg : "<Invalid Message>");
+   g_free(msg);
 
    return TRUE;
 }
@@ -2208,9 +2216,9 @@ TunnelProxySysMsgCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
-TunnelProxyErrorCb(TunnelProxy *tp,   // IN
-                   const char *msgId, // IN
+static gboolean
+TunnelProxyErrorCb(TunnelProxy *tp,   // IN/UNUSED
+                   const char *msgId, // IN/UNUSED
                    const char *body,  // IN
                    int len,           // IN
                    void *userData)    // IN: not used
@@ -2218,8 +2226,8 @@ TunnelProxyErrorCb(TunnelProxy *tp,   // IN
    char *msg;
 
    TunnelProxy_ReadMsg(body, len, "msg=S", &msg, NULL);
-   Warning("TUNNEL ERROR: %s\n", msg ? msg : "<Invalid Error>");
-   free(msg);
+   g_printerr("TUNNEL ERROR: %s\n", msg ? msg : "<Invalid Error>");
+   g_free(msg);
 
    return TRUE;
 }
@@ -2245,9 +2253,9 @@ TunnelProxyErrorCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyPleaseInitCb(TunnelProxy *tp,   // IN
-                        const char *msgId, // IN
+                        const char *msgId, // IN/UNUSED
                         const char *body,  // IN
                         int len,           // IN
                         void *userData)    // IN: not used
@@ -2258,18 +2266,18 @@ TunnelProxyPleaseInitCb(TunnelProxy *tp,   // IN
     */
    char *startBody = NULL;
    int startLen = 0;
-   int64 t1 = 0;
+   gint64 t1 = 0;
 
-   ASSERT(tp->hostIp && tp->hostAddr);
+   g_assert(tp->hostIp && tp->hostAddr);
 
    {
       char *cid = NULL;
       TunnelProxy_ReadMsg(body, len, "cid=S", &cid, NULL);
-      if (!cid || Str_Strcmp(cid, "1234") != 0) {
-         Warning("Incorrect correlation-id in tunnel PLEASEINIT: %s.\n", cid);
+      if (!cid || strcmp(cid, "1234") != 0) {
+         g_printerr("Incorrect correlation-id in tunnel PLEASEINIT: %s.\n", cid);
          return FALSE;
       }
-      free(cid);
+      g_free(cid);
    }
 
    {
@@ -2286,7 +2294,7 @@ TunnelProxyPleaseInitCb(TunnelProxy *tp,   // IN
                          "type=S", "C", // "simple" C client
                          "t1=L", t1, NULL);
    TunnelProxy_SendMsg(tp, TP_MSG_START, startBody, startLen);
-   free(startBody);
+   g_free(startBody);
 
    return TRUE;
 }
@@ -2313,7 +2321,7 @@ TunnelProxyPleaseInitCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyRaiseReplyCb(TunnelProxy *tp,   // IN
                         const char *msgId, // IN
                         const char *body,  // IN
@@ -2323,38 +2331,141 @@ TunnelProxyRaiseReplyCb(TunnelProxy *tp,   // IN
    char *problem = NULL;
    int chanId = 0;
    TPChannel *channel = NULL;
-   ListItem *li;
    TunnelProxyErr err;
+   GList *li;
 
    if (!TunnelProxy_ReadMsg(body, len, "chanID=I", &chanId, NULL)) {
-      NOT_IMPLEMENTED();
+      g_assert_not_reached();
    }
 
-   LIST_SCAN(li, tp->channels) {
-      TPChannel *chanIter = LIST_CONTAINER(li, TPChannel, list);
+   for (li = tp->channels; li; li = li->next) {
+      TPChannel *chanIter = (TPChannel *)li->data;
       if (chanIter->channelId == chanId) {
          channel = chanIter;
          break;
       }
    }
    if (!channel) {
-      Log("Invalid channel \"%d\" in raise reply.\n", chanId);
+      g_debug("Invalid channel \"%d\" in raise reply.", chanId);
       return FALSE;
    }
 
    TunnelProxy_ReadMsg(body, len, "problem=E", &problem, NULL);
 
    if (problem) {
-      Log("Error raising channel \"%d\": %s\n", chanId, problem);
+      g_debug("Error raising channel \"%d\": %s", chanId, problem);
 
       err = TunnelProxy_CloseChannel(tp, channel->channelId);
-      ASSERT(TP_ERR_OK == err);
+      g_assert(TP_ERR_OK == err);
    } else {
       /* Kick off channel reading */
-      TunnelProxySocketRecvCb(NULL, 0, channel->socket, channel);
+      TunnelProxy_AddPoll(TunnelProxySocketRecvCb, channel, channel->fd);
    }
 
    return TRUE;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * TunnelProxyListenSocket --
+ *
+ *      Create a listening GIOChannel on the given IP address and port.
+ *
+ * Results:
+ *      A new GIOChannel or NULL on error.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+static int
+TunnelProxyListenSocket(const char *ipStr, // IN
+                        int port)          // IN
+{
+   int fd;
+   in_addr_t ipAddr;
+   struct sockaddr_in local_addr = { 0 };
+   int nodelay = 1;
+   long flags;
+
+   g_debug("Creating new listening socket on port %d", port);
+
+   ipAddr = inet_addr(ipStr);
+   if (ipAddr == INADDR_NONE) {
+      g_printerr("Could not convert address: %s\n", ipStr);
+      return -1;
+   }
+
+   fd = socket(AF_INET, SOCK_STREAM, 0);
+   if (fd < 0) {
+      g_printerr("Could not create socket: %s\n", strerror(errno));
+      return -1;
+   }
+
+#ifndef _WIN32
+   /*
+    * Don't ever use SO_REUSEADDR on Windows; it doesn't mean what you think
+    * it means.
+    */
+   {
+      int reuse = port != 0;
+      if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
+                     (const void *)&reuse, sizeof(reuse)) != 0) {
+         g_printerr("Could not set SO_REUSEADDR: %s\n", strerror(errno));
+      }
+   }
+#endif
+
+#ifdef _WIN32
+   /*
+    * Always set SO_EXCLUSIVEADDRUSE on Windows, to prevent other applications
+    * from stealing this socket. (Yes, Windows is that stupid).
+    */
+   {
+      int exclusive = 1;
+      if (setsockopt(fd, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+                     (const void *) &exclusive, sizeof(exclusive)) != 0) {
+         g_printerr("Could not set SO_EXCLUSIVEADDRUSE, error %d: %s\n",
+                    errno, strerror(errno));
+      }
+   }
+#endif
+
+   local_addr.sin_family = AF_INET;
+   local_addr.sin_addr.s_addr = ipAddr;
+   local_addr.sin_port = htons(port);
+
+   if (bind(fd, (struct sockaddr *)&local_addr, sizeof(local_addr))) {
+      g_printerr("Could not bind socket: %s\n", strerror(errno));
+      close(fd);
+      return -1;
+   }
+
+   if (listen(fd, 5)) {
+      g_printerr("Could not listen on socket: %s\n", strerror(errno));
+      close(fd);
+      return -1;
+   }
+
+   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+              (const void *)&nodelay, sizeof(nodelay));
+
+#ifndef __MINGW32__
+#ifdef O_NONBLOCK
+   flags = O_NONBLOCK;
+#else
+   flags = O_NDELAY;
+#endif
+#if 1
+   fcntl(fd, F_SETFL, flags);
+#endif
+#endif
+
+   return fd;
 }
 
 
@@ -2377,9 +2488,9 @@ TunnelProxyRaiseReplyCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyListenRequestCb(TunnelProxy *tp,   // IN
-                           const char *msgId, // IN
+                           const char *msgId, // IN/UNUSED
                            const char *body,  // IN
                            int len,           // IN
                            void *userData)    // IN: not used
@@ -2391,11 +2502,10 @@ TunnelProxyListenRequestCb(TunnelProxy *tp,   // IN
    int maxConns;
    int cid;
    char *bindAddr = NULL;
-   int listenErr = ASOCKERR_SUCCESS;
    char *reply = NULL;
    int replyLen = 0;
-   AsyncSocket *asock = NULL;
-   TPListener *newListener = NULL;
+   int fd = -1;
+   TPListener *listener = NULL;
    char *problem = NULL;
 
    if (!TunnelProxy_ReadMsg(body, len,
@@ -2405,7 +2515,7 @@ TunnelProxyListenRequestCb(TunnelProxy *tp,   // IN
                             "portName=S", &portName,
                             "maxConnections=I", &maxConns,
                             "cid=I", &cid, NULL)) {
-      NOT_IMPLEMENTED();
+      g_assert_not_reached();
    }
 
    if (bindPort == -1) {
@@ -2415,61 +2525,56 @@ TunnelProxyListenRequestCb(TunnelProxy *tp,   // IN
    /* clientHost is often null, so parse it optionally */
    TunnelProxy_ReadMsg(body, len, "clientHost=S", &bindAddr);
    if (!bindAddr) {
-      bindAddr = strdup("127.0.0.1");
+      bindAddr = g_strdup("127.0.0.1");
    }
 
    /* Create the listener early, so it can be the ConnectCb user data */
-   newListener = Util_SafeCalloc(1, sizeof(TPListener));
-
-   asock = AsyncSocket_ListenIPStr(bindAddr, bindPort,
-                                   TunnelProxySocketConnectCb, newListener,
-                                   NULL, &listenErr);
-   if (!asock || ASOCKERR_SUCCESS != listenErr) {
-      Log("Error creating new listener \"%s\" on %s:%d to server %s:%d: %s\n",
-          portName, bindAddr, bindPort, serverHost, serverPort,
-          AsyncSocket_Err2String(listenErr));
-
-      problem = strdup(AsyncSocket_Err2String(listenErr));
+   listener = g_new0(TPListener, 1);
+   fd = TunnelProxyListenSocket(bindAddr, bindPort);
+   if (fd < 0) {
+      g_debug("Error creating new listener \"%s\" on %s:%d to server %s:%d",
+              portName, bindAddr, bindPort, serverHost, serverPort);
       goto error;
    }
 
-   AsyncSocket_UseNodelay(asock, TRUE);
+   TunnelProxy_AddPoll(TunnelProxySocketConnectCb, listener, listener->fd);
 
    if (bindPort == 0) {
       /* Find the local port we've bound. */
-      int fd = AsyncSocket_GetFd(asock);
       struct sockaddr addr = { 0 };
       socklen_t addrLen = sizeof(addr);
 
       if (getsockname(fd, &addr, &addrLen) < 0) {
-         NOT_IMPLEMENTED();
+         g_assert_not_reached();
       }
 
       bindPort = ntohs(((struct sockaddr_in*) &addr)->sin_port);
    }
-   ASSERT(bindPort > 0);
+   g_assert(bindPort > 0);
 
    if (tp->listenerCb && !tp->listenerCb(tp, portName, bindAddr,
                                          bindPort, tp->listenerCbData)) {
-      AsyncSocket_Close(asock);
+      TunnelProxy_RemovePoll(TunnelProxySocketConnectCb, listener);
 
-      Log("Rejecting new listener \"%s\" on %s:%d to server %s:%d.\n",
-          portName, bindAddr, bindPort, serverHost, serverPort);
+      close(fd);
 
-      problem = strdup("User Rejected");
+      g_debug("Rejecting new listener \"%s\" on %s:%d to server %s:%d.",
+              portName, bindAddr, bindPort, serverHost, serverPort);
+
+      problem = g_strdup("User Rejected");
       goto error;
    }
 
-   Log("Creating new listener \"%s\" on %s:%d to server %s:%d.\n",
-       portName, bindAddr, bindPort, serverHost, serverPort);
+   g_debug("Creating new listener \"%s\" on %s:%d to server %s:%d.",
+           portName, bindAddr, bindPort, serverHost, serverPort);
 
-   Str_Strcpy(newListener->portName, portName, TP_PORTNAME_MAXLEN);
-   newListener->port = bindPort;
-   newListener->listenSock = asock;
-   newListener->singleUse = maxConns == 1;
-   newListener->tp = tp;
+   strncpy(listener->portName, portName, TP_PORTNAME_MAXLEN);
+   listener->port = bindPort;
+   listener->fd = fd;
+   listener->singleUse = maxConns == 1;
+   listener->tp = tp;
 
-   LIST_QUEUE(&newListener->list, &tp->listeners);
+   tp->listeners = g_list_append(tp->listeners, listener);
 
    TunnelProxy_FormatMsg(&reply, &replyLen,
                          "cid=I", cid,
@@ -2480,19 +2585,19 @@ TunnelProxyListenRequestCb(TunnelProxy *tp,   // IN
 exit:
    TunnelProxy_SendMsg(tp, TP_MSG_LISTEN_RP, reply, replyLen);
 
-   free(bindAddr);
-   free(serverHost);
-   free(portName);
-   free(reply);
+   g_free(bindAddr);
+   g_free(serverHost);
+   g_free(portName);
+   g_free(reply);
 
    return TRUE;
 
 error:
-   ASSERT(problem && !reply);
+   g_assert(problem && !reply);
    TunnelProxy_FormatMsg(&reply, &replyLen, "cid=I", cid, "problem=E", problem,
                          NULL);
-   free(problem);
-   free(newListener);
+   g_free(problem);
+   g_free(listener);
    goto exit;
 }
 
@@ -2516,7 +2621,7 @@ error:
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyUnlistenRequestCb(TunnelProxy *tp,   // IN
                              const char *msgId, // IN
                              const char *body,  // IN
@@ -2528,7 +2633,7 @@ TunnelProxyUnlistenRequestCb(TunnelProxy *tp,   // IN
    int replyLen = 0;
 
    if (!TunnelProxy_ReadMsg(body, len, "portName=S", &portName, NULL)) {
-      NOT_IMPLEMENTED();
+      g_assert_not_reached();
    }
 
    if (!portName || TP_ERR_OK != TunnelProxy_CloseListener(tp, portName)) {
@@ -2538,8 +2643,8 @@ TunnelProxyUnlistenRequestCb(TunnelProxy *tp,   // IN
 
    TunnelProxy_SendMsg(tp, TP_MSG_UNLISTEN_RP, reply, replyLen);
 
-   free(portName);
-   free(reply);
+   g_free(portName);
+   g_free(reply);
    return TRUE;
 }
 
@@ -2562,7 +2667,7 @@ TunnelProxyUnlistenRequestCb(TunnelProxy *tp,   // IN
  *-----------------------------------------------------------------------------
  */
 
-static Bool
+static gboolean
 TunnelProxyLowerCb(TunnelProxy *tp,   // IN
                    const char *msgId, // IN
                    const char *body,  // IN
@@ -2573,13 +2678,13 @@ TunnelProxyLowerCb(TunnelProxy *tp,   // IN
    TunnelProxyErr err;
 
    if (!TunnelProxy_ReadMsg(body, len, "chanID=I", &chanId, NULL)) {
-      NOT_IMPLEMENTED();
+      g_assert_not_reached();
    }
 
-   Warning("Tunnel requested socket channel close (chanID: %d)\n", chanId);
+   g_printerr("Tunnel requested socket channel close (chanID: %d)\n", chanId);
    err = TunnelProxy_CloseChannel(tp, chanId);
    if (err != TP_ERR_OK) {
-       Warning("Error closing socket channel %d: %d\n", chanId, err);
+       g_printerr("Error closing socket channel %d: %d\n", chanId, err);
    }
 
    return TRUE;
@@ -2608,10 +2713,10 @@ TunnelProxyLowerCb(TunnelProxy *tp,   // IN
  */
 
 static void
-TunnelProxyResetTimeouts(TunnelProxy *tp, // IN
-                         Bool requeue)    // IN: restart timeouts
+TunnelProxyResetTimeouts(TunnelProxy *tp,  // IN
+                         gboolean requeue) // IN: restart timeouts
 {
-   ASSERT(tp);
+   g_assert(tp);
 
    Poll_CB_RTimeRemove(TunnelProxyLostContactTimeoutCb, tp, FALSE);
    Poll_CB_RTimeRemove(TunnelProxyEchoTimeoutCb, tp, TRUE);
@@ -2651,9 +2756,10 @@ TunnelProxyEchoTimeoutCb(void *userData) // IN: TunnelProxy
    TunnelProxy *tp = userData;
    char *req = NULL;
    int reqLen = 0;
-   int64 now = 0;
+   gint64 now = 0;
 
-   ASSERT(tp);
+   g_assert(tp);
+   tp->echoTimeoutId = 0;
 
    {
       struct timeval tv;
@@ -2664,7 +2770,7 @@ TunnelProxyEchoTimeoutCb(void *userData) // IN: TunnelProxy
 
    TunnelProxy_FormatMsg(&req, &reqLen, "now=L", now, NULL);
    TunnelProxy_SendMsg(tp, TP_MSG_ECHO_RQ, req, reqLen);
-   free(req);
+   g_free(req);
 }
 
 
@@ -2690,12 +2796,10 @@ static void
 TunnelProxyLostContactTimeoutCb(void *userData) // IN: TunnelProxy
 {
    TunnelProxy *tp = userData;
-   char *msg;
 
-   ASSERT(tp);
+   g_assert(tp);
+   tp->lostContactTimeoutId = 0;
 
-   msg = Msg_GetString(MSGID("cdk.linuxTunnel.lostContact")
-                       "Client disconnected following no activity.");
-   TunnelProxyDisconnect(tp, msg, FALSE, TRUE);
-   free(msg);
+   TunnelProxyDisconnect(tp, _("Client disconnected following no activity"),
+                         FALSE, TRUE);
 }

@@ -207,11 +207,11 @@ extern "C" {
             defaultUser:(NSString *)defaultUser
           defaultDomain:(NSString *)defaultDomain
 {
-   mBroker->Initialize([[address hostname] utilString],
+   mBroker->Initialize([NSString utilStringWithString:[address hostname]],
                        [address port],
                        [address secure],
-                       defaultUser ? [defaultUser utilString] : "",
-                       defaultDomain ? [defaultDomain utilString] : "");
+                       [NSString utilStringWithString:defaultUser],
+                       [NSString utilStringWithString:defaultDomain]);
 }
 
 
@@ -255,7 +255,7 @@ extern "C" {
 
 -(void)setCookieFile:(NSString *)cookieFile // IN
 {
-   mBroker->SetCookieFile([cookieFile utilString]);
+   mBroker->SetCookieFile([NSString utilStringWithString:cookieFile]);
 }
 
 
@@ -307,6 +307,31 @@ extern "C" {
 /*
  *-----------------------------------------------------------------------------
  *
+ * -[CdkBroker submitCertificateFromIdentity:] --
+ *
+ *      Authenticate to the broker using a given identity.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)submitCertificateFromIdentity:(SecIdentityRef)ident // IN
+{
+   CdkKeychain *keychain = [CdkKeychain sharedKeychain];
+   mBroker->SubmitCertificate(
+      ident ? [keychain certificateWithIdentity:ident] : NULL,
+      ident ? [keychain privateKeyWithIdentity:ident] : NULL);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * -[CdkBroker submitUsername:passcode:] --
  *
  *      Authenticate to the broker using a given username and RSA
@@ -324,7 +349,8 @@ extern "C" {
 -(void)submitUsername:(NSString *)username // IN
              passcode:(NSString *)passcode // IN
 {
-   mBroker->SubmitPasscode([username utilString], [passcode utilString]);
+   mBroker->SubmitPasscode([NSString utilStringWithString:username],
+                           [NSString utilStringWithString:passcode]);
 }
 
 
@@ -346,7 +372,7 @@ extern "C" {
 
 -(void)submitNextTokencode:(NSString *)tokencode // IN
 {
-   mBroker->SubmitNextTokencode([tokencode utilString]);
+   mBroker->SubmitNextTokencode([NSString utilStringWithString:tokencode]);
 }
 
 
@@ -369,7 +395,8 @@ extern "C" {
 -(void)submitPin:(NSString *)pin1
              pin:(NSString *)pin2
 {
-   mBroker->SubmitPins([pin1 utilString], [pin2 utilString]);
+   mBroker->SubmitPins([NSString utilStringWithString:pin1],
+                       [NSString utilStringWithString:pin2]);
 }
 
 
@@ -393,9 +420,9 @@ extern "C" {
              password:(NSString *)password // IN
                domain:(NSString *)domain   // IN
 {
-   mBroker->SubmitPassword([username utilString],
-                           [password utilString],
-                           [domain utilString]);
+   mBroker->SubmitPassword([NSString utilStringWithString:username],
+                           [NSString utilStringWithString:password],
+                           [NSString utilStringWithString:domain]);
 }
 
 
@@ -419,9 +446,9 @@ extern "C" {
              newPassword:(NSString *)newPassword // IN
                  confirm:(NSString *)confirm     // IN
 {
-   mBroker->ChangePassword([oldPassword utilString],
-                           [newPassword utilString],
-                           [confirm utilString]);
+   mBroker->ChangePassword([NSString utilStringWithString:oldPassword],
+                           [NSString utilStringWithString:newPassword],
+                           [NSString utilStringWithString:confirm]);
 }
 
 

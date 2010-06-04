@@ -25,7 +25,7 @@
 /*
  * cdkKeychain.m --
  *
- *      Implementatino of CdkKeychain!
+ *      Implementation of CdkKeychain!
  */
 
 extern "C" {
@@ -47,11 +47,13 @@ extern "C" {
  * d2i_X509() changed signature between 0.9.7 and 0.9.8, which we use
  * on OS X 10.5.
  */
-#ifdef OPENSSL_097
+#if OPENSSL_VERSION_NUMBER < 0x00908000L
 #define D2I_X509_CONST
 #else
 #define D2I_X509_CONST const
 #endif
+
+#define SIGNING_RETRIES 3
 
 
 @interface CdkKeychain (Private)
@@ -109,6 +111,9 @@ CdkKeychainRsaSign(int type,               // IN
 
    SecKeyRef privKey = NULL;
    SecKeychainRef keychain = NULL;
+   CSSM_CC_HANDLE ctx = 0;
+   int tries = 1;
+   int rv = 0;
 
    require_noerr(SecIdentityCopyPrivateKey(ident, &privKey), rsaSignExit);
    require_noerr(SecKeychainItemCopyKeychain((SecKeychainItemRef)privKey,
@@ -121,10 +126,6 @@ CdkKeychainRsaSign(int type,               // IN
    CSSM_CSP_HANDLE csp;
    require_noerr(SecKeychainGetCSPHandle(keychain, &csp), rsaSignExit);
 
-   /*
-    * This may prompt the user whether to allow us to use this
-    * keychain object, and for the smart card PIN/keychain's password.
-    */
    const CSSM_ACCESS_CREDENTIALS *creds;
    require_noerr(SecKeyGetCredentials(privKey,
                                       CSSM_ACL_AUTHORIZATION_SIGN,
@@ -134,10 +135,6 @@ CdkKeychainRsaSign(int type,               // IN
    const CSSM_KEY *key;
    require_noerr(SecKeyGetCSSMKey(privKey, &key), rsaSignExit);
 
-   CSSM_CC_HANDLE ctx;
-   require_noerr(CSSM_CSP_CreateSignatureContext (csp, CSSM_ALGID_RSA, creds,
-                                                  key, &ctx), rsaSignExit);
-
    CSSM_DATA signIn;
    CSSM_DATA signOut;
    signIn.Length = m_length;
@@ -145,22 +142,58 @@ CdkKeychainRsaSign(int type,               // IN
    signOut.Length = 0;
    signOut.Data = NULL;
 
+tryToSign:
+   /*
+    * The signature context is what our authentication is tied to, so
+    * to be able to retry the PIN, we need to do this again.
+    */
+   require_noerr(CSSM_CSP_CreateSignatureContext(csp, CSSM_ALGID_RSA, creds,
+                                                 key, &ctx), rsaSignExit);
+
    /*
     * Finally, we have collected all of the runes, and may actually
     * sign the data.
+    *
+    * This may prompt the user whether to allow us to use this
+    * keychain object, and for the smart card PIN/keychain's password.
     */
-   require_noerr(CSSM_SignData (ctx, &signIn, 1, CSSM_ALGID_NONE, &signOut),
-                 rsaSignExit);
-
-   *siglen = signOut.Length;
-   memcpy(sigret, signOut.Data, signOut.Length);
-   free(signOut.Data);
-
-   Log("Returned %u bytes of signed data\n", *siglen);
-   // Success!
-   ret = 1;
+   rv = CSSM_SignData(ctx, &signIn, 1, CSSM_ALGID_NONE, &signOut);
+   Log("Attempt #%d for signing data: %#x\n", tries, rv);
+   switch (rv) {
+   case noErr:
+      *siglen = signOut.Length;
+      memcpy(sigret, signOut.Data, signOut.Length);
+      free(signOut.Data);
+      Log("Returned %u bytes of signed data\n", *siglen);
+      // Success!
+      ret = 1;
+      break;
+   case CSSMERR_DL_INVALID_SAMPLE_VALUE:
+   case CSSMERR_CSP_PRIVATE_KEY_NOT_FOUND:
+      /*
+       * These may not be the only error code that indicates an
+       * invalid PIN.
+       */
+      if (++tries <= SIGNING_RETRIES) {
+         CSSM_DeleteContext(ctx);
+         ctx = 0;
+         goto tryToSign;
+      }
+      // fall through...
+   case CSSMERR_CSP_USER_CANCELED:
+      // User canceled, just exit as well.
+   default: {
+      NSString *err = (NSString *)SecCopyErrorMessageString(rv, NULL);
+      Warning("Could not sign RSA data: %s\n", [err UTF8String]);
+      [err release];
+      break;
+   }
+   }
 
 rsaSignExit:
+   if (ctx) {
+      CSSM_DeleteContext(ctx);
+   }
    if (privKey) {
       CFRelease(privKey);
    }

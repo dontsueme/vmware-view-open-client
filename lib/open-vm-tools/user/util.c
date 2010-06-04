@@ -39,7 +39,9 @@
 # include <winsock2.h> // also includes windows.h
 # include <io.h>
 # include <process.h>
+#ifndef __MINGW32__
 # include "coreDump.h"
+#endif
 #endif
 
 #include <fcntl.h>
@@ -53,6 +55,8 @@
 #if !defined(_WIN32) && !defined(N_PLAT_NLM)
 #  include <unistd.h>
 #  include <pwd.h>
+#endif
+#ifdef HAVE_DLFCN_H
 #  include <dlfcn.h>
 #endif
 
@@ -745,7 +749,9 @@ Util_BacktraceWithFunc(int bugNr, Util_OutputFunc outFunc, void *outFuncData)
       outFunc(outFuncData, "Backtrace for bugNr=%d\n",bugNr);
    }
 #if defined(_WIN32)
+#if !defined(__MINGW32__)
    CoreDump_Backtrace(outFunc, outFuncData);
+#endif
 #else
    Util_BacktraceFromPointerWithFunc(&x[-2], outFunc, outFuncData);
 #endif

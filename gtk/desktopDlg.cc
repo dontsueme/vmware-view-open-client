@@ -213,7 +213,6 @@ DesktopDlg::OnPlugAdded(GtkSocket *s,      // IN
       g_source_remove(that->mGrabTimeoutId);
       that->mGrabTimeoutId = 0;
    }
-   KeyboardGrab(that);
 
    gdk_window_add_filter(GTK_WIDGET(that->mSocket)->window,
                          DesktopDlg::PromptCtrlAltDelHandler, that);
@@ -356,6 +355,9 @@ void
 DesktopDlg::SendKeyEvent(int type,  // IN
                  unsigned int key)  // IN
 {
+   ASSERT(mSocket);
+   ASSERT(mSocket->plug_window);
+
    // Based on gtksocket-x11.c:_gtk_socket_windowing_send_key_event().
    GdkScreen *screen = gdk_drawable_get_screen(mSocket->plug_window);
    XKeyEvent xkey;
@@ -596,6 +598,8 @@ DesktopDlg::OnKeyPress(GtkWidget *widget, // IN
             }
             if (handled) {
                Log("Ctrl-Alt-Delete was handled externally; inhibiting.\n");
+            } else if (that->mSendCADXMessage) {
+               that->SendCADXMessage();
             } else {
                that->SendCtrlAltDel();
             }
@@ -640,6 +644,11 @@ DesktopDlg::UpdateGrab(GtkWidget *widget, // IN
       return false;
    }
 
+   if (!that->mSocket || !that->mSocket->plug_window) {
+      KeyboardUngrab(that);
+      return false;
+   }
+
    bool grab = false;
    bool ungrab = false;
 
@@ -647,6 +656,18 @@ DesktopDlg::UpdateGrab(GtkWidget *widget, // IN
    case GDK_ENTER_NOTIFY: {
       GtkWidget *top = gtk_widget_get_toplevel(widget);
       grab = gtk_window_has_toplevel_focus(GTK_WINDOW(top));
+      /*
+       * In certain circumstances it is possible for us to not receive the extra
+       * LEAVE notification mIgnoreNextLeaveNotify is meant to filter out, e.g.,
+       * when the view window is realized and the pointer is outside of our
+       * window frame. If that occurs and we then get a valid ENTER notification
+       * mIgnoreNextLeaveNotify being true will cause us to skip the next (valid)
+       * LEAVE, resulting in the keyboard not being ungrabbed when the user leaves
+       * our window.  And that can manifest as "focus stealing", as the app they
+       * give focus to won't receive keypresses.  So, whenever we have a valid
+       * ENTER notification, ensure we don't ignore its subsequent LEAVE.
+       */
+      that->mIgnoreNextLeaveNotify = false;
       break;
    }
    case GDK_LEAVE_NOTIFY:
@@ -661,7 +682,40 @@ DesktopDlg::UpdateGrab(GtkWidget *widget, // IN
       }
       break;
    case GDK_FOCUS_CHANGE:
-      grab = event->focus_change.in;
+      /*
+       * Only grab the keyboard if we're getting focus AND the mouse is in our
+       * Window: this tends to provide a more intuitive user experience in cases
+       * where we get focus indirectly due to Window Manager behavior, e.g.,
+       * WM desktop switching, etc., as opposed to when we get focus directly,
+       * due to the user clicking in/on our window.  If we don't grab we still
+       * get keypresses but WM hot key sequences will still be effective. If
+       * we're losing focus, ungrab the keyboard so WM keybindings will function
+       * as the user expects. One side benefit of all of this is the user will
+       * get the native Ctrl-Alt-Del dialog when we lose focus and the view
+       * Ctrl-Alt-Del dialog when we gain focus, which is the UX I think users
+       * will be less confused by, IMHO.
+       */
+      if (event->focus_change.in) {
+         grab = gdk_window_at_pointer(NULL, NULL) == that->mSocket->plug_window;
+      } else {
+         /*
+          * Always ungrab when we lose focus, otherwise apps selected for focus
+          * by the WM during desktop switches will not get keypresses.
+          */
+         ungrab = true;
+
+         /*
+          * Whenever we lose focus, reset any meta-keys which could have been
+          * pressed when we lost focus but were not yet released.  This prevents
+          * use of local WM keybindings from leaving the remote desktop "thinking"
+          * a meta key as still pressed, which can totally foul up keyboard input,
+          * e.g., the alt keypress has latched the app's menu bar waiting for a
+          * short cut key to be pressed, or the ctrl key appears pressed and the
+          * app is waiting for one of the very few keys is has short cuts for
+          * (ctrl-f for find), etc.
+          */
+         that->ClearMetaKeys();
+      }
       break;
    default:
       NOT_IMPLEMENTED();
@@ -873,12 +927,51 @@ DesktopDlg::PromptCtrlAltDelHandler(GdkXEvent *xevent, // IN/UNUSED
       that->mHandlingCtrlAltDel = true;
       if (!that->onCtrlAltDel()) {
          // User wants a CAD generated at the remote desktop.
+         ASSERT(that->mSendCADXMessage);
          that->SendCADXMessage();
       }
       that->mHandlingCtrlAltDel = false;
    }
 
    return GDK_FILTER_REMOVE;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopDlg::ClearMetaKeys --
+ *
+ *    Ensure meta-keys are not pressed: forcibly release them.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      Remote desktop meta-keys are pressed and released: should be
+ *      innocuous at worst and at best prevent the keys from appearing
+ *      latched down to the remote desktop.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+DesktopDlg::ClearMetaKeys()
+{
+   /*
+    * To fully disengage the ctrl and alt keys, they must be pressed and
+    * and released in the following order, so that any app on the guest
+    * with focus will not have its menu bar or control action stuck on.
+    */
+   Press(LookupKeyval(GDK_Control_L));
+   Press(LookupKeyval(GDK_Alt_L));
+   Release(LookupKeyval(GDK_Alt_L));
+   Release(LookupKeyval(GDK_Control_L));
+
+   Press(LookupKeyval(GDK_Control_R));
+   Press(LookupKeyval(GDK_Alt_R));
+   Release(LookupKeyval(GDK_Alt_R));
+   Release(LookupKeyval(GDK_Control_R));
 }
 
 

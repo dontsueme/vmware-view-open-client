@@ -38,7 +38,7 @@
 #include "syncRecMutex.h"
 
 
-#if !defined(__linux__) && !defined(__APPLE__)
+#if !defined(__linux__) && !defined(__APPLE__) && !defined(__MINGW32__)
 #error "These stubs only work on Linux (and maybe Mac OS)"
 #endif
 

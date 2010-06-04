@@ -349,10 +349,11 @@ ProcHelperConnections::OnErr(Util::string error) // IN
 {
    std::vector<cdk::Util::string> stdArgs;
    for (unsigned int i = 0; i < [args count]; i++) {
-      stdArgs.push_back([[args objectAtIndex:i] utilString]);
+      stdArgs.push_back(
+         [NSString utilStringWithString:[args objectAtIndex:i]]);
    }
-   mProcHelper->Start([procName utilString],
-                      [procPath utilString],
+   mProcHelper->Start([NSString utilStringWithString:procName],
+                      [NSString utilStringWithString:procPath],
                       stdArgs);
 }
 

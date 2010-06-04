@@ -1,3 +1,4 @@
+//depot/vdi/vdm30/framework/cdk/lib/open-vm-tools/include/x86cpuid_asm.h#1 - add change 23244 (text)
 /*********************************************************
  * Copyright (C) 2003-2009 VMware, Inc. All rights reserved.
  *

@@ -47,8 +47,8 @@
    IBOutlet NSMenuItem *largeWindow;
    IBOutlet NSMenuItem *smallWindow;
    IBOutlet NSMenuItem *customSize;
-
-   CdkPrefs *prefs;
+   IBOutlet NSTableView *desktopsView;
+   IBOutlet NSCell *desktopCell;
 }
 
 
@@ -57,6 +57,8 @@
 
 
 +(CdkDesktopsViewController *)desktopsViewController;
+
+-(void)updateDesktops;
 
 -(IBAction)onConnect:(id)sender;
 -(IBAction)onLogOff:(id)sender;

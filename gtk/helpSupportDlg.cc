@@ -38,52 +38,105 @@
 namespace cdk {
 
 
-GtkDialog *HelpSupportDlg::sDialog = NULL;
-
-
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::HelpSupportDlg::ShowDlg --
+ * cdk::HelpSupportDlg::HelpSupportDlg --
  *
- *      Displays the help and support dialog.
- *
- *      If no HelpSupportDlg currently exists,
- *      a new one is constructed.
+ *      Constructor.
  *
  * Results:
  *      None
  *
  * Side effects:
- *      New window is shown or existed window is given focus.
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+HelpSupportDlg::HelpSupportDlg()
+   : mDialog(NULL),
+     mHelpTextView(NULL),
+     mParent(NULL)
+{
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::~HelpSupportDlg --
+ *
+ *      Destructor.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+HelpSupportDlg::~HelpSupportDlg()
+{
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::Run --
+ *
+ *      Displays the help and support dialog.
+ *
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      New window is shown or existing window is given focus.
  *
  *-----------------------------------------------------------------------------
  */
 
 void
-HelpSupportDlg::ShowDlg(GtkWindow *parent) // IN
+HelpSupportDlg::Run()
 {
-   if (sDialog) {
-      gtk_window_present(GTK_WINDOW(sDialog));
+   if (mDialog) {
+      InsertHelpText();
+      gtk_window_present(GTK_WINDOW(mDialog));
       return;
    }
 
-   sDialog = GTK_DIALOG(gtk_dialog_new_with_buttons(
-                           gtk_window_get_title(parent),
-                           parent, GTK_DIALOG_NO_SEPARATOR,
+   mDialog = GTK_DIALOG(gtk_dialog_new_with_buttons(
+                           gtk_window_get_title(mParent),
+                           mParent, GTK_DIALOG_NO_SEPARATOR,
                            NULL));
 
-   g_object_add_weak_pointer(G_OBJECT(sDialog), (gpointer *)&sDialog);
+   g_object_add_weak_pointer(G_OBJECT(mDialog), (gpointer *)&mDialog);
    GtkButton *button = Util::CreateButton(GTK_STOCK_CLOSE);
-   gtk_box_pack_start(GTK_BOX(sDialog->action_area), GTK_WIDGET(button),
+   gtk_box_pack_start(GTK_BOX(mDialog->action_area), GTK_WIDGET(button),
                       false, false, 0);
-   g_signal_connect_swapped(button, "clicked", G_CALLBACK(gtk_widget_destroy),
-                            sDialog);
+   g_signal_connect_swapped(button, "clicked",
+                            G_CALLBACK(gtk_widget_destroy), mDialog);
 
-   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(sDialog)->vbox),
-                      CreateHelpWidget(), true, true, 0);
+   GtkWidget *notebook = gtk_notebook_new();
+   gtk_widget_show(notebook);
+   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(mDialog)->vbox),
+                      notebook, true, true, 0);
+   gtk_notebook_set_homogeneous_tabs(GTK_NOTEBOOK(notebook), true);
 
-   gtk_widget_show(GTK_WIDGET(sDialog));
+   GtkLabel *label = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Help")));
+   gtk_misc_set_padding(GTK_MISC(label), VM_SPACING, 0);
+   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), CreateHelpTab(),
+                            GTK_WIDGET(label));
+   label = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Support Information")));
+   gtk_misc_set_padding(GTK_MISC(label), VM_SPACING, 0);
+   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), CreateSupportTab(),
+                            GTK_WIDGET(label));
+
+   gtk_widget_show(GTK_WIDGET(mDialog));
 }
 
 
@@ -105,7 +158,7 @@ HelpSupportDlg::ShowDlg(GtkWindow *parent) // IN
  */
 
 GtkWidget *
-HelpSupportDlg::CreateHelpWidget()
+HelpSupportDlg::CreateHelpTab()
 {
    GtkWidget *scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
    gtk_widget_show(scrolledWindow);
@@ -117,22 +170,47 @@ HelpSupportDlg::CreateHelpWidget()
    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledWindow),
                                        GTK_SHADOW_IN);
 
-   Util::string helpText = ReadHelpFile();
+   mHelpTextView = GTK_TEXT_VIEW(gtk_text_view_new());
+   gtk_widget_show(GTK_WIDGET(mHelpTextView));
+   gtk_container_add(GTK_CONTAINER(scrolledWindow), GTK_WIDGET(mHelpTextView));
+   gtk_text_view_set_editable(mHelpTextView, false);
+   gtk_text_view_set_wrap_mode(mHelpTextView, GTK_WRAP_WORD);
+   g_object_add_weak_pointer(G_OBJECT(mHelpTextView),
+                             (gpointer *)&mHelpTextView);
 
-   GtkTextView *textView = GTK_TEXT_VIEW(gtk_text_view_new());
-   gtk_widget_show(GTK_WIDGET(textView));
-   gtk_container_add(GTK_CONTAINER(scrolledWindow), GTK_WIDGET(textView));
-   gtk_text_view_set_editable(textView, false);
-   gtk_text_view_set_wrap_mode(textView, GTK_WRAP_WORD);
+   InsertHelpText();
+
+   return scrolledWindow;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::InsertHelpText --
+ *
+ *      Reads in help text to mHelpTextView.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::InsertHelpText()
+{
+   ASSERT(mHelpTextView);
 
    GError *error = NULL;
-   if (!gtm_set_markup(gtk_text_view_get_buffer(textView), helpText.c_str(),
-                       &error)) {
+   if (!gtm_set_markup(gtk_text_view_get_buffer(mHelpTextView),
+                       ReadHelpFile().c_str(), &error)) {
       Warning("Error parsing help file: %s.\n", error->message);
       g_error_free(error);
    }
-
-   return scrolledWindow;
 }
 
 
@@ -223,21 +301,22 @@ HelpSupportDlg::ReadHelpFile()
  */
 
 bool
-HelpSupportDlg::GetHelpContents(const char *directory, // IN
-                                const char *locale,    // IN
-                                char **helpText)       // IN/OUT
+HelpSupportDlg::GetHelpContents(const char *directory,       // IN
+                                const char *locale,          // IN
+                                char **helpText)             // IN/OUT
 {
    GError *error = NULL;
 
-   Util::string fileName = Util::Format("integrated_help-%s.txt", locale);
-   char *file = g_build_filename(directory, fileName.c_str(), NULL);
+   char *file = g_build_filename(directory, locale,
+                                 (mHelpContext + ".txt").c_str(),
+                                 NULL);
 
    // Attempt to read the file
    bool readSuccess = g_file_get_contents(file, helpText, NULL, &error);
    if (!readSuccess) {
       *helpText = g_markup_printf_escaped(_("An error occurred while reading "
-         "the help file: %s.\n"),
-         error->message);
+                                            "the help file: %s.\n"),
+                                          error->message);
       g_error_free(error);
       Log("%s\n", *helpText);
    }
@@ -245,5 +324,316 @@ HelpSupportDlg::GetHelpContents(const char *directory, // IN
    g_free(file);
    return readSuccess;
 }
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::CreateSupportTab --
+ *
+ *      Creates the widget to put into the support tab for the notebook.
+ *
+ *
+ * Results:
+ *      GtkWidget * containing support dialog contents.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GtkWidget *
+HelpSupportDlg::CreateSupportTab()
+{
+   GtkTable *table = GTK_TABLE(gtk_table_new(1, 3, false));
+   gtk_widget_show(GTK_WIDGET(table));
+   gtk_container_set_border_width(GTK_CONTAINER(table), VM_SPACING);
+   gtk_table_set_row_spacings(table, VM_SPACING);
+   gtk_table_set_col_spacings(table, VM_SPACING);
+
+   GtkTextView *textView = GetSupportView(mSupportFile);
+
+   if (textView) {
+      AddTitle(table, _("Support Information"));
+
+      GtkWidget *scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+      gtk_widget_show(GTK_WIDGET(scrolledWindow));
+      AddWidget(table, GTK_WIDGET(scrolledWindow));
+      gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledWindow),
+                                     GTK_POLICY_AUTOMATIC,
+                                     GTK_POLICY_ALWAYS);
+      gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledWindow),
+                                          GTK_SHADOW_IN);
+
+      gtk_container_add(GTK_CONTAINER(scrolledWindow), GTK_WIDGET(textView));
+   }
+
+   CreateProductInformationSection(table);
+   CreateHostInformationSection(table);
+   CreateConnectionInformationSection(table);
+
+   return GTK_WIDGET(table);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::CreateProductInformationSection --
+ *
+ *      Adds the "Product Information" section to the passed in table.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::CreateProductInformationSection(GtkTable *table) // IN
+{
+   AddTitle(table, _("Product Information"));
+   AddPair(table, _("Product:"), ProductState_GetName());
+   AddPair(table, _("Version:"), GetVersionString());
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::CreateHostInformationSection --
+ *
+ *      Adds the "Host Information" section to the passed in table.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::CreateHostInformationSection(GtkTable *table) // IN
+{
+   AddTitle(table, _("Host Information"));
+   AddPair(table, _("Host Name:"), Util::GetClientHostName());
+   if (ShowLogLocation()) {
+      AddPair(table, _("Log File:"), Log_GetFileName());
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::CreateConnectionInformationSection --
+ *
+ *      Adds the "Connection Information" section to the passed in table.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::CreateConnectionInformationSection(GtkTable *table) // IN
+{
+   AddTitle(table, _("Connection Information"));
+   AddPair(table, _("VMware View Server:"), mBrokerHostName);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::CreateLabel --
+ *
+ *      Creates a left aligned, selectable label with the given text.
+ *      gtk_widget_show is called on the new label before it is returned.
+ *
+ * Results:
+ *      A GtkLabel
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GtkLabel *
+HelpSupportDlg::CreateLabel(const Util::string &text) // IN
+{
+   GtkLabel *l = GTK_LABEL(gtk_label_new(text.c_str()));
+   gtk_widget_show(GTK_WIDGET(l));
+   gtk_misc_set_alignment(GTK_MISC(l), 0, 0);
+   gtk_label_set_selectable(l, true);
+
+   return l;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::AppendRow --
+ *
+ *      Append a new row to table and return new row number.
+ *
+ * Results:
+ *      The index of the newly added row.
+ *
+ * Side effects:
+ *      A row is added to the table
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+guint
+HelpSupportDlg::AppendRow(GtkTable *table) // IN
+{
+   guint rows;
+   guint columns;
+   g_object_get(table, "n-rows", &rows, "n-columns", &columns, NULL);
+   gtk_table_resize(table, rows + 1, columns);
+   return rows;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::AddTitle --
+ *
+ *      Add a label with bold text into the table.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::AddTitle(GtkTable *table,          // IN
+                         const Util::string &text) // IN
+{
+   guint row = AppendRow(table);
+
+   GtkLabel *l = CreateLabel("");
+   gtk_table_attach_defaults(table, GTK_WIDGET(l), 0, 3, row, row + 1);
+   gtk_label_set_markup(l, Util::Format("<b>%s</b>", text.c_str()).c_str());
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::AddPair --
+ *
+ *      Appends two labels to the table: one is a label, the second is data.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::AddPair(GtkTable *table,           // IN
+                        const Util::string &label, // IN
+                        const Util::string &data)  // IN
+{
+   guint row = AppendRow(table);
+
+   GtkLabel *l = CreateLabel(label);
+   gtk_table_attach_defaults(table, GTK_WIDGET(l), 1, 2, row, row + 1);
+   l = CreateLabel(data);
+   gtk_table_attach_defaults(table, GTK_WIDGET(l), 2, 3, row, row + 1);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::AddWidget --
+ *
+ *      Appends the given widget to the table.  It will span the 2nd and 3rd
+ *      columns.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+HelpSupportDlg::AddWidget(GtkTable *table,   // IN
+                          GtkWidget *widget) // IN
+{
+   guint row = AppendRow(table);
+
+   gtk_table_attach_defaults(table, widget, 1, 3, row, row + 1);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::HelpSupportDlg::GetSupportView --
+ *
+ *      Read in the contents of the passed in file and return a
+ *      GtkTextView with the contents of the file.
+ *
+ * Results:
+ *      GtkTextView *
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GtkTextView *
+HelpSupportDlg::GetSupportView(const Util::string &filePath) // IN
+{
+   GError *error = NULL;
+   char *supportText = NULL;
+
+   if (!g_file_get_contents(filePath.c_str(), &supportText, NULL, &error)) {
+      Log(_("An error occurred while reading the support file: %s.\n"),
+          error->message);
+      g_error_free(error);
+      return NULL;
+   }
+
+   GtkTextView *textView = GTK_TEXT_VIEW(gtk_text_view_new());
+   gtk_widget_show(GTK_WIDGET(textView));
+   gtk_text_view_set_editable(textView, false);
+   gtk_text_view_set_wrap_mode(textView, GTK_WRAP_WORD);
+
+   gtk_text_buffer_set_text(gtk_text_view_get_buffer(textView),
+                            supportText, -1);
+   g_free(supportText);
+   return textView;
+}
+
 
 } // namespace cdk

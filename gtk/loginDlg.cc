@@ -29,9 +29,6 @@
  */
 
 
-#include <glib/gi18n.h>
-
-
 #include "loginDlg.hh"
 #include "util.hh"
 
@@ -294,6 +291,56 @@ LoginDlg::OnUsernameChanged(GtkEntry *entry,   // IN/UNUSED
    LoginDlg *that = reinterpret_cast<LoginDlg*>(userData);
    ASSERT(that);
    that->SetSensitive(that->IsSensitive());
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::LoginDlg::IsValid --
+ *
+ *      Determines whether or not the login dialog's user name field contains
+ *      one of our reserved user names.
+ *
+ * Results:
+ *      true IFF user name is not a reserved name AND our parent says the
+ *      name is valid too.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+LoginDlg::IsValid()
+{
+   const size_t clientMacPrefixLen = sizeof(CLIENT_MAC) - 1;
+   const size_t clientMacAddrLen = sizeof(CLIENT_MAC "00:00:00:00:00:00") - 1;
+
+   if (GetUsername().empty()) {
+      return false;
+   }
+
+   bool valid = true;
+   char *username = g_strstrip(g_strdup(GetUsername().c_str()));
+
+   if (!g_strncasecmp(username, CLIENT_CUSTOM, sizeof(CLIENT_CUSTOM) - 1)) {
+      valid = false;
+   } else if (!g_strncasecmp(username, CLIENT_MAC, clientMacPrefixLen) &&
+              strlen(username) == clientMacAddrLen) {
+
+      // filters a MAC address w/any combination of ':' or '_' seperators.
+      const char *s = username + clientMacPrefixLen;
+      bool isMac = true;
+      for (int i = 0; isMac && s[i]; ++i) {
+         isMac = (i % 3 == 2) ? (s[i] == ':' || s[i] == '_') : isxdigit(s[i]);
+      }
+      valid = !isMac;
+   }
+   g_free(username);
+
+   return valid && Dlg::IsValid();
 }
 
 

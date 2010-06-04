@@ -333,29 +333,6 @@ BrokerAdapter::TunnelDisconnected(cdk::Util::string disconnectReason) // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::BrokerAdapter::SetBusy --
- *
- *      Called when we are awaiting a response from the broker.
- *
- * Results:
- *      None
- *
- * Side effects:
- *      Disables UI controls.
- *
- *-----------------------------------------------------------------------------
- */
-
-void
-BrokerAdapter::SetBusy(const Util::string &message)
-{
-   [[broker delegate] setBusyText:[NSString stringWithUtilString:message]];
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
  * cdk::BrokerAdapter::GetCertAuthInfo --
  *
  *      Get a certificate and private key to use for authentication.
@@ -370,20 +347,42 @@ BrokerAdapter::SetBusy(const Util::string &message)
  *-----------------------------------------------------------------------------
  */
 
-Broker::CertAuthInfo
-BrokerAdapter::GetCertAuthInfo(SSL *ssl) // IN
+void
+BrokerAdapter::RequestCertificate(std::list<Util::string> &trustedIssuers) // IN
 {
-   Broker::CertAuthInfo info;
-   SecIdentityRef ident =
-      [[broker delegate] broker:broker
-                         didRequestIdentityWithTrustedAuthorities:
-                            SSL_get_client_CA_list(ssl)];
-   if (ident) {
-      info.key = [[CdkKeychain sharedKeychain] privateKeyWithIdentity:ident];
-      info.cert = [[CdkKeychain sharedKeychain] certificateWithIdentity:ident];
-      // Reader/PIN forwarding are not supported.
+   NSMutableArray *issuers =
+      [NSMutableArray arrayWithCapacity:trustedIssuers.size()];
+
+   for (std::list<Util::string>::iterator i = trustedIssuers.begin();
+        i != trustedIssuers.end(); ++i) {
+      [issuers addObject:[NSString stringWithUtilString:*i]];
    }
-   return info;
+
+   [[broker delegate] broker:broker
+                      didRequestCertificateWithIssuers:issuers];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::BrokerAdapter::UpdateDesktops --
+ *
+ *      Tell the delegate to update its desktop list.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+BrokerAdapter::UpdateDesktops()
+{
+   [[broker delegate] brokerDidRequestUpdateDesktops:broker];
 }
 
 

@@ -53,10 +53,12 @@ public:
       TRANSITION_ERROR
    };
 
-   TransitionDlg(TransitionType type, const Util::string &message);
+   TransitionDlg(TransitionType type, const Util::string &message,
+                 bool useMarkup = false);
 
    ~TransitionDlg();
 
+   void SetMessage(const Util::string &message);
    void SetAnimation(GdkPixbufAnimation *animation);
    void SetAnimation(std::vector<GdkPixbuf *> pixbufs, float rate);
    void SetImage(GdkPixbuf *pixbuf);
@@ -68,6 +70,8 @@ public:
                                                  const guint8 *data,
                                                  bool copy_pixels,
                                                  unsigned int frames);
+
+   virtual bool GetHelpVisible() { return false; }
 
 private:
    static void OnImageRealized(GtkWidget *widget, gpointer userData);
@@ -83,6 +87,7 @@ private:
    float mRate;
    unsigned int mTimeout;
    TransitionType mTransitionType;
+   GtkLabel *mLabel;
 };
 
 

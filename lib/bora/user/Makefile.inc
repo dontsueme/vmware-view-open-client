@@ -19,7 +19,12 @@
 ################################################################################
 
 libUser_a_SOURCES += lib/bora/user/dictionary.c
+if VIEW_POSIX
 libUser_a_SOURCES += lib/bora/user/localePosix.c
+endif # VIEW_POSIX
 libUser_a_SOURCES += lib/bora/user/msg.c
+if VIEW_WIN32
+libUser_a_SOURCES += lib/bora/user/win32util.c
+endif # VIEW_WIN32
 
 dist_noinst_DATA += lib/bora/user/dictType.c

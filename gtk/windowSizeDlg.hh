@@ -48,7 +48,7 @@ public:
 
 private:
    enum {
-      N_DESKTOP_SIZES = 9
+      N_DESKTOP_SIZES = 10
    };
 
    static void UpdateWindowSizes(gpointer data);

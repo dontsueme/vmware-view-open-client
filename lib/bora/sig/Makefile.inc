@@ -18,10 +18,11 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.                                                                 
 ################################################################################
 
+if VIEW_POSIX
 noinst_LIBRARIES += libSig.a
 
 libSig_a_SOURCES =
 libSig_a_SOURCES += lib/bora/sig/sigPosix.c
 
 libSig_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIB_SIG_CPPFLAGS) 
-
+endif # VIEW_POSIX

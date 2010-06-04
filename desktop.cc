@@ -30,15 +30,17 @@
 
 
 #include <boost/bind.hpp>
-#include <glib/gi18n.h>
+
 
 #include "desktop.hh"
 #include "broker.hh"
 #include "util.hh"
 
 
-#define CVPA_MOID_PREFIX "cvpa-moid:"
+#define CVPA_MOID_PREFIX        "cvpa-moid:"
 #define FRAMEWORK_LISTENER_NAME "FRAMEWORKCHANNEL"
+
+#define BYTES_PER_MB            (1024 * 1024)
 
 
 namespace cdk {
@@ -64,7 +66,8 @@ Desktop::Desktop(BrokerXml &xml,                  // IN
                  BrokerXml::Desktop &desktopInfo) // IN
    : mXml(xml),
      mConnectionState(STATE_DISCONNECTED),
-     mProtocol(desktopInfo.protocols[desktopInfo.defaultProtocol])
+     mProtocol(desktopInfo.protocols[desktopInfo.defaultProtocol]),
+     mForcedStatus(STATUS_UNKNOWN)
 {
    SetInfo(desktopInfo);
 }
@@ -165,6 +168,32 @@ Desktop::SetConnectionState(ConnectionState state) // IN
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Desktop::SetProtocol --
+ *
+ *      Sets mProtocol if the given protocol is available for this desktop.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Desktop::SetProtocol(const Util::string &protocol) // IN
+{
+   std::vector<Util::string> protocols = GetProtocols();
+   if (find(protocols.begin(), protocols.end(), protocol) != protocols.end()) {
+      mProtocol = protocol;
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Desktop::Connect --
  *
  *      Ask the broker to start a connection to this desktop, by calling the
@@ -215,6 +244,8 @@ void
 Desktop::Disconnect()
 {
    SetConnectionState(STATE_DISCONNECTED);
+
+   mUsb.Kill();
 }
 
 
@@ -271,13 +302,20 @@ Desktop::OnGetDesktopConnectionAbort(bool cancelled,          // IN
                                      Util::exception err,     // IN
                                      Util::AbortSlot onAbort) // IN
 {
-   ASSERT(mConnectionState == STATE_CONNECTING);
+   /*
+    * If the user canceled the request, we most likely already disconnected the
+    * desktop.
+    */
+   if (!cancelled) {
+      ASSERT(mConnectionState == STATE_CONNECTING);
+   }
 
-   SetConnectionState(STATE_DISCONNECTED);
+   Disconnect();
    Util::exception myErr(
-      Util::Format(_("Unable to connect to desktop \"%s\": %s"),
-                   GetName().c_str(), err.what()),
-      err.code());
+      _("Unable to connect to desktop"),
+      err.code(),
+      Util::Format(_("An error occurred while connecting to \"%s\": %s"),
+                   GetName().c_str(), err.what()));
    onAbort(cancelled, myErr);
 }
 
@@ -367,9 +405,10 @@ Desktop::OnResetDesktopAbort(bool cancelled,
 {
    SetConnectionState(STATE_DISCONNECTED);
    Util::exception myErr(
-      Util::Format(_("Unable to reset desktop \"%s\": %s"), GetName().c_str(),
-                   err.what()),
-      err.code());
+      _("Unable to reset desktop"),
+      err.code(),
+      Util::Format(_("An error occured while attempting to reset \"%s\": %s"),
+              GetName().c_str(), err.what()));
    onAbort(cancelled, myErr);
 }
 
@@ -383,7 +422,7 @@ Desktop::OnResetDesktopAbort(bool cancelled,
  *      state and in-flight operations.
  *
  * Results:
- *      true if the desktop is disconnected and is not checked in somewhere.
+ *      true if the desktop is active.
  *
  * Side effects:
  *      None
@@ -395,10 +434,18 @@ bool
 Desktop::CanConnect()
    const
 {
-   return mConnectionState == STATE_DISCONNECTED &&
-     (GetOfflineState() == BrokerXml::OFFLINE_NONE ||
-      GetOfflineState() == BrokerXml::OFFLINE_CHECKED_IN ||
-      !GetCheckedOutByOther());
+   switch (GetStatus()) {
+   case STATUS_LOGGED_ON:
+   case STATUS_AVAILABLE_REMOTE:
+      return true;
+   case STATUS_AVAILABLE_LOCAL:
+   case STATUS_EXPIRED:
+   case STATUS_NONBACKGROUND_TRANSFER_CHECKING_OUT:
+   case STATUS_NONBACKGROUND_TRANSFER_CHECKING_IN:
+      return IsCVP();
+   default:
+      return false;
+   }
 }
 
 
@@ -455,9 +502,10 @@ Desktop::OnKillSessionAbort(bool cancelled,          // IN
 {
    SetConnectionState(STATE_DISCONNECTED);
    Util::exception myErr(
-      Util::Format(_("Unable to log out of \"%s\": %s"), GetName().c_str(),
-                   err.what()),
-      err.code());
+      _("Unable to log out"),
+      err.code(),
+      Util::Format(_("An error occurred while trying to log out of \"%s\": %s"),
+                   GetName().c_str(), err.what()));
    onAbort(cancelled, myErr);
 }
 
@@ -515,9 +563,10 @@ Desktop::OnRollbackAbort(bool cancelled,          // IN
 {
    SetConnectionState(STATE_DISCONNECTED);
    Util::exception myErr(
-      Util::Format(_("Unable to rollback \"%s\": %s"), GetName().c_str(),
-                   err.what()),
-      err.code());
+      _("Unable to rollback desktop"),
+      err.code(),
+      Util::Format(_("An error occurred while attempting to rollback \"%s\": "
+                     "%s"), GetName().c_str(), err.what()));
    onAbort(cancelled, myErr);
 }
 
@@ -615,7 +664,7 @@ Desktop::GetRequiresDownload() const
    bool isRemote = GetOfflineState() == BrokerXml::OFFLINE_CHECKED_IN ||
                    GetOfflineState() == BrokerXml::OFFLINE_CHECKING_OUT;
 
-   return IsCVP() && GetOfflineEnabled() && isRemote && !GetCheckedOutByOther();
+   return IsCVP() && GetEndpointEnabled() && isRemote && !GetCheckedOutByOther();
 }
 
 
@@ -641,7 +690,7 @@ bool
 Desktop::IsCheckedOutHereAndDisabled()
    const
 {
-   return false;
+   return IsCVP() && mDesktopInfo.checkedOutHereAndDisabled;
 }
 
 
@@ -686,13 +735,13 @@ Desktop::InNonBackgroundDesktopTransfer()
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Desktop::GetCheckedOutHereAndDisabledMessage --
+ * cdk::Desktop::GetCheckedOutUnavailable --
  *
- *      Returns a message appropriate for display as to why a locally checked
- *      out desktop is currently disabled.
+ *      Returns whether the desktop has been checked out and is unavailable.
+ *      Currently, only CVP desktops support a local checkout.
  *
  * Results:
- *      Util::string.
+ *      bool.
  *
  * Side effects:
  *      None
@@ -700,63 +749,18 @@ Desktop::InNonBackgroundDesktopTransfer()
  *-----------------------------------------------------------------------------
  */
 
-Util::string
-Desktop::GetCheckedOutHereAndDisabledMessage()
+bool
+Desktop::GetCheckedOutUnavailable()
    const
 {
-   ASSERT(IsCheckedOutHereAndDisabled());
-
-   return _("Desktop is corrupted.");
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Desktop::GetNonBackgroundDesktopTransferMessage --
- *
- *      Returns a message appropriate for display summarizing the current
- *      progress made on a non background desktop transfer.
- *
- *      Note that this function operaets on only the desktop's offline desktop
- *      state as reported by cvpa and should not be used to determine if there
- *      is an active check in or check out operation underway.
- *
- * Results:
- *      Util::string.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-Util::string
-Desktop::GetNonBackgroundDesktopTransferMessage()
-   const
-{
-   ASSERT(InNonBackgroundDesktopTransfer());
-   /*
-    * This call uses information only returned by cvpa, so we should only be
-    * called on CVP. Given that only CVP clients can be in desktop transfers
-    * to a client machine, this is a valid ASSERT.
-    */
-   ASSERT(IsCVP());
-
-   Util::string message;
-
-   switch (GetOfflineState()) {
-   case BrokerXml::OFFLINE_CHECKING_IN:
-      message = _("Desktop check in paused. Select connect to resume.");
-      break;
-   case BrokerXml::OFFLINE_CHECKING_OUT:
-      message = _("Desktop check out paused. Select connect to resume.");
-      break;
-   default:
-      NOT_IMPLEMENTED();
+   if (GetCheckedOutByOther()) {
+      return true;
    }
 
-   return message;
+   /*
+    * Non CVP clients do not support offline desktops.
+    */
+   return (!IsCVP() && GetOfflineState() != BrokerXml::OFFLINE_CHECKED_IN);
 }
 
 
@@ -768,7 +772,7 @@ Desktop::GetNonBackgroundDesktopTransferMessage()
  *      Returns the desktop's current status.
  *
  * Results:
- *      Desktop::Status.
+ *      Status representing current status of the desktop.
  *
  * Side effects:
  *      None
@@ -780,6 +784,10 @@ Desktop::Status
 Desktop::GetStatus()
    const
 {
+   if (mForcedStatus != STATUS_UNKNOWN) {
+      return mForcedStatus;
+   }
+
    switch (mConnectionState) {
    case Desktop::STATE_RESETTING:
       return Desktop::STATUS_RESETTING;
@@ -788,21 +796,28 @@ Desktop::GetStatus()
    case Desktop::STATE_ROLLING_BACK:
       return Desktop::STATUS_ROLLING_BACK;
    default:
-      if (InLocalRollback()) {
-         return STATUS_LOCAL_ROLLBACK;
+      if (GetOfflineState() == BrokerXml::OFFLINE_ROLLING_BACK) {
+         return Desktop::STATUS_SERVER_ROLLBACK;
+      } else if (IsExpired()) {
+         return Desktop::STATUS_EXPIRED;
       } else if (IsCheckedOutHereAndDisabled()) {
          return STATUS_CHECKED_OUT_DISABLED;
-      } else if (GetCheckedOutByOther() ||
-                 (!IsCVP() && InNonBackgroundDesktopTransfer())) {
-         return STATUS_CHECKED_OUT_BY_OTHER;
-      } else if (InNonBackgroundDesktopTransfer()) {
-         return STATUS_NONBACKGROUND_TRANSFER;
+      } else if (GetCheckedOutUnavailable()) {
+         return STATUS_CHECKED_OUT_UNAVAILABLE;
+      } else if (GetOfflineState() == BrokerXml::OFFLINE_CHECKING_IN) {
+         return STATUS_NONBACKGROUND_TRANSFER_CHECKING_IN;
+      } else if (GetOfflineState() == BrokerXml::OFFLINE_CHECKING_OUT) {
+         return STATUS_NONBACKGROUND_TRANSFER_CHECKING_OUT;
       } else if (InMaintenanceMode()) {
          return STATUS_MAINTENANCE_MODE;
       } else if (!GetSessionID().empty()) {
          return STATUS_LOGGED_ON;
+      } else if (GetOfflineState() == BrokerXml::OFFLINE_NONE) {
+         return STATUS_UNKNOWN_OFFLINE_STATE;
+      } else if (IsCVP() && !GetRequiresDownload()) {
+         return STATUS_AVAILABLE_LOCAL;
       } else {
-         return STATUS_AVAILABLE;
+         return STATUS_AVAILABLE_REMOTE;
       }
       break;
    }
@@ -829,9 +844,12 @@ Desktop::GetStatus()
  */
 
 Util::string
-Desktop::GetStatusMsg()
+Desktop::GetStatusMsg(bool isOffline) // IN
+   const
 {
-   Desktop::Status status = GetStatus();
+   Status status = GetStatus();
+   Util::string connMsg = isOffline ? _("connect to server to resume")
+                                    : _("select connect to resume");
 
    switch (status) {
    case Desktop::STATUS_RESETTING:
@@ -840,20 +858,49 @@ Desktop::GetStatusMsg()
       return _("Logging off");
    case Desktop::STATUS_ROLLING_BACK:
       return _("Rolling back checkout");
-   case Desktop::STATUS_LOCAL_ROLLBACK:
-      return _("Desktop is being rolled back (may not be available)");
+   case Desktop::STATUS_SERVER_ROLLBACK:
+      return _("The desktop's local session is being rolled back");
+   case Desktop::STATUS_HANDLING_SERVER_ROLLBACK:
+      return _("Handling a local session rollback");
    case Desktop::STATUS_CHECKED_OUT_DISABLED:
-      return GetCheckedOutHereAndDisabledMessage();
-   case Desktop::STATUS_CHECKED_OUT_BY_OTHER:
+      return _("Desktop is corrupted");
+   case Desktop::STATUS_CHECKED_OUT_UNAVAILABLE:
       return _("Checked out to another machine");
-   case Desktop::STATUS_NONBACKGROUND_TRANSFER:
-      return GetNonBackgroundDesktopTransferMessage();
+   case Desktop::STATUS_NONBACKGROUND_TRANSFER_CHECKING_IN:
+      return Util::Format(_("Check in paused, %s"), connMsg.c_str());
+   case Desktop::STATUS_NONBACKGROUND_TRANSFER_CHECKING_OUT:
+      if (!IsCVP()) {
+         return Util::Format(_("Download paused, %s"), connMsg.c_str());
+      } else if (mDesktopInfo.progressWorkDoneSoFar == 0 &&
+                 mDesktopInfo.progressTotalWork == 0) {
+         return Util::Format(_("Download paused during initialization, %s"),
+                             connMsg.c_str());
+      } else {
+         return Util::Format(_("Download paused at %"FMT64"u MB of "
+                               "%"FMT64"u MB, %s"),
+                             mDesktopInfo.progressWorkDoneSoFar / BYTES_PER_MB,
+                             mDesktopInfo.progressTotalWork / BYTES_PER_MB,
+                             connMsg.c_str());
+      }
+   case Desktop::STATUS_DISCARDING_CHECKOUT:
+      return _("Discarding paused download");
    case Desktop::STATUS_MAINTENANCE_MODE:
       return _("Maintenance (may not be available)");
    case Desktop::STATUS_LOGGED_ON:
       return _("Logged on");
-   case Desktop::STATUS_AVAILABLE:
+   case Desktop::STATUS_AVAILABLE_REMOTE:
+      if (IsCVP()) {
+         return Util::Format(_("Requires download%s"),
+                             isOffline ? ", no connection to server" : "");
+      } else {
+         return _("Available");
+      }
+   case Desktop::STATUS_AVAILABLE_LOCAL:
       return _("Available");
+   case Desktop::STATUS_UNKNOWN_OFFLINE_STATE:
+      return _("Unavailable, contact administrator");
+   case Desktop::STATUS_EXPIRED:
+      return _("The desktop has expired");
    default:
       NOT_REACHED();
       return _("Unknown status");

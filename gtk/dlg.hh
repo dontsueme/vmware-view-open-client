@@ -56,11 +56,17 @@ public:
    virtual void SetSensitive(bool sensitive);
    bool GetForwardEnabled() { return IsSensitive() && IsValid(); }
    virtual bool GetForwardVisible() { return true; }
+   virtual bool GetHelpVisible() { return true; }
    bool IsSensitive() const { return mSensitive; }
    virtual bool IsValid();
    virtual void SavePrefs() { }
+   // The majority of our dlgs are Auth dlgs, so return login by default.
+   virtual Util::string GetHelpContext() { return "login"; }
 
    boost::signal2<void, bool, bool> updateForwardButton;
+
+   void SetCancelable(bool cancelable) { mCancelable = cancelable; }
+   bool GetCancelable() const { return mCancelable; }
 
 protected:
    static void UpdateForwardButton(Dlg *that);
@@ -84,6 +90,7 @@ private:
    std::list<GtkEntry *> mRequiredEntries;
    std::list<GtkWidget *> mSensitiveWidgets;
    bool mSensitive;
+   bool mCancelable;
 };
 
 

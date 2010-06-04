@@ -51,15 +51,12 @@ public:
    void SetBroker(CdkBroker *aBroker) { broker = aBroker; }
    CdkBroker *GetBroker() const { return broker; }
 
-   // Status notifications
-   virtual void SetBusy(const Util::string &message);
-   virtual void SetReady() { SetBusy(""); }
-
    virtual void Disconnect();
 
    // State change notifications
    virtual void RequestBroker();
    virtual void RequestDisclaimer(const Util::string &disclaimer);
+   virtual void RequestCertificate(std::list<Util::string> &trustedIssuers);
    virtual void RequestPasscode(const Util::string &username,
                                 bool userSelectable);
    virtual void RequestNextTokencode(const Util::string &username);
@@ -75,10 +72,8 @@ public:
    virtual void RequestDesktop();
    // virtual void RequestTransition(const Util::string &message);
    virtual void RequestLaunchDesktop(Desktop *desktop);
-
-   virtual Broker::CertAuthInfo GetCertAuthInfo(SSL *ssl);
    virtual void TunnelDisconnected(Util::string disconnectReason);
-   // virtual void UpdateDesktops();
+   virtual void UpdateDesktops();
 
 private:
    CdkBroker *broker;

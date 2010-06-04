@@ -37,10 +37,12 @@
 #include <gtk/gtk.h>
 
 
+#include "baseApp.hh"
 #include "broker.hh"
 #include "cryptoki.hh"
 #include "desktop.hh"
 #include "desktopSelectDlg.hh"
+#include "helpSupportDlg.hh"
 #include "restartMonitor.hh"
 #include "util.hh"
 
@@ -64,24 +66,26 @@ public:
    Window();
    virtual ~Window();
 
-   void ShowDialog(GtkMessageType type,
-                   const Util::string format, ...);
+   virtual void ShowMessageDialog(GtkMessageType type,
+                                  const Util::string &message,
+                                  const Util::string &details,
+                                  va_list args);
 
    void Show();
    void Close() { gtk_widget_destroy(GTK_WIDGET(mWindow)); }
+   void Hide() { gtk_widget_hide(GTK_WIDGET(mWindow)); }
    void Disconnect() { Close(); }
 
    GtkWindow *GetWindow() { return mWindow; }
 
-   // Status notifications, implements Broker::Delegate
-   virtual void SetBusy(const Util::string &message);
-   virtual void SetReady();
+   // Implements Broker::Delegate
    virtual void SetLogoutOnCertRemoval(bool enabled);
    virtual void UpdateDesktops();
 
    // State change actions, implements Broker::Delegate
    virtual void RequestBroker();
    virtual void RequestDisclaimer(const Util::string &disclaimer);
+   virtual void RequestCertificate(std::list<Util::string> &trustedIssuers);
    virtual void RequestPasscode(const Util::string &username,
                                 bool userSelectable);
    virtual void RequestNextTokencode(const Util::string &username);
@@ -94,10 +98,24 @@ public:
                                 const Util::string &suggestedDomain);
    virtual void RequestPasswordChange(const Util::string &username,
                                       const Util::string &domain);
-   virtual void RequestTransition(const Util::string &message);
+   virtual void RequestTransition(const Util::string &message,
+                                  bool useMarkup = false);
    virtual void TunnelDisconnected(Util::string disconnectReason);
 
+   void UpdateForwardButton(bool sensitive, bool visible = true)
+      { UpdateButton(mForwardButton, sensitive, visible, true); }
+   void UpdateCancelButton(bool sensitive, bool visible = true)
+      { UpdateButton(mCancelButton, sensitive, visible, false); }
+   void UpdateHelpButton(bool sensitive, bool visible = true)
+      { UpdateButton(mHelpButton, sensitive, visible, false); }
+   void UpdateViewCertButton(bool sensitive, bool visible = false)
+      { UpdateButton(mViewCertButton, sensitive, visible, false); }
+
+   virtual void SetReady();
+
 protected:
+   virtual void SetBusy(const Util::string &message);
+
    static void OnCancel(GtkButton *button, gpointer data)
       { reinterpret_cast<Window *>(data)->CancelHandler(); }
    virtual void CancelHandler();
@@ -106,44 +124,70 @@ protected:
       {  reinterpret_cast<Window *>(data)->ForwardHandler(); }
    virtual void ForwardHandler();
 
-   void AddForwardIdleHandler()
-      {  g_idle_add(OnIdleNonInteractive, this); }
-
-   static gboolean OnIdleNonInteractive(gpointer data)
-      {  reinterpret_cast<Window *>(data)->ForwardHandler(); return false; }
-
    static gboolean OnIdleDeleteProcHelper(gpointer data)
       { delete reinterpret_cast<ProcHelper *>(data); return false; }
 
    virtual void DoDesktopConnect(Desktop *desktop)
       { mBroker->ConnectDesktop(desktop); }
    virtual void DoInitialize();
+   virtual void InitializeProtocols();
    virtual bool GetFullscreen() const;
    virtual void RequestLaunchDesktop(Desktop *desktop);
    virtual void RequestDesktop();
 
    virtual void Reset();
-   void SetContent(Dlg *dlg);
+   virtual void SetContent(Dlg *dlg);
 
-   void SetBroker(Broker *broker) { mBroker = broker; }
+   virtual DesktopSelectDlg *CreateDesktopSelectDlg(std::vector<Desktop *> &desktops,
+                                                    Util::string initialDesktop,
+                                                    bool offerMultiMon,
+                                                    bool offerWindowSizes)
+      { return new DesktopSelectDlg(desktops, initialDesktop, offerMultiMon,
+                                    offerWindowSizes); }
+
+   void SetBroker(Broker *broker);
    Broker *GetBroker() { return mBroker; }
    Dlg *GetDlg() { return mDlg; }
+   void ShowContentBox() { gtk_widget_show(GTK_WIDGET(mContentBox)); }
+   void HideContentBox() { gtk_widget_hide(GTK_WIDGET(mContentBox)); }
 
+   virtual void CreateAlignment(GtkFixed *fixed);
+   virtual void DoSizeAllocate(GtkAllocation *allocation);
+
+   GtkHButtonBox *GetActionArea() { return mActionArea; }
    GtkButton *GetForwardButton() { return mForwardButton; }
+   GtkButton *GetCancelButton() { return mCancelButton; }
 
-   void UpdateForwardButton(bool sensitive, bool visible = true)
-      { UpdateButton(mForwardButton, sensitive, visible, true); }
-   void UpdateCancelButton(bool sensitive, bool visible = true)
-      { UpdateButton(mCancelButton, sensitive, visible, false); }
-   void UpdateViewCertButton(bool sensitive, bool visible = false)
-      { UpdateButton(mViewCertButton, sensitive, visible, false); }
+   void UpdateButton(GtkButton *button, bool sensitive, bool visible,
+                     bool isDefault);
+   virtual void InitWindow();
+   virtual HelpSupportDlg *GetHelpSupportDlg();
+   virtual void InitializeHelpSupportDlg(HelpSupportDlg *dlg);
+
+   virtual void RequestInsertSmartCard();
+   virtual void RequestCertificate();
+   virtual void RequestPrivateKey();
+
+   static gboolean DelayedDoInitialize(void *that);
+
+   void SetCookieFile(const Util::string &brokerUrl);
 
 private:
    enum TokenEventAction {
       ACTION_NONE,
-      ACTION_QUIT_MAIN_LOOP,
+      ACTION_REQUEST_CERTIFICATE,
       ACTION_LOGOUT
    };
+
+   struct GrabResults {
+      bool mouseGrabbed;
+      bool ignoreNext;
+      GdkWindow *window;
+   };
+
+   static void OnRealize(GtkWindow *window, gpointer data);
+   static void OnUnrealize(GtkWindow *window, gpointer data);
+   static void OnWindowManagerChanged(GdkScreen *screen, gpointer data);
 
    static void FullscreenWindow(GtkWindow *win, MonitorBounds *bounds = NULL);
    static void OnSizeAllocate(GtkWidget *widget, GtkAllocation *allocation,
@@ -154,21 +198,23 @@ private:
    void ResizeBackground(GtkAllocation *allocation);
    static gboolean OnKeyPress(GtkWidget *widget, GdkEventKey *evt,
                               gpointer userData);
-   static gboolean DelayedDoInitialize(void *that);
 
    bool OnCtrlAltDel();
-
-   void UpdateButton(GtkButton *button, bool sensitive, bool visible,
-                     bool isDefault);
-
-   void InitWindow();
+#ifdef GDK_WINDOWING_X11
+   static void OnCADMapped(GtkWidget *widget, GdkEventAny *event,
+                           gpointer userData);
+   static void OnCADUnrealized(GtkWidget *widget, gpointer userData);
+   static GdkFilterReturn CADEventFilter(GdkXEvent *xevent, GdkEvent *event,
+                                         gpointer userData);
+#endif
+   static void GrabPointer(GrabResults *results);
+   static void UngrabPointer(GrabResults *results);
 
    void GetFullscreenGeometry(bool allMonitors, Util::Rect *geometry,
                               MonitorBounds *bounds = NULL);
 
-   Broker::CertAuthInfo GetCertAuthInfo(SSL *ssl);
-
    // Button click handlers
+   void DoAttemptSubmitCertificate(const char *pin = NULL);
    void DoSubmitPasscode();
    void DoSubmitNextTokencode();
    void DoSubmitPins();
@@ -181,17 +227,13 @@ private:
    static void OnSupport(GtkButton *button, gpointer data);
    void PushDesktopEnvironment();
    void PopDesktopEnvironment();
-   void OnDesktopUIExit(Dlg *dlg, int status);
-
-   const char *OnScPinRequested(const Util::string &label, const X509 *x509);
+   virtual void OnDesktopUIExit(Dlg *dlg, int status);
 
    void StartWatchingForTokenEvents(TokenEventAction action);
    void StopWatchingForTokenEvents();
-   bool HadTokenEvent() const { return mTokenEventTimeout == 0; }
+
    static gboolean TokenEventMonitor(gpointer data);
    std::vector<Util::string> GetSmartCardRedirects();
-
-   void SetCookieFile(const Util::string &brokerUrl);
 
    Delegate *mDelegate;
    Broker *mBroker;
@@ -214,11 +256,12 @@ private:
    bool mCanceledScDlg;
    Util::string mOrigLDPath;
    Util::string mOrigGSTPath;
-   Broker::CertAuthInfo *mCertAuthInfo;
    X509 *mAuthCert;
    ProcHelper *mDesktopHelper;
    TokenEventAction mTokenEventAction;
    GtkWidget *mCadDlg;
+   std::list<Util::string> mTrustedIssuers;
+   std::list<X509 *> mCertificates;
 };
 
 

@@ -55,6 +55,7 @@ extern "C" {
 #import "cdkDesktopsViewController.h"
 #import "cdkDisclaimer.h"
 #import "cdkDisclaimerViewController.h"
+#import "cdkErrors.h"
 #import "cdkKeychain.h"
 #import "cdkPasscodeCreds.h"
 #import "cdkPasscodeCredsViewController.h"
@@ -77,10 +78,10 @@ extern "C" {
 #define COOKIE_FILE_MODE (S_IRUSR | S_IWUSR)
 
 
-// For now, show the cert dialog for debug builds.
-#ifndef VMX86_DEBUG
+// For now, show the cert dialog for dev builds.
+#ifndef VMX86_DEVEL
 #define AUTO_SELECT_SINGLE_CERT 1
-#endif // VMX86_DEBUG
+#endif // VMX86_DEVEL
 
 
 @interface CdkDesktop (Friend)
@@ -90,10 +91,12 @@ extern "C" {
 
 @interface CdkWindowController () // Private setters
 @property(readwrite) BOOL busy;
+@property(readwrite) BOOL triedKeychainPassword;
 @property(readwrite, assign) CdkViewController *viewController;
 @property(readwrite, retain) CdkDesktop *desktop;
 @property(readwrite, retain) CdkBroker *broker;
 @property(readwrite, retain) CdkRdc *rdc;
+@property(readwrite, copy) NSString *domainPassword;
 @end // @interface CdkWindowController ()
 
 
@@ -116,6 +119,7 @@ enum {
    CHANGE_WIN_CREDS_VIEW,
    DESKTOPS_VIEW,
    WAITING_VIEW,
+   RDC_CREDS_VIEW,
    LAST_VIEW
 };
 
@@ -127,7 +131,9 @@ enum {
 @synthesize busy;
 @synthesize busyText;
 @synthesize desktop;
+@synthesize domainPassword;
 @synthesize rdc;
+@synthesize triedKeychainPassword;
 @synthesize viewController;
 
 
@@ -193,6 +199,7 @@ enum {
                        [CdkChangeWinCredsViewController changeWinCredsViewController],
                        [CdkDesktopsViewController desktopsViewController],
                        [CdkWaitingViewController waitingViewController],
+                       [CdkWinCredsViewController winCredsViewController],
                        nil];
    return self;
 }
@@ -221,6 +228,8 @@ enum {
    [self setDesktop:nil];
    [rdc setDelegate:nil];
    [self setRdc:nil];
+   [self setDomainPassword:nil];
+   [busyText release];
    delete mRdcMonitor;
    [super dealloc];
 }
@@ -254,7 +263,9 @@ enum {
                                 _(PRODUCT_VIEW_CLIENT_NAME)]];
    [banner setImageAlignment:NSImageAlignLeft];
    [self brokerDidRequestBroker:broker];
+   [self setShouldCascadeWindows:NO];
    [[self window] center];
+   [[self window] setFrameAutosaveName:@"MainWindow"];
 }
 
 
@@ -283,39 +294,48 @@ enum {
 	 [(CdkBrokerViewController *)viewController brokerAddress];
       Log("Connecting to %s...\n", [[server description] UTF8String]);
       [self setCookieFile:[server label]];
+      [self setBusyText:NS_("Initializing connection...")];
       [broker connectToAddress:server
                    defaultUser:[[CdkPrefs sharedPrefs] user]
                  defaultDomain:[[CdkPrefs sharedPrefs] domain]];
       break;
    }
    case DISCLAIMER_VIEW:
+      [self setBusyText:NS_("Accepting disclaimer...")];
       [broker acceptDisclaimer];
       break;
    case PASSCODE_CREDS_VIEW: {
       id<CdkPasscodeCreds> passcodeCreds = [viewController representedObject];
+      [self setBusyText:NS_("Authenticating...")];
       [broker submitUsername:[passcodeCreds username]
                     passcode:[passcodeCreds secret]];
       break;
    }
    case TOKENCODE_CREDS_VIEW: {
       id<CdkTokencodeCreds> tokencodeCreds = [viewController representedObject];
+      [self setBusyText:NS_("Authenticating...")];
       [broker submitNextTokencode:[tokencodeCreds secret]];
       break;
    }
    case CHANGE_PIN_VIEW: {
       id<CdkChangePinCreds> changePinCreds = [viewController representedObject];
+      [self setBusyText:NS_("Changing PIN...")];
       [broker submitPin:[changePinCreds secret]
                     pin:[changePinCreds confirm]];
       break;
    }
    case CONFIRM_PIN_VIEW: {
       id<CdkConfirmPinCreds> confirmPinCreds = [viewController representedObject];
+      [self setBusyText:NS_("Changing PIN...")];
       [broker submitPin:[confirmPinCreds secret]
                     pin:[confirmPinCreds confirm]];
       break;
    }
    case WIN_CREDS_VIEW: {
       id<CdkWinCreds> winCreds = [viewController representedObject];
+      // See comments in broker:didRequestLaunchDesktop:
+      [self setDomainPassword:[winCreds secret]];
+      [self setBusyText:NS_("Authenticating...")];
       [broker submitUsername:[winCreds username]
                     password:[winCreds secret]
                       domain:[winCreds domain]];
@@ -323,15 +343,25 @@ enum {
    }
    case CHANGE_WIN_CREDS_VIEW: {
       id<CdkChangeWinCreds> changeCreds = [viewController representedObject];
+      // See comments in broker:didRequestLaunchDesktop:
+      [self setDomainPassword:[changeCreds secret]];
+      [self setBusyText:NS_("Changing password...")];
       [broker submitOldPassword:[changeCreds oldSecret]
                     newPassword:[changeCreds secret]
                         confirm:[changeCreds confirm]];
       break;
    }
    case DESKTOPS_VIEW: {
+      [self setBusyText:NS_("Connecting to desktop...")];
       CdkDesktopsViewController *desktops
-	 = (CdkDesktopsViewController *)viewController;
+         = (CdkDesktopsViewController *)viewController;
       [broker connectDesktop:[desktops desktop]];
+      break;
+   }
+   case RDC_CREDS_VIEW: {
+      id<CdkWinCreds> winCreds = [viewController representedObject];
+      [self setDomainPassword:[winCreds secret]];
+      [self broker:broker didRequestLaunchDesktop:desktop];
       break;
    }
    default:
@@ -364,6 +394,13 @@ enum {
 {
    if ([self busy]) {
       [broker cancelRequests];
+      [self setBusyText:nil];
+   } else if ([viewControllers indexOfObject:viewController] > DESKTOPS_VIEW) {
+      [rdc setDelegate:nil];
+      [self setRdc:nil];
+      [[self desktop] disconnect];
+      [self setDesktop:nil];
+      [self brokerDidRequestDesktop:broker];
    } else {
       [self brokerDidRequestBroker:broker];
    }
@@ -549,6 +586,10 @@ enum {
     * reference to them.
     */
    [self setDesktop:nil];
+   [rdc setDelegate:nil];
+   [self setRdc:nil];
+   [self setDomainPassword:nil];
+   [self setTriedKeychainPassword:NO];
    [broker reset];
 
    CdkBrokerViewController *vc = [viewControllers objectAtIndex:SERVER_VIEW];
@@ -560,6 +601,8 @@ enum {
    if (firstTimeThrough && [[CdkPrefs sharedPrefs] autoConnect] &&
        [vc continueEnabled]) {
       [self onContinue:self];
+   } else {
+      [self setBusyText:nil];
    }
    firstTimeThrough = NO;
 }
@@ -587,6 +630,7 @@ didRequestDisclaimer:(NSString *)disclaimer // IN
    CdkDisclaimerViewController *vc = [viewControllers objectAtIndex:DISCLAIMER_VIEW];
    [[vc disclaimer] setDisclaimer:disclaimer];
    [self setViewController:vc];
+   [self setBusyText:nil];
 }
 
 
@@ -617,6 +661,7 @@ userSelectable:(BOOL)userSelectable     // IN
    [passcodeCreds setSecret:@""];
    [passcodeCreds setUserSelectable:userSelectable];
    [self setViewController:vc];
+   [self setBusyText:nil];
 }
 
 
@@ -645,6 +690,7 @@ didRequestNextTokencode:(NSString *)username // IN
    [tokencodeCreds setUsername:username];
    [tokencodeCreds setSecret:@""];
    [self setViewController:vc];
+   [self setBusyText:nil];
 }
 
 
@@ -672,11 +718,11 @@ userSelectable:(BOOL)userSelectable // IN
    NSString *label;
    // XXX: i18n
    if (![pin length]) {
-      label = @"Enter a new RSA Securid PIN.";
+      label = NS_("Enter a new RSA Securid PIN.");
    } else {
       label = userSelectable
-         ? @"Enter a new RSA SecurID PIN or accept the default."
-         : @"Accept the default RSA SecurID PIN.";
+         ? NS_("Enter a new RSA SecurID PIN or accept the default.")
+         : NS_("Accept the default RSA SecurID PIN.");
    }
    if ([message length]) {
       label = [label stringByAppendingFormat:@"\n\n%@", message];
@@ -697,6 +743,7 @@ userSelectable:(BOOL)userSelectable // IN
       [changeCreds setLabel:label];
    }
    [self setViewController:vc];
+   [self setBusyText:nil];
 }
 
 
@@ -722,20 +769,35 @@ didRequestPassword:(NSString *)username // IN
       domains:(NSArray *)domains        // IN
 suggestedDomain:(NSString *)domain      // IN
 {
-   CdkWinCredsViewController *vc = [viewControllers objectAtIndex:WIN_CREDS_VIEW];
+   /*
+    * OK this is a hack, but I didn't want to make two functions to do
+    * the same thing.
+    *
+    * broker:didRequestLaunchDesktop: will call this with a nil
+    * aBroker to signify that we need the password to launch RDC.
+    *
+    * This should only happen with a smart card log in; see comments
+    * in broker:didRequestLaunchDesktop:.
+    */
+   CdkWinCredsViewController *vc =
+      [viewControllers objectAtIndex:aBroker ? WIN_CREDS_VIEW : RDC_CREDS_VIEW];
    id<CdkWinCreds> winCreds = [vc representedObject];
    [winCreds setUsername:username];
    [winCreds setSecret:@""];
    [winCreds setDomains:domains];
    [winCreds setUserSelectable:!readOnly];
-   if ([domain length] && [domains indexOfObject:domain] != NSNotFound) {
+   if ([domains indexOfObject:domain] != NSNotFound) {
       [winCreds setDomain:domain];
    }
    [self setViewController:vc];
 
-   if (![username length]) {
+   if (![username length] || [self triedKeychainPassword]) {
+      [self setBusyText:nil];
+      [vc updateFocus];
       return;
    }
+
+   [self setTriedKeychainPassword:YES];
 
    UInt32 pwordLen = 0;
    void *pwordData = NULL;
@@ -760,18 +822,23 @@ suggestedDomain:(NSString *)domain      // IN
                  GetMacOSStatusErrorString(rv),
                  GetMacOSStatusCommentString(rv));
       }
+      [self setBusyText:nil];
+      [vc updateFocus];
       return;
    }
 
    // The format length is an int, so...
    if (pwordLen <= G_MAXINT) {
-      [winCreds setSecret:[NSString stringWithFormat:@"%.*s", pwordLen,
-                                    pwordData]];
-      if ([vc continueEnabled]) {
-         [self onContinue:self];
-      }
+      [winCreds setSecret:
+                   [[[NSString alloc] initWithBytes:pwordData
+                                             length:pwordLen
+                                           encoding:NSUTF8StringEncoding]
+                      autorelease]];
+      [winCreds setSavePassword:YES];
    }
+   [self setBusyText:nil];
    SecKeychainItemFreeContent(NULL, pwordData);
+   [vc updateFocus];
 }
 
 
@@ -804,6 +871,7 @@ didRequestPasswordChange:(NSString *)username // IN
    [changeCreds setSecret:@""];
    [changeCreds setConfirm:@""];
    [self setViewController:vc];
+   [self setBusyText:nil];
 }
 
 
@@ -828,6 +896,7 @@ didRequestPasswordChange:(NSString *)username // IN
    CdkDesktopsViewController *vc = [viewControllers objectAtIndex:DESKTOPS_VIEW];
    [vc setDesktops:[broker desktops]];
    [self setViewController:vc];
+   [self setBusyText:nil];
 }
 
 
@@ -862,10 +931,12 @@ didExitWithStatus:(int)status                 // IN
       [NSApp unhide:self];
       [broker reconnectDesktop];
    } else {
-      cdk::App::ShowDialog(GTK_MESSAGE_ERROR,
-                           _("The desktop has unexpectedly disconnected."));
+      cdk::BaseApp::ShowError(CDK_ERR_DESKTOP_DISCONNECTED,
+                              _("You have been disconnected"),
+                              _("The desktop has unexpectedly disconnected."));
       [self setDesktop:nil];
       [self setViewController:[viewControllers objectAtIndex:DESKTOPS_VIEW]];
+      [self setBusyText:nil];
    }
 }
 
@@ -912,14 +983,44 @@ didExitWithStatus:(int)status                 // IN
 didRequestLaunchDesktop:(CdkDesktop *)aDesktop // IN
 {
    [viewController savePrefs];
-   [NSApp hide:self];
+   [self setDesktop:aDesktop];
    [self setBusyText:nil];
+
+   if (!domainPassword) {
+      /*
+       * MS RDC always tries to do NLA if the remote end supports it.
+       * If we use the "token" from the broker this will fail, causing
+       * RDC to prompt the user for a password if direct connect is
+       * enabled.
+       *
+       * If the tunnel is enabled, RDC will do NLA once, and then try
+       * to connect again.  Unfortunately the tunnel's socket will be
+       * gone, and the desktop will be unable to log in.
+       *
+       * We will usually steal the password from the win creds dialog,
+       * but in the case of smart card login, we need to do that here.
+       *
+       * See bugs 424866 and 415272.
+       */
+      const cdk::BrokerXml::DesktopConnection &cnx =
+         [desktop adaptedDesktop]->GetConnection();
+      NSString *domain = [NSString stringWithUtilString:cnx.domainName];
+      [self setTriedKeychainPassword:NO];
+      [self broker:nil
+            didRequestPassword:[NSString stringWithUtilString:cnx.username]
+          readOnly:YES
+           domains:[NSArray arrayWithObjects:domain, nil]
+            suggestedDomain:domain];
+      return;
+   }
+
+   [NSApp hide:self];
    [self setViewController:[viewControllers objectAtIndex:WAITING_VIEW]];
    [[self window] makeFirstResponder:goBackButton];
-   [self setDesktop:aDesktop];
 
    CdkDesktopSize *size = nil;
-   NSSize screenSize = [[[self window] screen] frame].size;
+   NSScreen *screen = [[self window] screen];
+   NSSize screenSize = [screen frame].size;
    /*
     * "Large" and "Small" aren't actually defined by the spec, so
     * we're free to choose whatever size we feel is appropriate.  A
@@ -950,12 +1051,15 @@ didRequestLaunchDesktop:(CdkDesktop *)aDesktop // IN
       break;
    }
 
-   switch (cdk::Protocols::GetProtocolFromName([[desktop protocol] utilString])) {
+   switch (cdk::Protocols::GetProtocolFromName(
+              [NSString utilStringWithString:[desktop protocol]])) {
    case cdk::Protocols::RDP:
       [self setRdc:[CdkRdc rdc]];
       [rdc setDelegate:self];
       [[self rdc] startWithConnection:[desktop adaptedDesktop]->GetConnection()
-                                 size:size];
+                             password:[domainPassword UTF8String]
+                                 size:size
+                               screen:screen];
       break;
    default:
       NOT_IMPLEMENTED();
@@ -1006,14 +1110,17 @@ didRequestLaunchDesktop:(CdkDesktop *)aDesktop // IN
 -(void)broker:(CdkBroker *)aBroker               // IN/UNUSED
 didDisconnectTunnelWithReason:(NSString *)reason // IN
 {
-   NSString *message = @"The secure connection to the View Server has "
-      "unexpectedly disconnected.";
-   if ([reason length]) {
-      message = [NSString stringWithFormat:@"%@\n\nReason: %@.", message,
-                          reason];
+   const char *message;
+   if ([[broker address] secure]) {
+      message = _("The secure connection to the View Server has "
+                  "unexpectedly disconnected.");
+   } else {
+      message = _("The connection to the View Server has"
+                  " unexpectedly disconnected.");
    }
 
-   cdk::App::ShowDialog(GTK_MESSAGE_ERROR, "%s", [message UTF8String]);
+   cdk::BaseApp::ShowError(CDK_ERR_TUNNEL_DISCONNECTED, message,
+                           "%s", [reason UTF8String]);
 
    /*
     * If the tunnel really exited, it's probably not going to let us
@@ -1026,33 +1133,69 @@ didDisconnectTunnelWithReason:(NSString *)reason // IN
 /*
  *-----------------------------------------------------------------------------
  *
- * -[CdkWindowController broker:didRequestIdentityWithTrustedAuthorities:] --
+ * -[CdkWindowController identityPanelDidEnd:returnCode:contextInfo:] --
  *
- *      Have the user select an identity to use for authentication.
+ *      Delegate method for identity chooser panel.  Use the selected
+ *      identity if the user clicked OK.
  *
  * Results:
- *      An identity, or NULL if none could be found or none were
- *      selected.
+ *      None
  *
  * Side effects:
- *      None
+ *      Frees identities in contextInfo.
  *
  *-----------------------------------------------------------------------------
  */
 
--(SecIdentityRef)broker:(CdkBroker *)aBroker                        // IN/UNUSED
-didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs // IN
+-(void)identityPanelDidEnd:(NSWindow *)sheet   // IN
+                returnCode:(int)returnCode     // IN
+               contextInfo:(void *)contextInfo // IN
+{
+   SFChooseIdentityPanel *panel =
+      [SFChooseIdentityPanel sharedChooseIdentityPanel];
+   SecIdentityRef identity =
+      returnCode == NSFileHandlingPanelOKButton ? [panel identity] : NULL;
+
+   [broker submitCertificateFromIdentity:identity];
+
+   CFMutableArrayRef identities = (CFMutableArrayRef)contextInfo;
+   CFArrayApplyFunction(identities, CFRangeMake(0, CFArrayGetCount(identities)),
+                        (CFArrayApplierFunction)CFRelease, NULL);
+   CFRelease(identities);
+
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkWindowController broker:didRequestCertificateWithIssuers:]
+ *
+ *      Have the user select an identity to use for authentication.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Identity chooser panel is displayed.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)broker:(CdkBroker *)aBroker                  // IN/UNUSED
+didRequestCertificateWithIssuers:(NSArray *)issuers // IN
 {
    SecIdentitySearchRef search;
    OSStatus rv = SecIdentitySearchCreate(NULL, 0, &search);
    if (rv != noErr) {
       Warning("Could not create search: %d\n", (int)rv);
-      return NULL;
+      [broker submitCertificateFromIdentity:nil];
+      return;
    }
 
+   SecIdentityRef identity = NULL;
    CFMutableArrayRef identities = CFArrayCreateMutable(NULL, 0, NULL);
-   SecIdentityRef identity;
-   fprintf(stderr, "Searching identities...\n");
+   Log("Searching identities...\n");
    while (errSecItemNotFound != (rv = SecIdentitySearchCopyNext(search,
                                                                 &identity))) {
       if (rv == noErr) {
@@ -1060,18 +1203,20 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs // IN
                          certificateWithIdentity:identity];
          if (x509) {
             X509_NAME *issuer = X509_get_issuer_name(x509);
-            if (sk_X509_NAME_find(CAs, issuer) < 0) {
-               char *dispName = X509_NAME_oneline(issuer, NULL, 0);
+            char *dispName = X509_NAME_oneline(issuer, NULL, 0);
+            NSString *nsDispName = [NSString stringWithUTF8String:dispName];
+            if ([issuers indexOfObject:nsDispName] == NSNotFound) {
                Warning("Cert issuer %s not accepted by server, ignoring "
                        "cert.\n", dispName);
-               OPENSSL_free(dispName);
             } else {
                CFRetain(identity);
                CFArrayAppendValue(identities, identity);
             }
+            OPENSSL_free(dispName);
             X509_free(x509);
          }
          CFRelease(identity);
+         identity = NULL;
       } else {
          NSString *err = (NSString *)SecCopyErrorMessageString(rv, NULL);
          Warning("Skipping an identity due to error: %s\n", [err UTF8String]);
@@ -1082,33 +1227,66 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs // IN
 
    switch (CFArrayGetCount(identities)) {
    case 0:
-      identity = NULL;
+      [broker submitCertificateFromIdentity:nil];
       break;
    case 1:
 #ifdef AUTO_SELECT_SINGLE_CERT
       identity = (SecIdentityRef)CFArrayGetValueAtIndex(identities, 0);
+      [broker submitCertificateFromIdentity:identity];
       break;
 #endif
-   default:
-      SFChooseIdentityPanel *panel = [SFChooseIdentityPanel
-                                        sharedChooseIdentityPanel];
-      [panel setAlternateButtonTitle:@"Cancel"];
-      int button = [panel runModalForIdentities:(NSArray *)identities
-                                        message:@"Choose an identity with which"
-                          " to log in."];
-
-      identity = button == NSOKButton ? [panel identity] : NULL;
-      break;
+      // fall through...
+   default: {
+      SFChooseIdentityPanel *panel =
+         [SFChooseIdentityPanel sharedChooseIdentityPanel];
+      [panel setAlternateButtonTitle:NS_("Cancel")];
+      [panel beginSheetForWindow:[self window]
+                   modalDelegate:self
+                  didEndSelector:
+                @selector(identityPanelDidEnd:returnCode:contextInfo:)
+                     contextInfo:identities
+                      identities:(NSArray *)identities
+                         message:NS_("Choose an identity with which to log in.")];
+      // Return (don't free identities here)
+      return;
    }
-   if (identity) {
-      CFRetain(identity);
    }
 
    CFArrayApplyFunction(identities, CFRangeMake(0, CFArrayGetCount(identities)),
                         (CFArrayApplierFunction)CFRelease, NULL);
    CFRelease(identities);
+}
 
-   return identity;
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkWindowController brokerDidRequestUpdateDesktops:] --
+ *
+ *      A Desktop doesn't emit a changed signal when it's reloaded,
+ *      for example after a "reset" or "roll back" command; these are
+ *      supposed to be updated when Broker calls UpdateDesktop on its
+ *      delegate.
+ *
+ *      So, do that.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Continue button may be enabled.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)brokerDidRequestUpdateDesktops:(CdkBroker *)broker // IN
+{
+   Log("Manually updating continue button.\n");
+   if ([viewControllers indexOfObject:viewController] == DESKTOPS_VIEW) {
+      [(CdkDesktopsViewController *)viewController updateDesktops];
+      [viewController willChangeValueForKey:@"continueEnabled"];
+      [viewController didChangeValueForKey:@"continueEnabled"];
+   }
 }
 
 
@@ -1184,6 +1362,65 @@ didRequestIdentityWithTrustedAuthorities:(STACK_OF(X509_NAME) *)CAs // IN
    if (cdk::Util::EnsureFilePermissions([cookiesPath UTF8String],
                                         COOKIE_FILE_MODE)) {
       [broker setCookieFile:cookiesPath];
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkWindowController alertWithStyle:message:details:args:] --
+ *
+ *      Display a message to the user.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      May clear busyText.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)alertWithStyle:(NSAlertStyle)style     // IN
+          messageText:(NSString *)message     // IN
+informativeTextWithFormat:(NSString *)details // IN
+            arguments:(va_list)args           // IN
+{
+   ASSERT(style >= NSWarningAlertStyle);
+   ASSERT(style <= NSCriticalAlertStyle);
+
+   /*
+    * Because we may be getting this format string + args from C/C++
+    * code, which can't pass us NSStrings, and it may have UTF-8
+    * chars, this needs to be a Util::Format and not NSString. See bug
+    * 536681 and http://forums.macrumors.com/showthread.php?t=555204.
+    */
+   cdk::Util::string fullDetails = cdk::Util::FormatV([details UTF8String],
+                                                      args);
+
+   NSAlert *alert = [NSAlert alertWithMessageText:message
+                                    defaultButton:nil
+                                  alternateButton:nil
+                                      otherButton:nil
+                        informativeTextWithFormat:@"%@",
+                             [NSString stringWithUtilString:fullDetails]];
+
+   [alert setAlertStyle:style];
+
+   [alert beginSheetModalForWindow:[self window]
+                     modalDelegate:nil
+                    didEndSelector:nil
+                       contextInfo:nil];
+
+   /*
+    * This is similar to the SetReady() call in
+    * gtk/window.cc:ShowMessageDialog().  Otherwise, if there was a
+    * desktop launch error we'll still show that we're connecting to a
+    * desktop.
+    */
+   if ([viewControllers indexOfObject:viewController] == DESKTOPS_VIEW) {
+      [self setBusyText:nil];
    }
 }
 

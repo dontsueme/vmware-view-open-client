@@ -55,14 +55,16 @@
 
 #pragma warning(disable : 4018 4047 4101 4102 4146 4244 4267)
 
+#ifndef __MINGW32__
 #define INTMAX_MAX MAX_INT64
+typedef __int64 intmax_t;
+typedef unsigned __int64 uintmax_t;
+#endif
 
 typedef unsigned int u_int;
 typedef unsigned long u_long;
 typedef unsigned short u_short;
 typedef unsigned char u_char;
-typedef __int64 intmax_t;
-typedef unsigned __int64 uintmax_t;
 typedef intptr_t ptrdiff_t;
 
 #else // } {

@@ -93,6 +93,29 @@ extern "C" {
 /*
  *-----------------------------------------------------------------------------
  *
+ * -[CdkString utilStringWithString:] --
+ *
+ *      Returns a C++ string from an Objective-C string, creating an
+ *      empty string for nil strings.
+ *
+ * Results:
+ *      C++ string.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
++(cdk::Util::string)utilStringWithString:(NSString *)string // IN
+{
+   return string ? [string UTF8String] : "";
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * -[CdkString initWithUtilString] --
  *
  *      Initialize a string with the contents of a cdk::Util::string.
@@ -109,28 +132,6 @@ extern "C" {
 -(id)initWithUtilString:(const cdk::Util::string &)utilString // IN
 {
    return [self initWithUTF8String:utilString.c_str()];
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * -[NSString (CdkString) utilString] --
- *
- *      Create a cdk::Util::string from an NSString.
- *
- * Results:
- *      A new cdk::Util::string.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
--(cdk::Util::string)utilString
-{
-   return [self UTF8String];
 }
 
 

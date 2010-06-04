@@ -41,9 +41,9 @@
 
 +(NSString *)stringWithUtilString:(const cdk::Util::string &)utilString;
 +(NSString *)stringWithUTF8Format:(const char *)format, ...;
++(cdk::Util::string)utilStringWithString:(NSString *)string;
 
 -(id)initWithUtilString:(const cdk::Util::string &)utilString;
--(cdk::Util::string)utilString;
 -(NSString *)stringByAppendingPathComponents:(NSString *)string, ...;
 
 @end // @interface NSString (CdkString)

@@ -279,7 +279,7 @@ extern "C" {
 -(void)updateLabel
 {
    cdk::Util::string cppLabel =
-      cdk::Util::GetHostLabel(hostname ? [hostname utilString] : "", port,
+      cdk::Util::GetHostLabel([NSString utilStringWithString:hostname], port,
 			      secure);
    NSString *s = [NSString stringWithUtilString:cppLabel];
 
@@ -314,8 +314,8 @@ extern "C" {
    bool tmpSecure;
    unsigned short tmpPort;
    cdk::Util::string cppHost =
-      cdk::Util::ParseHostLabel(label ? [label utilString] : "", &tmpPort,
-				&tmpSecure);
+      cdk::Util::ParseHostLabel([NSString utilStringWithString:label],
+                                &tmpPort, &tmpSecure);
    NSString *s = [NSString stringWithUtilString:cppHost];
    if (![hostname isEqualToString:s]) {
       [self willChangeValueForKey:@"hostname"];

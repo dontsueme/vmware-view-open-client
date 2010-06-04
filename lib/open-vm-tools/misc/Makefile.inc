@@ -30,21 +30,27 @@ libMisc_a_SOURCES += lib/open-vm-tools/misc/dynbuf.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/escape.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/hashTable.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/hostinfo.c
-libMisc_a_SOURCES += lib/open-vm-tools/misc/hostinfoPosix.c
-libMisc_a_SOURCES += lib/open-vm-tools/misc/hostinfo_misc.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/hostname.c
-libMisc_a_SOURCES += lib/open-vm-tools/misc/idLinux.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/iovector.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/machineID.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/miscSolaris.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/posixDlopen.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/posixInt.h
-libMisc_a_SOURCES += lib/open-vm-tools/misc/posixPosix.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/random.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/strutil.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/timeutil.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/utilMem.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/util_misc.c
 libMisc_a_SOURCES += lib/open-vm-tools/misc/vmstdio.c
+
+if VIEW_POSIX
+libMisc_a_SOURCES += lib/open-vm-tools/misc/hostinfoPosix.c
+libMisc_a_SOURCES += lib/open-vm-tools/misc/idLinux.c
+libMisc_a_SOURCES += lib/open-vm-tools/misc/posixPosix.c
+endif # VIEW_POSIX
+
+if VIEW_WIN32
+libMisc_a_SOURCES += lib/open-vm-tools/misc/hostinfoWin32.c
+endif # VIEW_WIN32
 
 libMisc_a_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS)

@@ -32,7 +32,10 @@
 #include <stdarg.h>
 #ifdef _WIN32
 #  include <process.h>
-#  include <Windows.h>
+#  include <windows.h>
+#  ifdef __MINGW32__
+#    define sleep(t) _sleep(t)
+#  endif
 #else // Posix
 #  include <unistd.h>
 #endif // Win32 vs Posix
@@ -47,7 +50,9 @@
 #include "config.h"
 #include "util.h"
 #if defined(_WIN32) || !defined(VMX86_TOOLS)
+#ifndef __MINGW32__
 #include "coreDump.h"
+#endif
 #endif
 #ifdef _WIN32
 #include "win32u.h"
@@ -543,7 +548,7 @@ Panic_Panic(const char *format,
 
    Panic_DumpGuiResources();
 
-#if defined(_WIN32) ||  !defined(VMX86_TOOLS)
+#if (defined(_WIN32) || !defined(VMX86_TOOLS)) && !defined(__MINGW32__)
    if (Panic_GetCoreDumpOnPanic()) {
       CoreDump_CoreDump();
    }

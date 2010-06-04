@@ -54,7 +54,16 @@
 struct stat;
 
 #if defined(_WIN32)
+#if !defined(__MINGW32__)
+// For windows but not on MingW32, create mode_t type.
 typedef int mode_t;
+#else
+/*
+ * Otherwise, define mode_t as int, since MingW32 typedefs mode_t to
+ * unsigned short, which is incompatible with certain of our APIs.
+ */
+#define mode_t int
+#endif
 #else
 struct statfs;
 struct utimbuf;

@@ -31,7 +31,7 @@
 #ifndef BROKER_XML_HH
 #define BROKER_XML_HH
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
 #include <atlbase.h>
 #endif
 
@@ -68,6 +68,7 @@ public:
       OFFLINE_CHECKING_IN,
       OFFLINE_CHECKING_OUT,
       OFFLINE_BACKGROUND_CHECKING_IN,
+      OFFLINE_ROLLING_BACK,
       OFFLINE_NONE
    };
 
@@ -140,16 +141,20 @@ public:
       Util::string type;
       Util::string state;
       bool offlineEnabled;
+      bool endpointEnabled;
       OfflineState offlineState;
       bool checkedOutByOther;
       Util::string sessionId;
       bool resetAllowed;
       bool resetAllowedOnSession;
       bool inMaintenance;
-      bool inLocalRollback;
       UserPreferences userPreferences;
       std::vector<Util::string> protocols;
       int defaultProtocol;
+      bool expired;
+      uint64 progressWorkDoneSoFar;
+      uint64 progressTotalWork;
+      bool checkedOutHereAndDisabled;
 
       Desktop();
       virtual ~Desktop() {}
@@ -162,6 +167,7 @@ public:
    {
       DesktopList desktops;
 
+      virtual ~EntitledDesktops() {}
       bool Parse(xmlNode *parentNode, Util::AbortSlot onAbort);
    };
 
@@ -234,7 +240,7 @@ public:
 
    BrokerXml(Util::string hostname, int port, bool secure,
              const Util::string &sslCAPath = "");
-   ~BrokerXml();
+   virtual ~BrokerXml();
 
    void GetConfiguration(Util::AbortSlot onAbort, ConfigurationSlot onDone);
 
@@ -309,9 +315,6 @@ public:
                  RollbackSlot onDone);
 
 protected:
-   virtual bool SendHttpRequest(BaseXml::RequestState *req,
-				const Util::string &body);
-
    virtual bool ResponseDispatch(xmlNode *operationNode,
                                  BaseXml::RequestState &state,
                                  Result &result);

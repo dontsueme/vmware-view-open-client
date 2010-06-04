@@ -51,24 +51,11 @@ class Desktop;
 class Broker
 {
 public:
-   struct CertAuthInfo
-   {
-      X509 *cert;
-      EVP_PKEY *key;
-      char *pin;
-      Util::string reader;
-
-      CertAuthInfo() : cert(NULL), key(NULL), pin(NULL) { }
-   };
-
    class Delegate
    {
    public:
       virtual ~Delegate() { }
 
-      // Status notifications
-      virtual void SetBusy(const Util::string &message) { }
-      virtual void SetReady() { }
       virtual void SetLogoutOnCertRemoval(bool enabled) { }
 
       virtual void Disconnect() { }
@@ -76,6 +63,8 @@ public:
       // State change notifications
       virtual void RequestBroker() { }
       virtual void RequestDisclaimer(const Util::string &disclaimer) { }
+      virtual void RequestCertificate(std::list<Util::string> &trustedIssuers)
+         { }
       virtual void RequestPasscode(const Util::string &username,
                                    bool userSelectable) { }
       virtual void RequestNextTokencode(const Util::string &username) { }
@@ -89,11 +78,9 @@ public:
       virtual void RequestPasswordChange(const Util::string &username,
                                          const Util::string &domain) { }
       virtual void RequestDesktop() { }
-      virtual void RequestTransition(const Util::string &message) { }
+      virtual void RequestTransition(const Util::string &message,
+                                     bool useMarkup = false) { }
       virtual void RequestLaunchDesktop(Desktop *desktop) { }
-
-      virtual CertAuthInfo GetCertAuthInfo(SSL *ssl)
-         { CertAuthInfo info; return info; }
 
       /*
        * We can't totally handle this here, as App may have an RDesktop
@@ -103,6 +90,12 @@ public:
       virtual void TunnelDisconnected(Util::string disconnectReason) { }
 
       virtual void UpdateDesktops() { }
+
+      virtual void UpdateForwardButton(bool sensitive, bool visible = true) { }
+      virtual void UpdateCancelButton(bool sensitive, bool visible = true) { }
+      virtual void UpdateHelpButton(bool sensitive, bool visible = true) { }
+
+      virtual void SetReady() { }
    };
 
    Broker();
@@ -121,6 +114,10 @@ public:
                            const Util::string &defaultUser,
                            const Util::string &defaultDomain);
    virtual void AcceptDisclaimer();
+   virtual void SubmitCertificate(X509 *cert = NULL,
+                                  EVP_PKEY *key = NULL,
+                                  const char *pin = NULL,
+                                  const Util::string &reader = "");
    virtual void SubmitPasscode(const Util::string &username,
                                const Util::string &passcode);
    virtual void SubmitNextTokencode(const Util::string &tokencode);
@@ -140,17 +137,20 @@ public:
    virtual void RollbackDesktop(Desktop *desktop);
    virtual void Logout();
 
-   Util::string GetHostname() const
+   virtual Util::string GetSupportBrokerUrl() const;
+   virtual Util::string GetHostname() const
       { ASSERT(mXml); return mXml->GetHostname(); }
    int GetPort() const { ASSERT(mXml); return mXml->GetPort(); }
    bool GetSecure() const { ASSERT(mXml); return mXml->GetSecure(); }
 
-   virtual int CancelRequests() { ASSERT(mXml); return mXml->CancelRequests(); }
+   virtual int CancelRequests();
    void SetCookieFile(const Util::string &cookieFile)
       { mCookieFile = cookieFile; }
 
    Desktop *GetDesktop() const { return mDesktop; }
-   void GetDesktops(bool refresh = false);
+   virtual void GetDesktops(bool refresh = false);
+
+   Util::string GetDesktopName(Util::string desktopID);
 
    bool GetIsUsingTunnel() const { return mTunnel && !mTunnel->GetIsBypassed(); }
 
@@ -189,6 +189,17 @@ protected:
                                       EVP_PKEY **privKey);
    virtual void OnAbort(bool cancelled, Util::exception err);
 
+   virtual BrokerXml *CreateNewXmlConnection(const Util::string &hostname,
+                                             int port, bool secure);
+   BrokerXml *GetXmlConnection() const { return mXml; }
+
+   void SetGettingDesktops(bool gettingDesktops)
+      { mGettingDesktops = gettingDesktops; }
+   bool IsGettingDesktops() { return mGettingDesktops; }
+
+   std::vector<Util::string> GetSupportedProtocols() const
+      { return mSupportedProtocols; }
+
 private:
    enum CertState {
       // The server has not requested a certificate from us.
@@ -209,7 +220,6 @@ private:
    };
 
    static void RefreshDesktopsTimeout(void *data);
-   static void OnIdleSubmitCertAuth(void *data);
 
    void ClearSmartCardPinAndReader();
 
@@ -229,6 +239,10 @@ private:
    std::vector<Util::string> mSupportedProtocols;
    Util::string mCookieFile;
    unsigned int mAuthRequestId;
+   bool mAcceptedDisclaimer;
+   std::list<Util::string> mTrustedIssuers;
+   X509 *mCert;
+   EVP_PKEY *mKey;
 };
 
 

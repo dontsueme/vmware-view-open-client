@@ -47,12 +47,13 @@ extern "C" {
 static NSString *const RDC_BUNDLE_NAME = @"com.microsoft.rdc";
 static NSString *const RDC_BINARY_NAME = @"Remote Desktop Connection";
 static NSString *const RDC_KEYCHAIN_FMT =
-   @"Remote Desktop Connection 2 Password for %s";
+   @"Remote Desktop Connection 2 Password for %@";
 
 static NSString *const RDC_KEY_CONNECTION_STRING   = @"ConnectionString";
 static NSString *const RDC_KEY_DESKTOP_HEIGHT      = @"DesktopHeight";
 static NSString *const RDC_KEY_DESKTOP_SIZE        = @"DesktopSize";
 static NSString *const RDC_KEY_DESKTOP_WIDTH       = @"DesktopWidth";
+static NSString *const RDC_KEY_DISPLAY             = @"Display";
 static NSString *const RDC_KEY_DOMAIN              = @"Domain";
 static NSString *const RDC_KEY_USER_NAME           = @"UserName";
 static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
@@ -219,6 +220,7 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
 
 -(BOOL)createRdcFileForConnection:(const cdk::BrokerXml::DesktopConnection &)connection // IN
                              size:(CdkDesktopSize *)desktopSize                         // IN
+                           screen:(NSScreen *)screen                                    // IN
 {
    ASSERT(tmpFile);
 
@@ -226,8 +228,8 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
       [NSMutableDictionary
          dictionaryWithDictionary:[[CdkPrefs sharedPrefs] rdpSettings]];
 
-   [dict setObject:[NSString stringWithFormat:@"%s:%hu",
-                             connection.address.c_str(),
+   [dict setObject:[NSString stringWithFormat:@"%@:%hu",
+                             [NSString stringWithUtilString:connection.address],
                              connection.port]
             forKey:RDC_KEY_CONNECTION_STRING];
 
@@ -245,6 +247,9 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
       sizeVal = sizeDict;
    }
    [dict setObject:sizeVal forKey:RDC_KEY_DESKTOP_SIZE];
+   [dict setObject:[NSNumber numberWithInteger:
+                                [[NSScreen screens] indexOfObject:screen]]
+            forKey:RDC_KEY_DISPLAY];
 
    [dict setObject:[NSString stringWithUtilString:connection.domainName]
             forKey:RDC_KEY_DOMAIN];
@@ -289,14 +294,18 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
  *-----------------------------------------------------------------------------
  */
 
--(BOOL)storePasswordForConnection:(const cdk::BrokerXml::DesktopConnection &)connection // IN
+-(BOOL)storePassword:(const char *)secret                                  // IN
+       forConnection:(const cdk::BrokerXml::DesktopConnection &)connection // IN
 {
-   const char *service = [[NSString stringWithFormat:RDC_KEYCHAIN_FMT,
-                                    connection.address.c_str()] UTF8String];
-   const char *account = [[NSString stringWithFormat:@"%s\\%s",
-                                    connection.domainName.c_str(),
-                                    connection.username.c_str()] UTF8String];
-   const char *secret = connection.password.c_str();
+   const char *service =
+      [[NSString stringWithFormat:RDC_KEYCHAIN_FMT,
+                 [NSString stringWithUtilString:connection.address]]
+         UTF8String];
+   const char *account =
+      [[NSString stringWithFormat:@"%@\\%@",
+                 [NSString stringWithUtilString:connection.domainName],
+                 [NSString stringWithUtilString:connection.username]]
+         UTF8String];
 
    SecKeychainItemRef item;
    OSStatus rv = SecKeychainFindGenericPassword(NULL,
@@ -339,7 +348,9 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
  */
 
 -(void)startWithConnection:(const cdk::BrokerXml::DesktopConnection &)connection // IN
+                  password:(const char *)password                                // IN
                       size:(CdkDesktopSize *)desktopSize                         // IN
+                    screen:(NSScreen *)screen                                    // IN
 {
    NSString *rdcPath = [CdkRdc rdcPath];
    if (!rdcPath) {
@@ -355,12 +366,14 @@ static NSString *const RDC_VAL_DESKTOP_FULL_SCREEN = @"DesktopFullScreen";
    Warning("Using temporary RDC file %s.\n", [tmpFile UTF8String]);
 
    if (![self createRdcFileForConnection:connection
-                                    size:desktopSize]) {
+                                    size:desktopSize
+                                  screen:screen]) {
       [self unlink];
       return;
    }
 
-   [self storePasswordForConnection:connection];
+   [self storePassword:password
+         forConnection:connection];
 
    [self startWithProcName:rdcPath
                   procPath:rdcPath

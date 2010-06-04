@@ -43,6 +43,11 @@ extern "C" {
 #include "util.hh"
 
 
+// Prefixes of user names reserved for kiosk mode.
+#define  CLIENT_MAC        "CM-"
+#define  CLIENT_CUSTOM     "Custom-"
+
+
 namespace cdk {
 
 
@@ -55,11 +60,13 @@ public:
 
    Util::string GetUsername() const { return gtk_entry_get_text(mUsername); }
    const char *GetPassword() const { return gtk_entry_get_text(mPasswd); }
+   bool GetIsUserReadOnly() const { return mUserReadOnly; }
    void SetFields(Util::string user, bool userReadOnly, const char *password,
                   std::vector<Util::string> domains, Util::string domain);
    virtual void ClearAndFocusPassword();
    Util::string GetDomain() const;
    void SetSensitive(bool sensitive);
+   virtual bool IsValid();
 
    boost::signal0<void> login;
 

@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#if defined(__APPLE__) || defined(linux)
+#ifdef HAVE_DLFCN_H
 #include <dlfcn.h>
 #endif
 
