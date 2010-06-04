@@ -1,274 +1,466 @@
-# VMware View Open Client
-# Copyright (C) 2009 VMware, Inc.
-# This file is distributed under the same license as the
-# VMware-view-open-client package.
-# <vmware-view-open-client@googlegroups.com>, 2009.
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: 4.0.0\n"
+"Project-Id-Version: パッケージ バージョン\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-12-21 16:20-0800\n"
-"PO-Revision-Date: 2010-01-08 12:07-0800\n"
-"Last-Translator: jacob berkman <jberkman@vmware.com>\n"
-"Language-Team: vvoc <vmware-view-open-client@groups.google.com>\n"
+"POT-Creation-Date: 2010-05-13 19:44-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: フル ネーム <EMAIL@ADDRESS>\n"
+"Language-Team: 言語 <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../baseApp.cc:199
+#: ../baseApp.cc:249
 #, c-format
 msgid "Using log file %s\n"
 msgstr "ログ ファイル %s を使用しています \n"
 
-#: ../baseXml.cc:298
-msgid "Invalid response: Invalid \"result\" in XML."
-msgstr "無効な応答： XML の \"result\" が無効です。"
+#: ../baseXml.cc:302
+#: ../baseXml.cc:360
+#: ../baseXml.cc:759
+msgid "Invalid response"
+msgstr "無効な応答です"
 
-#: ../baseXml.cc:321
+#: ../baseXml.cc:303
+msgid "Invalid \"result\" in XML."
+msgstr "XML の \"result\" が無効です。"
+
+#: ../baseXml.cc:325
 #, c-format
 msgid "Unknown error: %s"
 msgstr "不明なエラー: %s"
 
-#: ../baseXml.cc:356
-msgid "Invalid response: Parameter with no name."
-msgstr "無効な応答： パラメータに名前がありません。"
+#: ../baseXml.cc:361
+msgid "Parameter with no name."
+msgstr "パラメータの名前がありません。"
 
-#: ../baseXml.cc:377
+#: ../baseXml.cc:381
 #, c-format
 msgid "Invalid response: Parameter \"%s\" has no value."
 msgstr "無効な応答： パラメータ \"%s\" に値がありません。"
 
+#: ../baseXml.cc:525
+msgid "Unsupported protocol"
+msgstr "サポートされていないプロトコルです"
+
+#: ../baseXml.cc:527
+msgid "Invalid URL"
+msgstr "無効な URL です"
+
+#: ../baseXml.cc:529
+msgid "The proxy could not be resolved"
+msgstr "プロキシを解決できませんでした"
+
+#: ../baseXml.cc:531
+msgid "The host could not be resolved"
+msgstr "ホストを解決できませんでした"
+
+#: ../baseXml.cc:533
+#: ../extraTranslations.hh:50
+msgid "Could not connect to server"
+msgstr "サーバに接続できませんでした"
+
+#: ../baseXml.cc:535
+#, c-format
+msgid "HTTP error %d"
+msgstr "HTTP エラー %d"
+
+#: ../baseXml.cc:537
+msgid "Connection timed out"
+msgstr "接続がタイムアウトしました"
+
 #: ../baseXml.cc:539
-msgid "SSL Security Error."
-msgstr "SSL セキュリティ エラーです。"
+msgid "SSL connection error"
+msgstr "SSL 接続エラー"
 
 #: ../baseXml.cc:541
-msgid "Could not connect to server."
-msgstr "サーバに接続できませんでした。"
+msgid "Too many redirects"
+msgstr "リダイレクトが多すぎます"
 
-#: ../baseXml.cc:575
-msgid "Invalid response: General error."
-msgstr "無効な応答： 一般的なエラーが発生しました。"
+#: ../baseXml.cc:545
+msgid "Transfer error"
+msgstr "転送エラー"
 
-#: ../baseXml.cc:600
-#: ../baseXml.cc:641
+#: ../baseXml.cc:547
+msgid "SSL security error"
+msgstr "SSL セキュリティ エラー"
+
+#: ../baseXml.cc:552
+msgid "Unknown error"
+msgstr "不明エラー"
+
+#: ../baseXml.cc:560
+msgid "The View Connection Server connection failed."
+msgstr "View Connection Server 接続に失敗しました。"
+
+#: ../baseXml.cc:561
+#, c-format
+msgid "%s.\n"
+"\n"
+"Verify that the view connection server address, port, network settings, and "
+"SSL settings are correct and try again."
+msgstr "%s。\n"
+"\n"
+"View Connection Server のアドレス、ポート、ネットワーク設定、SSL 設定が正しいことを確認し、再度実行してください。"
+
+#: ../baseXml.cc:760
+msgid "General error."
+msgstr "一般エラー。"
+
+#: ../baseXml.cc:784
+#: ../baseXml.cc:825
 #, c-format
 msgid "Invalid response: Unknown response \"%s\"."
 msgstr "無効な応答： 不明な応答 \"%s\" です。"
 
-#: ../baseXml.cc:626
+#: ../baseXml.cc:810
 #, c-format
 msgid "Unable to save command text for %s."
 msgstr "%s のコマンド テキストを保存できません。"
 
-#: ../baseXml.cc:658
+#: ../baseXml.cc:842
 #, c-format
 msgid "The server \"%s\" may not be a compatible View Connection Server. Check the "
 "server address and try again."
 msgstr "サーバ \"%s\" は、互換性のある View Connection Server ではない可能性があります。サーバ アドレスを確認して、再試行してください。"
 
-#: ../baseXml.cc:749
+#: ../baseXml.cc:946
 msgid "Request cancelled by user."
 msgstr "ユーザーによって要求がキャンセルされました。"
 
-#: ../broker.cc:232
-msgid "Setting client locale..."
-msgstr "クライアント ロケールを設定しています..."
-
-#: ../broker.cc:261
-msgid "Accepting disclaimer..."
-msgstr "免責事項に同意しています..."
-
-#. Disable the OK button
-#: ../broker.cc:305
-#: ../broker.cc:339
-#: ../broker.cc:373
-#: ../broker.cc:408
-#: ../broker.cc:1682
-#: ../gtk/window.cc:748
-#: ../gtk/window.cc:772
-#: ../gtk/window.cc:2601
-msgid "Logging in..."
-msgstr "ログインしています..."
-
-#: ../broker.cc:445
-msgid "Changing password..."
-msgstr "パスワードを変更しています..."
-
-#: ../broker.cc:481
-#: ../gtk/window.cc:1809
+#: ../broker.cc:555
+#: ../gtk/window.cc:2069
 msgid "Connecting to the desktop..."
 msgstr "デスクトップに接続しています..."
 
-#: ../broker.cc:725
-msgid "Logging out..."
-msgstr "ログアウトしています..."
+#: ../broker.cc:921
+msgid "Unknown result returned"
+msgstr "不明な結果が返されました"
 
-#: ../broker.cc:752
-msgid "Getting server configuration..."
-msgstr "サーバ構成を取得しています..."
+#: ../broker.cc:939
+#: ../broker.cc:1479
+msgid "Error authenticating"
+msgstr "認証中にエラーが発生しました"
 
-#: ../broker.cc:845
-#, c-format
-msgid "Unknown result returned: %s"
-msgstr "不明な結果が返されました: %s"
+#: ../broker.cc:988
+msgid "Your new RSA SecurID PIN has been set"
+msgstr "新しい RSA SecurID PIN が設定されました"
 
-#: ../broker.cc:866
-#: ../broker.cc:1388
-#, c-format
-msgid "Error authenticating: %s"
-msgstr "認証中のエラー: %s"
-
-#: ../broker.cc:917
-msgid "Your new RSA SecurID PIN has been set.\n"
-"\n"
-"Please wait for the next tokencode to appear on your RSA SecurID token, then "
+#: ../broker.cc:989
+msgid "Please wait for the next tokencode to appear on your RSA SecurID token, then "
 "continue."
-msgstr "新しい RSA SecurID PIN が設定されました。\n"
-"\n"
-"RSA SecurID トークンに次のトークンコードが表示されるのを待ってから、続行してください。"
+msgstr "RSA SecurID トークンに次のトークンコードが表示されるのを待ってから、続行してください。"
 
-#: ../broker.cc:948
+#: ../broker.cc:1023
+msgid "Unknown authentication method requested"
+msgstr "不明な認証方法が要求されました"
+
+#: ../broker.cc:1024
 #, c-format
-msgid "Unknown authentication method requested: %s"
-msgstr "不明な認証方法が要求されました: %s"
+msgid "Received unknown request \"%s\" from the broker"
+msgstr "ブローカーから不明な要求 \"%s\" を受け取りました"
 
-#: ../broker.cc:999
+#: ../broker.cc:1075
+msgid "Invalid response from server"
+msgstr "サーバからの応答が無効です"
+
+#: ../broker.cc:1076
 msgid "Invalid PIN Change response sent by server."
 msgstr "サーバから送信された PIN 変更応答が無効です。"
 
-#: ../brokerXml.cc:257
-msgid "Invalid response from broker: Invalid \"authentication\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"authentication\" が無効です。"
+#: ../broker.cc:1305
+#: ../broker.cc:1351
+msgid "You are not entitled to use the system."
+msgstr "システムを使用する資格が付与されていません。"
 
-#: ../brokerXml.cc:264
-msgid "Invalid response from broker: Invalid \"screen\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"screen\" が無効です。"
+#: ../broker.cc:1532
+msgid "An error occurred"
+msgstr "エラーが発生しました"
 
-#: ../brokerXml.cc:272
-msgid "Invalid response from broker: Invalid \"name\" in XML."
-msgstr "ブローカーからの応答が無効です: XML 内の \"name\" が無効です。"
+#: ../brokerXml.cc:209
+#: ../brokerXml.cc:216
+#: ../brokerXml.cc:224
+#: ../brokerXml.cc:747
+msgid "Invalid response from broker"
+msgstr "ブローカーからの応答が無効です"
 
-#: ../brokerXml.cc:782
-msgid "Invalid response from broker: Listener with invalid host name."
-msgstr "ブローカーからの応答が無効です： 無効なホスト名を持つリスナです。"
+#: ../brokerXml.cc:210
+msgid "Invalid \"authentication\" in XML."
+msgstr "XML の \"authentication\" が無効です。"
 
-#: ../cocoa/cdkPrefs.m:136
+#: ../brokerXml.cc:217
+msgid "Invalid \"screen\" in XML."
+msgstr "XML の \"screen\" が無効です。"
+
+#: ../brokerXml.cc:225
+msgid "Invalid \"name\" in XML."
+msgstr "XML の \"name\" が無効です。"
+
+#: ../brokerXml.cc:748
+msgid "Listener with invalid host name."
+msgstr "リスナーのホスト名が無効です。"
+
+#: ../cocoa/cdkAppController.m:101
+msgid "Additional Software Required"
+msgstr "追加のソフトウェアが必要です"
+
+#: ../cocoa/cdkAppController.m:102
+msgid "Download"
+msgstr "ダウンロード"
+
+#: ../cocoa/cdkAppController.m:103
+msgid "Quit"
+msgstr "終了"
+
+#: ../cocoa/cdkAppController.m:106
+msgid "Microsoft Remote Desktop Connection Client 2 is required to connect to your "
+"VMware View desktops. Would you like to download it now?"
+msgstr "VMware View デスクトップに接続するには、Microsoft リモート デスクトップ接続"
+"クライアント 2 が必要です。今すぐダウンロードしますか。"
+
+#: ../cocoa/cdkPrefs.m:138
 #, c-format
 msgid "Could not load RDC template data: %s.\n"
 msgstr "RDC テンプレート データをロードできませんでした： %s。\n"
 
-#: ../cocoa/cdkPrefs.m:147
+#: ../cocoa/cdkPrefs.m:149
 #, c-format
 msgid "Could not parse RDC template data: %s.\n"
 msgstr "RDC テンプレート データを解析できませんでした： %s。\n"
 
-#: ../cocoa/cdkRdc.m:260
+#: ../cocoa/cdkRdc.m:265
 #, c-format
 msgid "Could not serialize RDC data: %s.\n"
 msgstr "RDC データをシリアライズできませんでした： %s。\n"
 
-#: ../cocoa/cdkRdc.m:267
+#: ../cocoa/cdkRdc.m:272
 #, c-format
 msgid "Could not write RDC data: %s.\n"
 msgstr "RDC データを書き込むことができませんでした： %s。\n"
 
-#: ../cocoa/cdkRdc.m:346
+#: ../cocoa/cdkRdc.m:357
 msgid "Microsoft Remote Desktop Connection 2 could not be found.\n"
 msgstr "Microsoft リモート デスクトップ接続 2 が見つかりませんでした。\n"
 
-#: ../cocoa/cdkWindowController.m:247
+#: ../cocoa/cdkWindowController.m:256
 #, c-format
 msgid "About %s"
 msgstr "%s について"
 
-#: ../cocoa/cdkWindowController.m:249
+#: ../cocoa/cdkWindowController.m:258
 #, c-format
 msgid "Hide %s"
 msgstr "%s を隠す"
 
-#: ../cocoa/cdkWindowController.m:251
+#: ../cocoa/cdkWindowController.m:260
 #, c-format
 msgid "Quit %s"
 msgstr "%s を終了"
 
-#: ../cocoa/cdkWindowController.m:253
+#: ../cocoa/cdkWindowController.m:262
 #, c-format
 msgid "%s Help"
 msgstr "%s ヘルプ"
 
-#: ../cocoa/cdkWindowController.m:866
-#: ../gtk/window.cc:2523
+#: ../cocoa/cdkWindowController.m:297
+#: ../gtk/window.cc:1305
+msgid "Initializing connection..."
+msgstr "接続を初期化しています..."
+
+#: ../cocoa/cdkWindowController.m:304
+#: ../gtk/window.cc:1398
+msgid "Accepting disclaimer..."
+msgstr "免責事項に同意しています..."
+
+#: ../cocoa/cdkWindowController.m:309
+#: ../cocoa/cdkWindowController.m:316
+#: ../cocoa/cdkWindowController.m:338
+msgid "Authenticating..."
+msgstr "認証中..."
+
+#: ../cocoa/cdkWindowController.m:322
+#: ../cocoa/cdkWindowController.m:329
+#: ../gtk/window.cc:1579
+msgid "Changing PIN..."
+msgstr "PIN を変更しています..."
+
+#: ../cocoa/cdkWindowController.m:348
+#: ../gtk/window.cc:1656
+msgid "Changing password..."
+msgstr "パスワードを変更しています..."
+
+#: ../cocoa/cdkWindowController.m:355
+#: ../gtk/window.cc:2864
+msgid "Connecting to desktop..."
+msgstr "デスクトップに接続しています..."
+
+#: ../cocoa/cdkWindowController.m:721
+msgid "Enter a new RSA Securid PIN."
+msgstr "新しい RSA SecurID PIN を入力してください。"
+
+#: ../cocoa/cdkWindowController.m:724
+msgid "Enter a new RSA SecurID PIN or accept the default."
+msgstr "新しい RSA SecurID PIN を入力するか、デフォルトの PIN を受け入れてください。"
+
+#: ../cocoa/cdkWindowController.m:725
+msgid "Accept the default RSA SecurID PIN."
+msgstr "デフォルトの RSA SecurID PIN を受け入れてください。"
+
+#: ../cocoa/cdkWindowController.m:935
+msgid "You have been disconnected"
+msgstr "切断されました"
+
+#: ../cocoa/cdkWindowController.m:936
+#: ../gtk/window.cc:2876
 msgid "The desktop has unexpectedly disconnected."
 msgstr "デスクトップは突然切断されました。"
 
-#: ../desktop.cc:278
+#: ../cocoa/cdkWindowController.m:1115
+#: ../gtk/window.cc:1743
+msgid "The secure connection to the View Server has unexpectedly disconnected."
+msgstr "View Server への安全な接続が予期せずに切断されました。"
+
+#: ../cocoa/cdkWindowController.m:1118
+#: ../gtk/window.cc:1746
+msgid "The connection to the View Server has unexpectedly disconnected."
+msgstr "View Server への接続が予期せずに切断されました。"
+
+#: ../cocoa/cdkWindowController.m:1242
+msgid "Cancel"
+msgstr "キャンセル"
+
+#: ../cocoa/cdkWindowController.m:1249
+msgid "Choose an identity with which to log in."
+msgstr "ログインに使用する ID を選択してください。"
+
+#: ../desktop.cc:315
+msgid "Unable to connect to desktop"
+msgstr "デスクトップに接続できません"
+
+#: ../desktop.cc:317
 #, c-format
-msgid "Unable to connect to desktop \"%s\": %s"
-msgstr "デスクトップ \"%s\" に接続できません： %s"
+msgid "An error occurred while connecting to \"%s\": %s"
+msgstr "\"%s\" への接続中にエラーが発生しました: %s"
 
-#: ../desktop.cc:370
+#: ../desktop.cc:408
+msgid "Unable to reset desktop"
+msgstr "デスクトップをリセットできません"
+
+#: ../desktop.cc:410
 #, c-format
-msgid "Unable to reset desktop \"%s\": %s"
-msgstr "\"%s\" をリセットできません： %s"
+msgid "An error occured while attempting to reset \"%s\": %s"
+msgstr "\"%s\" のリセット中にエラーが発生しました: %s"
 
-#: ../desktop.cc:458
+#: ../desktop.cc:505
+msgid "Unable to log out"
+msgstr "ログアウトできません"
+
+#: ../desktop.cc:507
 #, c-format
-msgid "Unable to log out of \"%s\": %s"
-msgstr "\"%s\" からログアウトできません: %s"
+msgid "An error occurred while trying to log out of \"%s\": %s"
+msgstr "\"%s\" のログアウト中にエラーが発生しました: %s"
 
-#: ../desktop.cc:518
+#: ../desktop.cc:566
+msgid "Unable to rollback desktop"
+msgstr "デスクトップをロールバックできません"
+
+#: ../desktop.cc:568
 #, c-format
-msgid "Unable to rollback \"%s\": %s"
-msgstr "\"%s\" をロールバックできません： %s"
+msgid "An error occurred while attempting to rollback \"%s\": %s"
+msgstr "\"%s\" のロールバック中にエラーが発生しました: %s"
 
-#: ../desktop.cc:709
-msgid "Desktop is corrupted."
-msgstr "デスクトップが破損しています。"
+#: ../desktop.cc:851
+msgid "connect to server to resume"
+msgstr "レジュームするにはサーバに接続してください"
 
-#: ../desktop.cc:750
-msgid "Desktop check in paused. Select connect to resume."
-msgstr "デスクトップ チェックインが一時停止しました。再開するには [接続] を選択してください。"
+#: ../desktop.cc:852
+msgid "select connect to resume"
+msgstr "レジュームするには接続を選択してください"
 
-#: ../desktop.cc:753
-msgid "Desktop check out paused. Select connect to resume."
-msgstr "デスクトップ チェックアウトが一時停止しました。再開するには [接続] を選択してください。"
-
-#: ../desktop.cc:838
+#: ../desktop.cc:856
 msgid "Resetting desktop"
 msgstr "デスクトップをリセットしています"
 
-#: ../desktop.cc:840
+#: ../desktop.cc:858
 msgid "Logging off"
 msgstr "ログオフしています"
 
-#: ../desktop.cc:842
+#: ../desktop.cc:860
 msgid "Rolling back checkout"
 msgstr "チェックアウトをロールバックしています"
 
-#: ../desktop.cc:844
-msgid "Desktop is being rolled back (may not be available)"
-msgstr "デスクトップはロールバック中です（使用できない可能性があります）"
+#: ../desktop.cc:862
+msgid "The desktop's local session is being rolled back"
+msgstr "デスクトップのローカル セッションがロールバックされています"
 
-#: ../desktop.cc:848
+#: ../desktop.cc:864
+msgid "Handling a local session rollback"
+msgstr "ローカル セッションのロールバックを処理しています"
+
+#: ../desktop.cc:866
+msgid "Desktop is corrupted"
+msgstr "デスクトップが破損しています"
+
+#: ../desktop.cc:868
 msgid "Checked out to another machine"
 msgstr "別のマシンにチェックアウトされています"
 
-#: ../desktop.cc:852
+#: ../desktop.cc:870
+#, c-format
+msgid "Check in paused, %s"
+msgstr "チェックインが一時停止しました、%s"
+
+#: ../desktop.cc:873
+#, c-format
+msgid "Download paused, %s"
+msgstr "ダウンロードが一時停止しました、%s"
+
+#: ../desktop.cc:876
+#, c-format
+msgid "Download paused during initialization, %s"
+msgstr "初期化中にダウンロードが一時停止しました、%s"
+
+#: ../desktop.cc:879
+msgid "Download paused at %"
+msgstr "% でダウンロードが一時停止しました"
+
+#: ../desktop.cc:886
+msgid "Discarding paused download"
+msgstr "一時停止したダウンロードを破棄しています"
+
+#: ../desktop.cc:888
 msgid "Maintenance (may not be available)"
 msgstr "メンテナンス（使用できない可能性があります）"
 
-#: ../desktop.cc:854
+#: ../desktop.cc:890
 msgid "Logged on"
 msgstr "ログオンしています"
 
-#: ../desktop.cc:856
+#: ../desktop.cc:893
+#, c-format
+msgid "Requires download%s"
+msgstr "ダウンロードが必要です%s"
+
+#: ../desktop.cc:896
+#: ../desktop.cc:899
 msgid "Available"
 msgstr "使用可能"
 
-#: ../desktop.cc:859
+#: ../desktop.cc:901
+msgid "Unavailable, contact administrator"
+msgstr "使用できません。管理者に問い合わせてください"
+
+#: ../desktop.cc:903
+msgid "The desktop has expired"
+msgstr "デスクトップの有効期限が切れています"
+
+#: ../desktop.cc:906
 msgid "Unknown status"
 msgstr "不明なステータス"
 
@@ -301,18 +493,22 @@ msgid "Logout request by system"
 msgstr "システムによるログアウト要求"
 
 #: ../extraTranslations.hh:47
-msgid "Client disconnected following no activity"
-msgstr "アクティビティがなかったためクライアントは切断されました"
+msgid "Connection reset by peer"
+msgstr "ピアによって接続がリセットされました"
 
 #: ../extraTranslations.hh:48
-msgid "Could not connect to server"
-msgstr "サーバに接続できませんでした"
+msgid "connection attempt failed"
+msgstr "接続の試行が失敗しました"
 
 #: ../extraTranslations.hh:49
+msgid "Client disconnected following no activity"
+msgstr "アクティビティがなかったためクライアントが切断されました"
+
+#: ../extraTranslations.hh:51
 msgid "tunnel session not created"
 msgstr "トンネル セッションは作成されませんでした"
 
-#: ../gtk/app.cc:271
+#: ../gtk/app.cc:304
 #, c-format
 msgid "Could not find locale directory; falling back to %s\n"
 msgstr "ロケール ディレクトリを検出できませんでした。%s に戻ります\n"
@@ -329,92 +525,101 @@ msgstr "安全な接続（SSL）を使用 (_U)"
 msgid "_Always connect to this server at startup"
 msgstr "起動時に常にこのサーバに接続 (_A)"
 
-#: ../gtk/brokerDlg.cc:81
+#: ../gtk/brokerDlg.cc:80
 msgid "Enter the host name or IP address of the View Connection Server."
 msgstr "View Connection Server のホスト名または IP アドレスを入力してください。"
 
-#: ../gtk/brokerDlg.cc:88
+#: ../gtk/brokerDlg.cc:87
 msgid "A_ddress:"
 msgstr "アドレス (_D)："
 
-#: ../gtk/brokerDlg.cc:111
+#: ../gtk/brokerDlg.cc:110
 msgid "_Options"
 msgstr "オプション (_O)"
 
-#: ../gtk/cryptoki.cc:1113
-msgid "An incorrect PIN entry will result in your smart card or token being locked."
-msgstr "誤った PIN エントリによって、スマート カードまたはトークンがロックされます。"
+#: ../gtk/cryptoki.cc:243
+#, c-format
+msgid "No smart card sessions for your certificate could be found"
+msgstr "証明書に対するスマート カード セッションが見つかりませんでした"
 
-#: ../gtk/cryptoki.cc:1117
+#: ../gtk/cryptoki.cc:1200
+#, c-format
+msgid "A PIN is required to unlock this smartcard or token."
+msgstr "このスマート カードまたはトークンのロックを解除するには PIN が必要です。"
+
+#: ../gtk/cryptoki.cc:1224
+#, c-format
+msgid "Please try entering your PIN again."
+msgstr "PIN をもう一度入力してください。"
+
+#: ../gtk/cryptoki.cc:1232
+#, c-format
+msgid "Your smart card or token has been removed."
+msgstr "スマート カードまたはトークンが取り出されました。"
+
+#: ../gtk/cryptoki.cc:1237
+#, c-format
+msgid "There was an error logging in to your smart card or token.\n"
+"\n"
+"The error code was %#lx."
+msgstr "スマート カードまたはトークンへのログインでエラーが発生しました。\n"
+"\n"
+"エラー コードは %#lx でした。"
+
+#: ../gtk/cryptoki.cc:1248
+#, c-format
 msgid "Your smart card or token has been locked.  Please contact your administrator "
 "to unlock it."
 msgstr "スマート カードまたはトークンがロックされています。管理者に問い合わせてロックを解除してください。"
 
-#: ../gtk/cryptoki.cc:1148
+#: ../gtk/cryptoki.cc:1254
 #, c-format
-msgid "You have entered an incorrect PIN.\n"
-"\n"
-"%s"
-msgstr "入力した PIN が正しくありません。\n"
-"\n"
-"%s"
-
-#: ../gtk/cryptoki.cc:1150
-msgid "An additional incorrect PIN entry will result in your smart card or token "
-"being locked."
-msgstr "追加の誤った PIN エントリによって、スマート カードまたはトークンがロックされます。"
-
-#: ../gtk/cryptoki.cc:1152
-msgid "Please enter your PIN again."
-msgstr "PIN を再入力してください。"
-
-#: ../gtk/cryptoki.cc:1167
-msgid "There was an error logging in to your smart card or token."
-msgstr "スマート カードまたはトークンへのログイン中にエラーが発生しました。"
+msgid "An incorrect PIN entry will result in your smart card or token being locked."
+msgstr "誤った PIN エントリによって、スマート カードまたはトークンがロックされます。"
 
 #: ../gtk/desktopDlg.cc:574
 msgid "Inhibiting Ctrl-Alt-Enter keypress, to avoid rdesktop exit.\n"
 msgstr "rdesktop が終了しないように、Ctrl + Alt + Enter キーを押さないでください。\n"
 
-#: ../gtk/desktopDlg.cc:780
+#: ../gtk/desktopDlg.cc:782
 msgid "Metacity keybindings will be temporarily disabled on SLED 10 SP2.\n"
 msgstr "Metacity のキーバインディングは SLED 10 SP2 上で一時的に無効になります。\n"
 
-#: ../gtk/desktopSelectDlg.cc:98
-msgid "_Available Desktops:"
-msgstr "使用可能なデスクトップ (_A):"
+#: ../gtk/desktopSelectDlg.cc:107
+msgid "_Desktops:"
+msgstr "デスクトップ (_D):"
 
-#: ../gtk/desktopSelectDlg.cc:208
+#: ../gtk/desktopSelectDlg.cc:217
 msgid "All Monitors"
 msgstr "すべてのモニタ"
 
-#: ../gtk/desktopSelectDlg.cc:215
+#: ../gtk/desktopSelectDlg.cc:224
 msgid "Full Screen"
 msgstr "フル スクリーン"
 
-#: ../gtk/desktopSelectDlg.cc:222
+#: ../gtk/desktopSelectDlg.cc:231
 msgid "Large Window"
 msgstr "大きいウィンドウ"
 
-#: ../gtk/desktopSelectDlg.cc:228
+#: ../gtk/desktopSelectDlg.cc:237
 msgid "Small Window"
 msgstr "小さいウィンドウ"
 
-#: ../gtk/desktopSelectDlg.cc:241
+#: ../gtk/desktopSelectDlg.cc:250
 msgid "Custom..."
 msgstr "カスタム..."
 
-#: ../gtk/desktopSelectDlg.cc:247
-msgid "_Display:"
-msgstr "ディスプレイ (_D):"
+#: ../gtk/desktopSelectDlg.cc:256
+msgid "D_isplay:"
+msgstr "ディスプレイ (_I):"
 
-#: ../gtk/desktopSelectDlg.cc:612
-#: ../gtk/windowSizeDlg.cc:266
+#: ../gtk/desktopSelectDlg.cc:718
+#: ../gtk/windowSizeDlg.cc:267
 #, c-format
 msgid "%d x %d"
 msgstr "%d x %d"
 
-#: ../gtk/desktopSelectDlg.cc:671
+#: ../gtk/desktopSelectDlg.cc:777
 #, c-format
 msgid "Are you sure you want to reset %s?\n"
 "\n"
@@ -423,13 +628,13 @@ msgstr "%s をリセットしますか。\n"
 "\n"
 "保存していないデータは失われる可能性があります。"
 
-#: ../gtk/desktopSelectDlg.cc:673
-#: ../gtk/desktopSelectDlg.cc:917
-#: ../gtk/window.cc:2429
+#: ../gtk/desktopSelectDlg.cc:779
+#: ../gtk/desktopSelectDlg.cc:1015
+#: ../gtk/window.cc:2767
 msgid "_Reset"
 msgstr "リセット (_R)"
 
-#: ../gtk/desktopSelectDlg.cc:676
+#: ../gtk/desktopSelectDlg.cc:782
 #, c-format
 msgid "Are you sure you want to end your current session with %s?\n"
 "\n"
@@ -438,12 +643,12 @@ msgstr "%s を持つ現在のセッションを終了しますか。\n"
 "\n"
 "保存していないデータは失われる可能性があります。"
 
-#: ../gtk/desktopSelectDlg.cc:678
-#: ../gtk/desktopSelectDlg.cc:906
+#: ../gtk/desktopSelectDlg.cc:784
+#: ../gtk/desktopSelectDlg.cc:1004
 msgid "_Log Off"
 msgstr "ログオフ (_L)"
 
-#: ../gtk/desktopSelectDlg.cc:681
+#: ../gtk/desktopSelectDlg.cc:787
 #, c-format
 msgid "Are you sure you want to rollback %s?\n"
 "\n"
@@ -453,35 +658,149 @@ msgstr "%s をロールバックしますか。\n"
 "\n"
 "最後のバックアップ以降に別のマシンにあるチェックアウトされたデスクトップで行われた変更は、すべて破棄されます。"
 
-#: ../gtk/desktopSelectDlg.cc:684
+#: ../gtk/desktopSelectDlg.cc:790
 msgid "_Rollback"
 msgstr "ロールバック (_R)"
 
-#: ../gtk/desktopSelectDlg.cc:842
-#: ../gtk/window.cc:680
-#: ../gtk/window.cc:766
-#: ../gtk/window.cc:1070
-#: ../gtk/window.cc:2589
+#: ../gtk/desktopSelectDlg.cc:948
+#: ../gtk/window.cc:735
+#: ../gtk/window.cc:859
+#: ../gtk/window.cc:891
 msgid "Co_nnect"
 msgstr "接続 (_N)"
 
-#: ../gtk/desktopSelectDlg.cc:856
+#: ../gtk/desktopSelectDlg.cc:962
 msgid "_Protocols"
 msgstr "プロトコル (_P)"
 
-#: ../gtk/desktopSelectDlg.cc:931
+#: ../gtk/desktopSelectDlg.cc:1029
 msgid "Roll_back"
 msgstr "ロールバック (_B)"
 
-#: ../gtk/helpSupportDlg.cc:167
+#: ../gtk/helpSupportDlg.cc:130
+msgid "_Help"
+msgstr "ヘルプ (_H)"
+
+#: ../gtk/helpSupportDlg.cc:134
+msgid "_Support Information"
+msgstr "サポート情報 (_S)"
+
+#: ../gtk/helpSupportDlg.cc:245
 #, c-format
 msgid "User help directory not found; falling back to %s.\n"
 msgstr "ユーザ ヘルプ ディレクトリが見つかりませんでした。%s に戻ります。\n"
 
-#: ../gtk/helpSupportDlg.cc:238
+#: ../gtk/helpSupportDlg.cc:317
 #, c-format
 msgid "An error occurred while reading the help file: %s.\n"
 msgstr "ヘルプ ファイルの読み込み中にエラーが発生しました: %s。\n"
+
+#: ../gtk/helpSupportDlg.cc:358
+msgid "Support Information"
+msgstr "サポート情報"
+
+#: ../gtk/helpSupportDlg.cc:399
+msgid "Product Information"
+msgstr "製品情報"
+
+#: ../gtk/helpSupportDlg.cc:400
+msgid "Product:"
+msgstr "製品:"
+
+#: ../gtk/helpSupportDlg.cc:401
+msgid "Version:"
+msgstr "バージョン:"
+
+#: ../gtk/helpSupportDlg.cc:424
+msgid "Host Information"
+msgstr "ホスト情報"
+
+#: ../gtk/helpSupportDlg.cc:425
+msgid "Host Name:"
+msgstr "ホスト名:"
+
+#: ../gtk/helpSupportDlg.cc:427
+msgid "Log File:"
+msgstr "ログ ファイル:"
+
+#: ../gtk/helpSupportDlg.cc:451
+msgid "Connection Information"
+msgstr "接続情報"
+
+#: ../gtk/helpSupportDlg.cc:452
+msgid "VMware View Server:"
+msgstr "VMware View Server:"
+
+#: ../gtk/helpSupportDlg.cc:621
+#, c-format
+msgid "An error occurred while reading the support file: %s.\n"
+msgstr "サポート ファイルの読み込み中にエラーが発生しました: %s。\n"
+
+#: ../gtk/kioskWindow.cc:55
+msgid "Unattended Mode Error"
+msgstr "無人モード エラー"
+
+#: ../gtk/kioskWindow.cc:108
+msgid "Unattended mode requires the connection server name to be provided.\n"
+msgstr "無人モードの場合は、Connection Server の名前を指定する必要があります。\n"
+
+#: ../gtk/kioskWindow.cc:152
+msgid "Connecting..."
+msgstr "接続しています..."
+
+#: ../gtk/kioskWindow.cc:180
+#: ../gtk/window.cc:837
+#: ../gtk/window.cc:849
+#: ../gtk/window.cc:1454
+#: ../gtk/window.cc:1471
+#: ../gtk/window.cc:1621
+#: ../gtk/window.cc:2533
+msgid "Logging in..."
+msgstr "ログインしています..."
+
+#: ../gtk/kioskWindow.cc:249
+#: ../gtk/kioskWindow.cc:267
+msgid "Desktop Not Available"
+msgstr "デスクトップを使用できません"
+
+#: ../gtk/kioskWindow.cc:250
+#, c-format
+msgid "No desktop for user '%s' on connection server '%s'."
+msgstr "ユーザー '%s' が使用できるデスクトップは Connection Server '%s' 上にありません。"
+
+#: ../gtk/kioskWindow.cc:268
+#, c-format
+msgid "Desktop '%s' is not available from connection server '%s'."
+msgstr "デスクトップ '%s' は Connection Server '%s' からは使用できません。"
+
+#: ../gtk/kioskWindow.cc:308
+msgid "Unexpected pass code request encountered."
+msgstr "予期しないパス コード要求が発生しました。"
+
+#: ../gtk/kioskWindow.cc:313
+msgid "Unexpected next token request encountered."
+msgstr "予期しない次のトークンの要求が発生しました。"
+
+#: ../gtk/kioskWindow.cc:318
+msgid "Unexpected pin change request encountered."
+msgstr "予期しない PIN 変更要求が発生しました。"
+
+#: ../gtk/kioskWindow.cc:324
+msgid "Unexpected disclaimer request."
+msgstr "予期しない免責事項要求です。"
+
+#: ../gtk/kioskWindow.cc:329
+msgid "Unexpected password change request."
+msgstr "予期しないパスワード変更要求です。"
+
+#: ../gtk/kioskWindow.cc:400
+#, c-format
+msgid "\n"
+"\n"
+"Retrying in %d seconds..."
+msgstr "\n"
+"\n"
+"%d 秒後に再試行します..."
 
 #: ../gtk/loginDlg.cc:72
 #: ../gtk/securIDDlg.cc:135
@@ -512,144 +831,183 @@ msgstr "古いパスワード (_P):"
 msgid "_New Password:"
 msgstr "新しいパスワード (_N):"
 
-#: ../gtk/passwordDlg.cc:124
+#: ../gtk/passwordDlg.cc:125
 msgid "Con_firm:"
 msgstr "確認 (_F):"
 
-#: ../gtk/prefs.cc:111
+#: ../gtk/prefs.cc:228
+#: ../gtk/prefs.cc:244
 #, c-format
-msgid "Creating ~/.vmware failed: %s\n"
-msgstr "~/.vmware の作成に失敗しました: %s\n"
+msgid "Directory \"%s\" is not writable.\n"
+msgstr "ディレクトリ \"%s\" は書き込み可能ではありません。\n"
 
-#: ../gtk/prefs.cc:727
-msgid "Keep window manager key bindings."
-msgstr "ウィンドウ マネージャのキー バインドを維持します。"
+#: ../gtk/prefs.cc:253
+#, c-format
+msgid "The path \"%s\" exists, but it is not a directory.\n"
+msgstr "パス \"%s\" は存在しますが、ディレクトリではありません。\n"
 
-#: ../gtk/prefs.cc:729
+#: ../gtk/prefs.cc:256
+#, c-format
+msgid "Cannot create directory \"%s\".\n"
+msgstr "ディレクトリ \"%s\" を作成できません。\n"
+
+#: ../gtk/prefs.cc:819
+msgid "Keep window manager key bindings (ignored by some remoting protocols)."
+msgstr "ウィンドウ マネージャのキー バインドを維持します（一部のリモート プロトコルには無視されます）。"
+
+#: ../gtk/prefs.cc:821
 msgid "Specify connection broker."
 msgstr "コネクション ブローカーを指定してください。"
 
-#: ../gtk/prefs.cc:729
+#: ../gtk/prefs.cc:821
 msgid "<broker URL>"
 msgstr "<ブローカー URL>"
 
-#: ../gtk/prefs.cc:731
+#: ../gtk/prefs.cc:823
 msgid "Specify user name for password authentication."
 msgstr "パスワード認証のためのユーザー名を指定してください。"
 
-#: ../gtk/prefs.cc:731
+#: ../gtk/prefs.cc:823
 msgid "<user name>"
 msgstr "<ユーザー名>"
 
-#: ../gtk/prefs.cc:733
+#: ../gtk/prefs.cc:825
 msgid "Specify password for password authentication."
 msgstr "パスワード認証のためのパスワードを指定してください。"
 
-#: ../gtk/prefs.cc:733
+#: ../gtk/prefs.cc:825
 msgid "<password>"
 msgstr "<パスワード>"
 
-#: ../gtk/prefs.cc:735
+#: ../gtk/prefs.cc:827
 msgid "Specify domain for password authentication."
 msgstr "パスワード認証のためのドメインを指定してください。"
 
-#: ../gtk/prefs.cc:735
+#: ../gtk/prefs.cc:827
 msgid "<domain name>"
 msgstr "<ドメイン名>"
 
-#: ../gtk/prefs.cc:737
+#: ../gtk/prefs.cc:829
 msgid "Specify desktop by name."
 msgstr "デスクトップを名前で指定してください。"
 
-#: ../gtk/prefs.cc:737
+#: ../gtk/prefs.cc:829
 msgid "<desktop name>"
 msgstr "<デスクトップ名>"
 
-#: ../gtk/prefs.cc:739
+#: ../gtk/prefs.cc:831
 msgid "Connect automatically if enough values are given on the command line."
 msgstr "コマンド ラインに適切な値が指定されている場合は、自動的に接続します。"
 
-#: ../gtk/prefs.cc:742
+#: ../gtk/prefs.cc:834
 msgid "Enable full screen mode."
 msgstr "フル スクリーン モードを有効にします。"
 
-#: ../gtk/prefs.cc:744
+#: ../gtk/prefs.cc:836
 msgid "Image file to use as background in full screen mode."
 msgstr "フル スクリーン モードで背景として使用するイメージ ファイル。"
 
-#: ../gtk/prefs.cc:744
-#: ../gtk/prefs.cc:748
+#: ../gtk/prefs.cc:836
+#: ../gtk/prefs.cc:840
 msgid "<image>"
 msgstr "<イメージ>"
 
-#: ../gtk/prefs.cc:746
+#: ../gtk/prefs.cc:838
 msgid "Forward device redirection to rdesktop"
 msgstr "rdesktop へのデバイス リダイレクトの転送"
 
-#: ../gtk/prefs.cc:746
+#: ../gtk/prefs.cc:838
 msgid "<device info>"
 msgstr "<デバイス情報>"
 
-#: ../gtk/prefs.cc:748
+#: ../gtk/prefs.cc:840
 msgid "Display a custom logo."
 msgstr "カスタム ロゴを表示します。"
 
-#: ../gtk/prefs.cc:750
+#: ../gtk/prefs.cc:842
 msgid "Directory location containing Wyse MMR libraries."
 msgstr "Wyse MMR ライブラリを含むディレクトリの場所です。"
 
-#: ../gtk/prefs.cc:751
+#: ../gtk/prefs.cc:843
 msgid "<mmr directory>"
 msgstr "<mmr ディレクトリ>"
 
-#: ../gtk/prefs.cc:753
+#: ../gtk/prefs.cc:845
 msgid "Command line options to forward to rdesktop."
 msgstr "rdesktop に転送するためのコマンド ライン オプションです。"
 
-#: ../gtk/prefs.cc:754
+#: ../gtk/prefs.cc:846
 msgid "<rdesktop options>"
 msgstr "<rdesktop オプション>"
 
-#: ../gtk/prefs.cc:756
+#: ../gtk/prefs.cc:848
+msgid "Path to file containing support contents."
+msgstr "サポート コンテンツを含むファイルへのパスです。"
+
+#: ../gtk/prefs.cc:848
+msgid "<support file>"
+msgstr "<サポート ファイル>"
+
+#: ../gtk/prefs.cc:850
 msgid "Options for USB forwarding."
 msgstr "USB 転送のオプション"
 
-#: ../gtk/prefs.cc:756
+#: ../gtk/prefs.cc:850
 msgid "<usb options>"
 msgstr "<USB オプション>"
 
-#: ../gtk/prefs.cc:758
+#: ../gtk/prefs.cc:852
 msgid "Preferred connection protocol [RDP|PCOIP|RGS|localvm]"
 msgstr "優先される接続プロトコル [RDP|PCOIP|RGS|localvm]"
 
-#: ../gtk/prefs.cc:759
+#: ../gtk/prefs.cc:853
 msgid "<protocol name>"
 msgstr "<プロトコル名>"
 
-#: ../gtk/prefs.cc:765
+#: ../gtk/prefs.cc:855
+msgid "Enable unattended (kiosk) mode."
+msgstr "無人（キオスク）モードを有効にします。"
+
+#: ../gtk/prefs.cc:857
+msgid "Print environment information."
+msgstr "環境情報を印刷します。"
+
+#: ../gtk/prefs.cc:859
+msgid "Do not retry on error events in unattended mode."
+msgstr "エラー イベントに対して無人モードで再試行しないでください。"
+
+#: ../gtk/prefs.cc:861
+msgid "Initial keyboard layout locale (en-us, de, fr, etc...)"
+msgstr "初期キーボード レイアウト ロケール（en-us、de、fr、など）"
+
+#: ../gtk/prefs.cc:862
+msgid "<kbdlayout name>"
+msgstr "<キーボード レイアウト名>"
+
+#: ../gtk/prefs.cc:868
 msgid "File containing additional command line arguments."
 msgstr "その他のコマンド ライン引数を含むファイルです。"
 
-#: ../gtk/prefs.cc:766
+#: ../gtk/prefs.cc:869
 msgid "<file path>"
 msgstr "<ファイル パス>"
 
-#: ../gtk/prefs.cc:768
+#: ../gtk/prefs.cc:871
 msgid "Display version information and exit."
 msgstr "バージョン情報を表示して終了します。"
 
-#: ../gtk/prefs.cc:773
-#: ../gtk/prefs.cc:833
+#: ../gtk/prefs.cc:878
+#: ../gtk/prefs.cc:953
 msgid "- connect to VMware View desktops"
 msgstr "- VMware View デスクトップに接続する"
 
-#: ../gtk/prefs.cc:790
-#: ../gtk/prefs.cc:869
+#: ../gtk/prefs.cc:893
+#: ../gtk/prefs.cc:973
 #, c-format
 msgid "Error parsing command line: %s\n"
 msgstr "コマンド ライン解析中のエラー: %s\n"
 
-#: ../gtk/prefs.cc:796
+#: ../gtk/prefs.cc:900
 #, c-format
 msgid "%s %s\n"
 "\n"
@@ -679,7 +1037,7 @@ msgid "%s %s\n"
 msgstr "%s %s\n"
 "\n"
 "VMware は米国およびその他の地域における VMware, Inc. の\n"
-"登録商標または商標(\"Marks\"）であり、LGPL バージョン 2.1 \n"
+"登録商標または商標（\"Marks\"）であり、LGPL バージョン 2.1 \n"
 "の条件に基づいてライセンスされません。VMware View Open Client を\n"
 "変更せずにバイナリ形式またはソース形式で配布するか、付属\n"
 "ドキュメントを変更せずに配布する場合、いかなる方法によっても\n"
@@ -697,30 +1055,84 @@ msgstr "%s %s\n"
 "\n"
 
 #. TRANSLATORS: Ignore this; we will localize with appropriate URL.
-#: ../gtk/prefs.cc:818
+#: ../gtk/prefs.cc:922
 msgid "http://www.vmware.com/go/patents"
 msgstr "http://www.vmware.com/go/patents-jp"
 
-#: ../gtk/prefs.cc:885
+#: ../gtk/prefs.cc:990
 msgid "Password: "
 msgstr "パスワード: "
 
-#: ../gtk/prefs.cc:957
+#: ../gtk/prefs.cc:1067
 #, c-format
 msgid "Unknown protocol: %s\n"
 msgstr "不明なプロトコル: %s\n"
 
-#: ../gtk/rdesktop.cc:216
-msgid "Required GStreamer plugins could not be found.  Please check that your path "
-"is set properly."
-msgstr "必要な GStreamer プラグインが見つかりませんでした。パスが正しく設定されていることを確認してください。"
+#: ../gtk/prefs.cc:1117
+msgid "Unknown"
+msgstr "不明"
 
-#: ../gtk/rmks.cc:120
+#: ../gtk/prefs.cc:1125
+msgid "A valid connection server name must be specified to print the environment "
+"information.\n"
+msgstr "環境情報を印刷するには、有効な Connection Server 名を指定する"
+"必要があります。\n"
+
+#: ../gtk/prefs.cc:1132
+#, c-format
+msgid "IP Address: %s\n"
+msgstr "IP アドレス: %s\n"
+
+#: ../gtk/prefs.cc:1133
+#, c-format
+msgid "MAC Address: %s\n"
+msgstr "MAC アドレス: %s\n"
+
+#: ../gtk/prefs.cc:1134
+#, c-format
+msgid "Machine Name: %s\n"
+msgstr "マシン名: %s\n"
+
+#: ../gtk/prefs.cc:1135
+#, c-format
+msgid "Machine Domain: %s\n"
+msgstr "マシン ドメイン: %s\n"
+
+#: ../gtk/prefs.cc:1136
+#, c-format
+msgid "Logged On User Name: %s\n"
+msgstr "ログオン ユーザー名: %s\n"
+
+#: ../gtk/prefs.cc:1137
+#, c-format
+msgid "Logged On Domain Name: %s\n"
+msgstr "ログオン ドメイン名: %s\n"
+
+#: ../gtk/prefs.cc:1138
+#, c-format
+msgid "Time Zone: %s\n"
+msgstr "タイム ゾーン: %s\n"
+
+#: ../gtk/rdesktop.cc:229
+msgid "Gstreamer plugins not found"
+msgstr "Gstreamer プラグインが見つかりません"
+
+#: ../gtk/rdesktop.cc:230
+msgid "The required GStreamer plugins could not be found. Please check that your "
+"path is set properly."
+msgstr "必要な GStreamer プラグインが見つかりませんでした。パスが正しく設定されていることを "
+"確認してください。"
+
+#: ../gtk/rdesktop.cc:235
+msgid "Warning"
+msgstr "警告"
+
+#: ../gtk/rmks.cc:122
 #, c-format
 msgid "An error was encountered with the remote desktop connection: %s."
 msgstr "リモート デスクトップ接続でエラーが発生しました: %s。"
 
-#: ../gtk/rmks.cc:133
+#: ../gtk/rmks.cc:135
 msgid "\n"
 "\n"
 "You may be able to connect to this desktop by clicking cancel and selecting "
@@ -729,9 +1141,17 @@ msgstr "\n"
 "\n"
 "「キャンセル」をクリックして別のプロトコルを選択することで、このデスクトップに接続できる可能性があります。"
 
-#: ../gtk/rmks.cc:142
+#: ../gtk/rmks.cc:144
 msgid "An unknown error was encountered with the remote desktop connection."
 msgstr "リモート デスクトップ接続で不明なエラーが発生しました。"
+
+#: ../gtk/rmks.cc:150
+msgid "An error occurred while connecting to the remote desktop"
+msgstr "リモート デスクトップへの接続中にエラーが発生しました"
+
+#: ../gtk/rmks.cc:198
+msgid "Warning: -K option is ignored when using PCoIP.\n"
+msgstr "警告: PCoIP 使用時に -K オプションは無視されます。\n"
 
 #: ../gtk/scCertDetailsDlg.cc:99
 msgid "<b>This certificate has been verified for the following uses:</b>"
@@ -858,7 +1278,7 @@ msgstr "スマート カードを挿入して、続行してください。"
 msgid "_PIN:"
 msgstr "PIN (_P):"
 
-#: ../gtk/scPinDlg.cc:110
+#: ../gtk/scPinDlg.cc:111
 #, c-format
 msgid "A PIN is required to log in using the token named %s."
 msgstr "%s という名前のトークンを使用してログインするには PIN が必要です。"
@@ -896,37 +1316,65 @@ msgstr "システム生成の RSA SecurID PIN を受け入れてください。"
 msgid "Con_firm PIN:"
 msgstr "PIN の確認 (_F):"
 
-#: ../gtk/window.cc:370
+#: ../gtk/window.cc:382
 msgid "_View Certificate"
 msgstr "証明書を表示 (_V)"
 
-#: ../gtk/window.cc:851
-#: ../gtk/window.cc:878
-#: ../gtk/window.cc:907
+#: ../gtk/window.cc:947
+#: ../gtk/window.cc:975
+#: ../gtk/window.cc:1005
 msgid "_Authenticate"
 msgstr "認証 (_A)"
 
-#: ../gtk/window.cc:939
+#: ../gtk/window.cc:1038
 msgid "_Login"
 msgstr "ログイン (_L)"
 
-#: ../gtk/window.cc:1010
+#: ../gtk/window.cc:1111
 msgid "Ch_ange"
 msgstr "変更 (_A)"
 
-#: ../gtk/window.cc:1373
-msgid "The PINs do not match."
-msgstr "PIN が一致しません。"
+#: ../gtk/window.cc:1175
+msgid "C_onnect"
+msgstr "接続 (_O)"
 
-#: ../gtk/window.cc:1439
-msgid "The passwords do not match."
-msgstr "パスワードが一致しません。"
+#: ../gtk/window.cc:1423
+msgid "Reconnecting to desktop..."
+msgstr "デスクトップに再接続しています..."
 
-#: ../gtk/window.cc:1520
-msgid "The secure connection to the View Server has unexpectedly disconnected."
-msgstr "View Server への安全な接続が予期せずに切断されました。"
+#: ../gtk/window.cc:1482
+msgid "PIN Warning"
+msgstr "PIN 警告"
 
-#: ../gtk/window.cc:1523
+#: ../gtk/window.cc:1484
+msgid "PIN Error"
+msgstr "PIN エラー"
+
+#: ../gtk/window.cc:1517
+msgid "Submitting passcode..."
+msgstr "パスコードを送信しています..."
+
+#: ../gtk/window.cc:1544
+msgid "Submitting tokencode..."
+msgstr "トークンコードを送信しています..."
+
+#: ../gtk/window.cc:1575
+msgid "PIN Mismatch"
+msgstr "PIN 不一致"
+
+#: ../gtk/window.cc:1576
+msgid "The PINs you entered do not match. Please try again."
+msgstr "入力した PIN は一致しません。再度実行してください。"
+
+#: ../gtk/window.cc:1652
+msgid "Password Mismatch"
+msgstr "パスワード不一致"
+
+#: ../gtk/window.cc:1653
+msgid "The passwords you entered do not match. Please try again."
+msgstr "入力したパスワードは一致しません。再度実行してください。"
+
+#: ../gtk/window.cc:1751
 #, c-format
 msgid "\n"
 "\n"
@@ -935,21 +1383,29 @@ msgstr "\n"
 "\n"
 "理由: %s。"
 
-#: ../gtk/window.cc:1605
+#: ../gtk/window.cc:1755
+msgid "Tunnel Disconnected"
+msgstr "トンネルが切断されました"
+
+#: ../gtk/window.cc:1859
 #, c-format
 msgid "Unable to load image '%s': %s\n"
-msgstr "イメージ「%s」をロードできません： %s\n"
+msgstr "イメージ '%s' をロードできません: %s\n"
 
-#: ../gtk/window.cc:1751
+#: ../gtk/window.cc:2011
 #, c-format
 msgid "Unable to load background image '%s': %s\n"
-msgstr "'%s' 背景イメージをロードできません: %s\n"
+msgstr "背景イメージ '%s' をロードできません: %s\n"
 
-#: ../gtk/window.cc:2167
+#: ../gtk/window.cc:2467
 msgid "_Retry"
 msgstr "再試行 (_R)"
 
-#: ../gtk/window.cc:2413
+#: ../gtk/window.cc:2561
+msgid "Loading desktops..."
+msgstr "デスクトップをロードしています..."
+
+#: ../gtk/window.cc:2743
 #, c-format
 msgid "You are connected to %s.\n"
 "\n"
@@ -958,15 +1414,27 @@ msgstr "%s に接続されています。\n"
 "\n"
 "このデスクトップが応答しない場合は、「切断」をクリックしてください。"
 
-#: ../gtk/window.cc:2426
+#: ../gtk/window.cc:2765
 msgid "Send C_trl-Alt-Del"
 msgstr "Ctrl-Alt-Del の送信 (_T)"
 
-#: ../gtk/window.cc:2427
+#: ../gtk/window.cc:2766
 msgid "_Disconnect"
 msgstr "切断 (_D)"
 
-#: ../gtk/window.cc:2740
+#: ../gtk/window.cc:2875
+msgid "Disconnected"
+msgstr "切断されました"
+
+#: ../gtk/window.cc:2961
+msgid "Not Connected"
+msgstr "接続されていません"
+
+#: ../gtk/window.cc:3097
+msgid "You have been logged out"
+msgstr "ログアウトされました"
+
+#: ../gtk/window.cc:3098
 msgid "Your smart card or token was removed, so you have been logged out of the "
 "View Connection Server."
 msgstr "スマート カードまたはトークンが削除されているため、View Connection Server からログアウトされました。"
@@ -979,11 +1447,11 @@ msgstr "選択 (_S)"
 msgid "Select a window size:"
 msgstr "ウィンドウ サイズを選択："
 
-#: ../gtk/windowSizeDlg.cc:95
+#: ../gtk/windowSizeDlg.cc:96
 msgid "Small"
 msgstr "小さい"
 
-#: ../gtk/windowSizeDlg.cc:103
+#: ../gtk/windowSizeDlg.cc:104
 msgid "Large"
 msgstr "大きい"
 
@@ -1035,42 +1503,34 @@ msgstr "無効なプロトコル"
 msgid "Unknown Protocol (%s)"
 msgstr "不明なプロトコル (%s)"
 
-#: ../tunnel.cc:160
+#: ../tunnel.cc:161
 msgid "Could not find secure tunnel executable.\n"
 msgstr "安全なトンネル実行ファイルが見つかりませんでした。\n"
 
-#: ../tunnel.cc:236
-#, c-format
-msgid "Message from View Server: %s"
-msgstr "View Server からのメッセージ: %s"
+#: ../tunnel.cc:243
+msgid "Message from View Server"
+msgstr "View Server からのメッセージ"
 
-#: ../tunnel.cc:241
-#, c-format
-msgid "Error from View Server: %s"
-msgstr "View Server からのエラー: %s"
+#: ../tunnel.cc:248
+msgid "Error from View Connection Server"
+msgstr "View Connection Server からのエラー"
 
-#: ../tunnel.cc:245
+#: ../tunnel.cc:252
 #, c-format
 msgid "Couldn't resolve tunnel address '%s'"
 msgstr "トンネル アドレス '%s' を解決できませんでした"
 
-#: ../usb.cc:112
+#: ../usb.cc:117
 #, c-format
 msgid "%s was not found; disabling USB redirection.\n"
-msgstr "%s が見つかりませんでした。USB リダイレクトを無効にします。\n"
+msgstr "%s が見つかりませんでした。USB リダイレクトを無効にしています。\n"
 
-#: ../util.cc:1175
+#: ../util.cc:1186
 #, c-format
 msgid "File '%s' could not be created: %s\n"
-msgstr "ファイル '%s' を作成できませんでした： %s\n"
+msgstr "ファイル '%s' を作成できませんでした: %s\n"
 
-#: ../util.cc:1179
+#: ../util.cc:1190
 #, c-format
 msgid "Could not change mode of file '%s': %s\n"
-msgstr "ファイル '%s' のモードを変更できませんでした： %s\n"
-
-#~ msgid "_Connect"
-#~ msgstr "接続 (_C)"
-
-#~ msgid "Teradici PCoIP"
-#~ msgstr "Teradici PCoIP"
+msgstr "ファイル '%s' のモードを変更できませんでした: %s\n"

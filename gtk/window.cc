@@ -33,6 +33,7 @@
 #include <boost/bind.hpp>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <gtk/gtk.h>
 
 extern "C" {
 #include "vm_basic_types.h"
@@ -40,22 +41,31 @@ extern "C" {
 } // extern "C"
 
 #include "brokerDlg.hh"
+#include "cdkErrors.h"
 #include "certViewer.hh"
 #include "cryptoki.hh"
+#ifndef __MINGW32__
 #include "desktopDlg.hh"
+#endif
 #include "disclaimerDlg.hh"
-#include "helpSupportDlg.hh"
 #include "icons/spinner_anim.h"
 #include "icons/view_16x.h"
 #include "icons/view_32x.h"
 #include "icons/view_48x.h"
 #include "icons/view_client_banner.h"
+#ifdef HAVE_PCOIP_BANNER
+#include "icons/view_client_banner_pcoip.h"
+#endif
 #include "loginDlg.hh"
 #include "passwordDlg.hh"
 #include "prefs.hh"
 #include "protocols.hh"
+#ifdef __MINGW32__
+#include "mstsc.hh"
+#else
 #include "rdesktop.hh"
 #include "rmks.hh"
+#endif
 #include "scCertDetailsDlg.hh"
 #include "scCertDlg.hh"
 #include "scInsertPromptDlg.hh"
@@ -67,14 +77,17 @@ extern "C" {
 
 
 #include <gdk/gdkkeysyms.h>
+#ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #include <X11/Xlib.h>
+#endif
 
 
 enum {
    RESPONSE_CTRL_ALT_DEL = 1,
    RESPONSE_DISCONNECT,
-   RESPONSE_RESET
+   RESPONSE_RESET,
+   RESPONSE_QUIT
 };
 
 
@@ -85,8 +98,12 @@ enum {
 #define SPINNER_ANIM_N_FRAMES 20
 #define TOKEN_EVENT_TIMEOUT_MS 500
 
+#ifdef _WIN32
+#define COOKIE_FILE_NAME "view-cookies"
+#else
 #define VMWARE_HOME_DIR "~/.vmware"
 #define COOKIE_FILE_NAME VMWARE_HOME_DIR"/view-cookies"
+#endif
 #define COOKIE_FILE_MODE (S_IRUSR | S_IWUSR)
 
 
@@ -125,7 +142,6 @@ Window::Window()
      mCryptoki(NULL),
      mTokenEventTimeout(0),
      mCanceledScDlg(false),
-     mCertAuthInfo(NULL),
      mAuthCert(NULL),
      mDesktopHelper(NULL),
      mTokenEventAction(ACTION_NONE),
@@ -156,6 +172,11 @@ Window::Window()
    li = NULL;
 
    g_object_add_weak_pointer(G_OBJECT(mWindow), (gpointer *)&mWindow);
+
+#ifndef __MINGW32__
+   g_signal_connect(mWindow, "realize", G_CALLBACK(OnRealize), this);
+   g_signal_connect(mWindow, "unrealize", G_CALLBACK(OnUnrealize), this);
+#endif
 }
 
 
@@ -177,14 +198,17 @@ Window::Window()
 
 Window::~Window()
 {
-   mDesktopUIExitCnx.disconnect();
-   delete mDesktopHelper;
-   delete mCryptoki;
+   Reset();
+
+   ASSERT(!mDesktopHelper);
+   ASSERT(!mBroker);
    delete mDlg;
-   delete mBroker;
+
    if (mWindow) {
       gtk_widget_destroy(GTK_WIDGET(mWindow));
    }
+
+   delete mCryptoki;
 }
 
 
@@ -219,7 +243,16 @@ Window::Reset()
       StopWatchingForTokenEvents();
    }
    if (mCryptoki) {
-      mCryptoki->FreeCert(mAuthCert);
+      /*
+       * If we have a certificate list, mAuthCert is just a pointer to
+       * the copy stored in the list.  Otherwise, mAuthCert is an
+       * extra copy and needs to be freed itself.
+       */
+      if (mCertificates.size()) {
+         mCryptoki->FreeCertificates(mCertificates);
+      } else {
+         mCryptoki->FreeCert(mAuthCert);
+      }
       mAuthCert = NULL;
 
       mCryptoki->CloseAllSessions();
@@ -230,8 +263,7 @@ Window::Reset()
       */
       ASSERT(!mAuthCert);
    }
-   delete mBroker;
-   mBroker = NULL;
+   SetBroker(NULL);
 }
 
 
@@ -286,12 +318,7 @@ Window::InitWindow()
                                    (gpointer *)&mBackgroundImage);
       }
 
-      mFullscreenAlign = GTK_ALIGNMENT(gtk_alignment_new(0.5,0.5,0,0));
-      gtk_widget_show(GTK_WIDGET(mFullscreenAlign));
-      gtk_fixed_put(fixed, GTK_WIDGET(mFullscreenAlign), 0, 0);
-      g_object_add_weak_pointer(G_OBJECT(mFullscreenAlign),
-                                (gpointer *)&mFullscreenAlign);
-      OnSizeAllocate(NULL, &GTK_WIDGET(mWindow)->allocation, this);
+      CreateAlignment(fixed);
 
       /*
        * Use a GtkEventBox to get the default background color.
@@ -380,6 +407,38 @@ Window::InitWindow()
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Window::CreateAlignment --
+ *
+ *      Create alignment for the fullscreen and set widgets to align in the
+ *      center.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      mFullscreenAlign is initialed and added to fixed.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::CreateAlignment(GtkFixed *fixed) // IN
+{
+   ASSERT(fixed);
+   ASSERT(!mFullscreenAlign);
+
+   mFullscreenAlign = GTK_ALIGNMENT(gtk_alignment_new(0.5, 0.5, 0, 0));
+   gtk_widget_show(GTK_WIDGET(mFullscreenAlign));
+   gtk_fixed_put(fixed, GTK_WIDGET(mFullscreenAlign), 0, 0);
+   g_object_add_weak_pointer(G_OBJECT(mFullscreenAlign),
+                             (gpointer *)&mFullscreenAlign);
+   DoSizeAllocate(&GTK_WIDGET(mWindow)->allocation);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Window::Show --
  *
  *      Show the window.
@@ -396,8 +455,10 @@ Window::InitWindow()
 void
 Window::Show()
 {
+#ifdef GDK_WINDOWING_X11
    // Set the window's _NET_WM_USER_TIME from an X server roundtrip.
    Util::OverrideWindowUserTime(mWindow);
+#endif
    gtk_window_present(mWindow);
 }
 
@@ -432,14 +493,23 @@ Window::SetContent(Dlg *dlg) // IN
       if (!dynamic_cast<BrokerDlg *>(dlg)) {
          mDlg->SavePrefs();
       }
+#ifndef __MINGW32__
       if (dynamic_cast<DesktopDlg *>(mDlg)) {
          mDesktopUIExitCnx.disconnect();
          if (mDesktopHelper) {
+            /*
+             * Since this codepath can be called from a ProcHelper's onErr
+             * handler, we need to actually delete the object in an idle
+             * handler, but we kill it before hand.
+             */
             mDesktopHelper->Kill();
             g_idle_add(OnIdleDeleteProcHelper, mDesktopHelper);
             mDesktopHelper = NULL;
          }
-         if (!GetFullscreen() && Prefs::GetPrefs()->GetBackground().empty()) {
+         Prefs::DesktopSize desktopSize =
+            Prefs::GetPrefs()->GetDefaultDesktopSize();
+         if (!GetFullscreen() && (desktopSize == Prefs::ALL_SCREENS ||
+                                  desktopSize == Prefs::FULL_SCREEN)) {
             /*
              * This causes GtkWindow's centering logic to be reset, so
              * the window isn't in the bottom left corner after coming
@@ -449,12 +519,14 @@ Window::SetContent(Dlg *dlg) // IN
             hidden = true;
          }
       }
+#endif
       delete mDlg;
    }
    mDlg = dlg;
    GtkWidget *content = mDlg->GetContent();
    gtk_widget_show(content);
 
+#ifndef __MINGW32__
    if (dynamic_cast<DesktopDlg *>(mDlg)) {
       if (mContentBox) {
          GList *children =
@@ -475,6 +547,12 @@ Window::SetContent(Dlg *dlg) // IN
       }
       gtk_box_pack_start(GTK_BOX(mContentBox), content, true, true, 0);
    }
+#else
+   if (!mContentBox) {
+      InitWindow();
+   }
+   gtk_box_pack_start(GTK_BOX(mContentBox), content, true, true, 0);
+#endif
    /*
     * From bora/apps/lib/lui/window.cc:
     *
@@ -494,6 +572,7 @@ Window::SetContent(Dlg *dlg) // IN
     * synchronously calling the check_resize method of the window
     * ourselves.
     */
+#ifndef __MINGW32__
    Prefs::DesktopSize size = Prefs::GetPrefs()->GetDefaultDesktopSize();
    DesktopDlg *desktopDlg = dynamic_cast<DesktopDlg *>(mDlg);
 
@@ -517,7 +596,7 @@ Window::SetContent(Dlg *dlg) // IN
                                                               : NULL);
       }
    }
-
+#endif
    UpdateForwardButton(mDlg->GetForwardEnabled(), mDlg->GetForwardVisible());
    mDlg->updateForwardButton.connect(boost::bind(&Window::UpdateForwardButton,
                                                  this, _1, _2));
@@ -526,7 +605,10 @@ Window::SetContent(Dlg *dlg) // IN
       Util::string stockId = dynamic_cast<BrokerDlg *>(mDlg) ?
                                  GTK_STOCK_QUIT : GTK_STOCK_CANCEL;
       Util::SetButtonIcon(mCancelButton, stockId);
+      UpdateCancelButton(mDlg->GetCancelable());
    }
+
+   UpdateHelpButton(true, mDlg->GetHelpVisible());
 
    CertViewer *vCert = dynamic_cast<CertViewer *>(mDlg);
    if (vCert) {
@@ -688,6 +770,8 @@ Window::RequestBroker()
        * DoInitialize is a virtual method.
        */
       g_idle_add(DelayedDoInitialize, this);
+   } else {
+      SetReady();
    }
    firstTimeThrough = false;
 }
@@ -696,107 +780,146 @@ Window::RequestBroker()
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Window::GetCertAuthInfo --
+ * cdk::Window::RequestCertificate --
  *
  *      Get a user-selected certificate and private key for use in
  *      authenticating to the broker.
  *
  * Results:
- *      An X509 cert, or NULL, and *privKey points to a private key, or NULL.
+ *      None
  *
  * Side effects:
- *      mCryptoki may be created and initialized.
+ *      None
  *
  *-----------------------------------------------------------------------------
  */
 
-Broker::CertAuthInfo
-Window::GetCertAuthInfo(SSL *ssl) // IN
+void
+Window::RequestCertificate(std::list<Util::string> &trustedIssuers) // IN
 {
-   ASSERT(!mCertAuthInfo);
+   mTrustedIssuers = trustedIssuers;
 
+   RequestCertificate();
+}
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::RequestInsertSmartCard --
+ *
+ *      Prompt the user to insert a smart card.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::RequestInsertSmartCard()
+{
+   ScInsertPromptDlg *dlg = new ScInsertPromptDlg(mCryptoki);
+   SetContent(dlg);
+   SetReady();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::RequestCertificate --
+ *
+ *      Attempt to request a certificate from the user.
+ *
+ *      If no slots are available, skip certificate auth.
+ *
+ *      If no tokens are available, prompt the user to insert a token.
+ *
+ *      If one cert is available, try to use that cert.
+ *
+ *      If multiple certs are available, prompt the user to select
+ *      one.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Initializes mCryptoki.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::RequestCertificate()
+{
    if (!mCryptoki) {
       mCryptoki = new Cryptoki();
-      mCryptoki->requestPin.connect(boost::bind(&Window::OnScPinRequested,
-                                                this, _1, _2));
       mCryptoki->LoadModules(LIBDIR"/vmware/view/pkcs11");
    }
 
-   std::list<X509 *> certs;
-   Broker::CertAuthInfo info;
-   mCertAuthInfo = &info;
-
-requestCerts:
-   // Reset the certs.
-   info.cert = NULL;
-   info.key = NULL;
-   if (info.pin) {
-      ZERO_STRING(info.pin);
-      g_free(info.pin);
-      info.pin = NULL;
-   }
-   info.reader.clear();
-   Cryptoki::FreeCertificates(certs);
-
-   if (mCryptoki->GetHasSlots() && !mCryptoki->GetHasTokens()) {
-      SetReady();
-      ScInsertPromptDlg *dlg = new ScInsertPromptDlg(mCryptoki);
-      SetContent(dlg);
-
-      mCanceledScDlg = false;
-      gtk_main();
+   if (!mCryptoki->GetHasSlots()) {
       SetBusy(_("Logging in..."));
+      mBroker->SubmitCertificate();
+   } else if (!mCryptoki->GetHasTokens()) {
+      RequestInsertSmartCard();
+   } else {
+      Cryptoki::FreeCertificates(mCertificates);
+      mAuthCert = NULL;
 
-      if (mCanceledScDlg) {
-         goto returnInfo;
+      mCertificates = mCryptoki->GetCertificates(mTrustedIssuers);
+
+      switch (mCertificates.size()) {
+      case 0:
+         SetBusy(_("Logging in..."));
+         mBroker->SubmitCertificate();
+         break;
+      case 1:
+         mAuthCert = mCertificates.front();
+         DoAttemptSubmitCertificate();
+         break;
+      default: {
+         ScCertDlg *dlg = new ScCertDlg();
+         SetContent(dlg);
+         Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
+         dlg->SetCertificates(mCertificates);
+         SetReady();
+         StartWatchingForTokenEvents(ACTION_REQUEST_CERTIFICATE);
+         break;
+      }
       }
    }
+}
 
-   certs = mCryptoki->GetCertificates(SSL_get_client_CA_list(ssl));
-   switch (certs.size()) {
-   case 0:
-      goto returnInfo;
-   case 1:
-      info.cert = certs.front();
-      break;
-   default: {
-      ScCertDlg *dlg = new ScCertDlg();
-      SetReady();
-      SetContent(dlg);
-      Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
-      dlg->SetCertificates(certs);
 
-      mCanceledScDlg = false;
-      StartWatchingForTokenEvents(ACTION_QUIT_MAIN_LOOP);
-      gtk_main();
-      SetBusy(_("Logging in..."));
-      if (HadTokenEvent()) {
-         goto requestCerts;
-      }
-      StopWatchingForTokenEvents();
-      if (!mCanceledScDlg) {
-         info.cert = const_cast<X509 *>(dlg->GetCertificate());
-      }
-      break;
-   }
-   }
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::RequestPrivateKey --
+ *
+ *      Prompt the user to enter their PIN.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
 
-   if (info.cert) {
-      StartWatchingForTokenEvents(ACTION_QUIT_MAIN_LOOP);
-      info.key = mCryptoki->GetPrivateKey(info.cert);
-      if (HadTokenEvent()) {
-         goto requestCerts;
-      }
-      StopWatchingForTokenEvents();
-      certs.remove(info.cert);
-      Cryptoki::FreeCertificates(certs);
-      info.reader = mCryptoki->GetSlotName(info.cert);
-   }
-
-returnInfo:
-   mCertAuthInfo = NULL;
-   mAuthCert = mCryptoki->DupCert(info.cert);
-   return info;
+void
+Window::RequestPrivateKey()
+{
+   ScPinDlg *dlg = new ScPinDlg();
+   SetContent(dlg);
+   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
+   dlg->SetTokenName(mCryptoki->GetTokenName(mAuthCert));
+   dlg->SetCertificate(mAuthCert);
+   SetReady();
+   StartWatchingForTokenEvents(ACTION_REQUEST_CERTIFICATE);
 }
 
 
@@ -821,8 +944,8 @@ Window::RequestDisclaimer(const Util::string &disclaimer) // IN
 {
    DisclaimerDlg *dlg = new DisclaimerDlg();
    SetContent(dlg);
-   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK);
    dlg->SetText(disclaimer);
+   SetReady();
 }
 
 
@@ -851,6 +974,7 @@ Window::RequestPasscode(const Util::string &username, // IN
    Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("_Authenticate"));
    dlg->SetState(SecurIDDlg::STATE_PASSCODE, username, userSelectable);
    dlg->authenticate.connect(boost::bind(&Window::DoSubmitPasscode, this));
+   SetReady();
 }
 
 
@@ -878,6 +1002,7 @@ Window::RequestNextTokencode(const Util::string &username) // IN
    Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("_Authenticate"));
    dlg->SetState(SecurIDDlg::STATE_NEXT_TOKEN, username);
    dlg->authenticate.connect(boost::bind(&Window::DoSubmitNextTokencode, this));
+   SetReady();
 }
 
 
@@ -899,14 +1024,15 @@ Window::RequestNextTokencode(const Util::string &username) // IN
 
 void
 Window::RequestPinChange(const Util::string &pin,     // IN
-                      const Util::string &message, // IN
-                      bool userSelectable)         // IN
+                         const Util::string &message, // IN
+                         bool userSelectable)         // IN
 {
    SecurIDDlg *dlg = new SecurIDDlg();
    SetContent(dlg);
    Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("_Authenticate"));
    dlg->SetState(SecurIDDlg::STATE_SET_PIN, pin, userSelectable, message);
    dlg->authenticate.connect(boost::bind(&Window::DoSubmitPins, this));
+   SetReady();
 }
 
 
@@ -961,12 +1087,12 @@ Window::RequestPassword(const Util::string &username,             // IN
    Util::string domainPref = prefs->GetDefaultDomain();
    for (std::vector<Util::string>::const_iterator i = domains.begin();
         i != domains.end(); i++) {
-      if (Str_Strcasecmp(i->c_str(), suggestedDomain.c_str()) == 0) {
+      if (Util::Utf8Casecmp(i->c_str(), suggestedDomain.c_str()) == 0) {
          // Use value in the list so the case matches.
          domain = *i;
          domainFound = true;
          break;
-      } else if (Str_Strcasecmp(i->c_str(), domainPref.c_str()) == 0) {
+      } else if (Util::Utf8Casecmp(i->c_str(), domainPref.c_str()) == 0) {
          domain = *i;
       }
    }
@@ -980,7 +1106,9 @@ Window::RequestPassword(const Util::string &username,             // IN
                   domains, domain);
    prefs->ClearPassword();
    if (prefs->GetNonInteractive() && dlg->IsValid()) {
-      AddForwardIdleHandler();
+      ForwardHandler();
+   } else {
+      SetReady();
    }
 }
 
@@ -1014,6 +1142,7 @@ Window::RequestPasswordChange(const Util::string &username, // IN
    domains.push_back(domain);
 
    dlg->SetFields(username, true, "", domains, domain);
+   SetReady();
 }
 
 
@@ -1038,6 +1167,7 @@ Window::RequestDesktop()
 {
    Util::string defaultDesktop = Prefs::GetPrefs()->GetDefaultDesktop();
    Util::string initialDesktop = "";
+   Util::string defaultProto = Prefs::GetPrefs()->GetDefaultProtocol();
    /*
     * Iterate through desktops. If the passed-in desktop name is found,
     * pass it as initially-selected. Otherwise use a desktop with the
@@ -1048,32 +1178,41 @@ Window::RequestDesktop()
       Util::string name = (*i)->GetName();
       if (name == defaultDesktop) {
          initialDesktop = defaultDesktop;
-         break;
-      } else if ((*i)->GetAutoConnect()) {
+      } else if (initialDesktop.empty() && (*i)->GetAutoConnect()) {
          initialDesktop = name;
+      }
+      if (!defaultProto.empty()) {
+         (*i)->SetProtocol(defaultProto);
       }
    }
 
    int monitors = gdk_screen_get_n_monitors(gtk_window_get_screen(mWindow));
    Log("Number of monitors on this screen is %d.\n", monitors);
 
+#ifdef GDK_WINDOWING_X11
    GdkAtom atom = gdk_atom_intern("_NET_WM_FULLSCREEN_MONITORS", FALSE);
    bool supported = atom != GDK_NONE && gdk_net_wm_supports(atom);
+#else
+   bool supported = false;
+#endif
+
    Log("Current window manager %s _NET_WM_FULLSCREEN_MONITORS message.\n",
        supported ? "supports" : "does not support");
 
-   DesktopSelectDlg *dlg = new DesktopSelectDlg(mBroker->mDesktops,
-                                                initialDesktop,
-                                                monitors > 1 && supported,
-                                                !GetFullscreen());
+   DesktopSelectDlg *dlg = CreateDesktopSelectDlg(mBroker->mDesktops,
+                                                  initialDesktop,
+                                                  monitors > 1 && supported,
+                                                  !GetFullscreen());
    SetContent(dlg);
-   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
+   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("C_onnect"));
    dlg->action.connect(boost::bind(&Window::DoDesktopAction, this, _1));
 
    if (Prefs::GetPrefs()->GetNonInteractive() &&
        (!initialDesktop.empty() ||
         (mBroker->mDesktops.size() == 1 && dlg->GetDesktop()->CanConnect()))) {
-      AddForwardIdleHandler();
+      ForwardHandler();
+   } else {
+      SetReady();
    }
 }
 
@@ -1095,11 +1234,12 @@ Window::RequestDesktop()
  */
 
 void
-Window::RequestTransition(const Util::string &message)
+Window::RequestTransition(const Util::string &message, // IN
+                          bool useMarkup)              // IN/OPT
 {
    Log("Transitioning: %s\n", message.c_str());
    TransitionDlg *dlg = new TransitionDlg(TransitionDlg::TRANSITION_PROGRESS,
-                                          message);
+                                          message, useMarkup);
 
    std::vector<GdkPixbuf *> pixbufs = TransitionDlg::LoadAnimation(
       -1, spinner_anim, false, SPINNER_ANIM_N_FRAMES);
@@ -1112,6 +1252,8 @@ Window::RequestTransition(const Util::string &message)
    SetContent(dlg);
 
    gtk_widget_hide(GTK_WIDGET(mForwardButton));
+
+   SetReady();
 }
 
 
@@ -1138,7 +1280,23 @@ void
 Window::SetCookieFile(const Util::string &brokerUrl) // IN
 {
    char *encUrl = NULL;
-   Util::string tmpName = COOKIE_FILE_NAME;
+   Util::string tmpName;
+
+#ifdef _WIN32
+   tmpName = getenv("USERPROFILE");
+   if (tmpName.empty()) {
+      /* XXX - if USERPROFILE is not defined, is leaving the cookie in
+       * the user's home directory acceptable or do we need a containing
+       * directory in which to store it?
+       */
+      tmpName = ".";
+   }
+   tmpName += "\\";
+   tmpName += COOKIE_FILE_NAME;
+#else
+   tmpName = COOKIE_FILE_NAME;
+#endif
+
    if (Base64_EasyEncode((const uint8 *)brokerUrl.c_str(), brokerUrl.size(), &encUrl)) {
       tmpName += ".";
       tmpName += encUrl;
@@ -1184,34 +1342,56 @@ Window::DoInitialize()
    }
    Prefs *prefs = Prefs::GetPrefs();
 
-   if (mBroker) {
-       // this method can be called repeatedly, for example if a broker
-       // connection could not be made, so we need to clean up any existing
-       // broker before reinitializing.
-       delete mBroker;
-       mBroker = NULL;
-   }
-
-   mBroker = new Broker();
-   mBroker->SetDelegate(this);
+   SetBroker(new Broker());
 
    SetCookieFile(Util::GetHostLabel(brokerDlg->GetBroker(),
                                     brokerDlg->GetPort(),
                                     brokerDlg->GetSecure()));
 
+   InitializeProtocols();
+
+   SetBusy(_("Initializing connection..."));
+   mBroker->Initialize(brokerDlg->GetBroker(), brokerDlg->GetPort(),
+                       brokerDlg->GetSecure(),
+                       prefs->GetDefaultUser(),
+                       // We'll use the domain pref later if need be.
+                       "");
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::InitializeProtocols --
+ *
+ *      Determine available remoting protocols and initialize accordingly.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::InitializeProtocols()
+{
    std::vector<Util::string> protocols;
+#ifdef __MINGW32__
+   if (Mstsc::GetIsProtocolAvailable()) {
+        protocols.push_back(Protocols::GetName(Protocols::RDP));
+   }
+#else
    if (RDesktop::GetIsProtocolAvailable()) {
         protocols.push_back(Protocols::GetName(Protocols::RDP));
    }
    if (RMks::GetIsProtocolAvailable()) {
         protocols.push_back(Protocols::GetName(Protocols::PCOIP));
    }
+#endif
    mBroker->SetSupportedProtocols(protocols);
-   mBroker->Initialize(brokerDlg->GetBroker(), brokerDlg->GetPort(),
-                       brokerDlg->GetSecure(),
-                       prefs->GetDefaultUser(),
-                       // We'll use the domain pref later if need be.
-                       "");
 }
 
 
@@ -1232,9 +1412,11 @@ Window::DoInitialize()
  */
 
 gboolean
-Window::DelayedDoInitialize(void *that) // IN:
+Window::DelayedDoInitialize(void *data) // IN:
 {
-   ((cdk::Window *)that)->DoInitialize();
+   Window *that = reinterpret_cast<Window *>(data);
+   ASSERT(that);
+   that->DoInitialize();
    return FALSE;
 }
 
@@ -1260,32 +1442,103 @@ void
 Window::ForwardHandler()
 {
    SecurIDDlg *securIdDlg = dynamic_cast<SecurIDDlg *>(mDlg);
+   ScCertDlg *certDlg = dynamic_cast<ScCertDlg *>(mDlg);
+   ScPinDlg *pinDlg = dynamic_cast<ScPinDlg *>(mDlg);
 
    if (dynamic_cast<BrokerDlg *>(mDlg)) {
       DoInitialize();
    } else if (dynamic_cast<DisclaimerDlg *>(mDlg)) {
       ASSERT(mBroker);
+      SetBusy(_("Accepting disclaimer..."));
       mBroker->AcceptDisclaimer();
-   } else if (dynamic_cast<ScInsertPromptDlg *>(mDlg) ||
-              dynamic_cast<ScCertDlg *>(mDlg) ||
-              dynamic_cast<ScPinDlg *>(mDlg)) {
-      gtk_main_quit();
+   } else if (dynamic_cast<ScInsertPromptDlg *>(mDlg)) {
+      RequestCertificate();
+   } else if (certDlg) {
+      StopWatchingForTokenEvents();
+      /*
+       * We own the reference to this cert, so it's OK to discard
+       * const.
+       */
+      mAuthCert = (X509 *)certDlg->GetCertificate();
+      DoAttemptSubmitCertificate();
+   } else if (pinDlg) {
+      StopWatchingForTokenEvents();
+      DoAttemptSubmitCertificate(pinDlg->GetPin());
    } else if (securIdDlg) {
       securIdDlg->authenticate();
+   } else if (dynamic_cast<PasswordDlg *>(mDlg)) {
+      DoChangePassword();
    } else if (dynamic_cast<LoginDlg *>(mDlg)) {
-      if (dynamic_cast<PasswordDlg *>(mDlg)) {
-         DoChangePassword();
-      } else {
-         DoSubmitPassword();
-      }
+      DoSubmitPassword();
    } else if (dynamic_cast<DesktopSelectDlg *>(mDlg)) {
       DoDesktopAction(DesktopSelectDlg::ACTION_CONNECT);
    } else if (dynamic_cast<TransitionDlg *>(mDlg)) {
       ASSERT(mBroker);
+      SetBusy(_("Reconnecting to desktop..."));
       mBroker->ReconnectDesktop();
    } else {
       NOT_IMPLEMENTED();
    }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::DoAttemptSubmitCertificate --
+ *
+ *      Try to submit a certificate for authentication.
+ *
+ *      If it needs authentication, prompt the user.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::DoAttemptSubmitCertificate(const char *pin) // IN/OPT
+{
+   GError *err = NULL;
+   if (mCryptoki->Login(mAuthCert, pin, &err)) {
+      SetBusy(_("Logging in..."));
+      mBroker->SubmitCertificate(X509_dup(mAuthCert),
+                                 mCryptoki->GetPrivateKey(mAuthCert),
+                                 pin,
+                                 mCryptoki->GetSlotName(mAuthCert));
+      return;
+   }
+
+   ASSERT(err->domain == CDK_CRYPTOKI_ERROR);
+   if (err->code == Cryptoki::ERR_DEVICE_REMOVED) {
+      RequestInsertSmartCard();
+   } else {
+      /*
+       * If the pin for the cert given is locked, there isn't much use to
+       * showing the user the pin dialog again, so just move on.
+       */
+      if (pin && err->code == Cryptoki::ERR_PIN_LOCKED) {
+         SetBusy(_("Logging in..."));
+         mBroker->SubmitCertificate();
+      } else {
+         RequestPrivateKey();
+      }
+      /*
+       * We want to give a final pin warning, but otherwise we
+       * don't want to show anything if the user hasn't tried to
+       * log in yet.
+       */
+      if (!pin && err->code == Cryptoki::ERR_PIN_FINAL_TRY) {
+         BaseApp::ShowWarning(_("PIN Warning"), "%s", err->message);
+      } else if (pin) {
+         BaseApp::ShowError(CDK_ERR_PIN_ERROR, _("PIN Error"), "%s", err->message);
+      }
+   }
+   g_error_free(err);
 }
 
 
@@ -1315,6 +1568,7 @@ Window::DoSubmitPasscode()
    Util::string user = dlg->GetUsername();
    Prefs::GetPrefs()->SetDefaultUser(user);
 
+   SetBusy(_("Submitting passcode..."));
    mBroker->SubmitPasscode(user, dlg->GetPasscode());
 }
 
@@ -1341,6 +1595,7 @@ Window::DoSubmitNextTokencode()
    ASSERT(mBroker);
    SecurIDDlg *dlg = dynamic_cast<SecurIDDlg *>(mDlg);
    ASSERT(dlg);
+   SetBusy(_("Submitting tokencode..."));
    mBroker->SubmitNextTokencode(dlg->GetPasscode());
 }
 
@@ -1370,8 +1625,12 @@ Window::DoSubmitPins()
    // The char * in this pair are zeroed by GTK when the text entry deconstructs.
    std::pair<const char *, const char *> pins = dlg->GetPins();
    if (strcmp(pins.first, pins.second)) {
-      ShowDialog(GTK_MESSAGE_ERROR, _("The PINs do not match."));
+      BaseApp::ShowError(CDK_ERR_PIN_MISMATCH,
+                         _("PIN Mismatch"),
+                         _("The PINs you entered do not match. "
+                           "Please try again."));
    } else {
+      SetBusy(_("Changing PIN..."));
       mBroker->SubmitPins(pins.first, pins.second);
    }
 }
@@ -1404,9 +1663,16 @@ Window::DoSubmitPassword()
    Util::string domain = dlg->GetDomain();
 
    Prefs *prefs = Prefs::GetPrefs();
-   prefs->SetDefaultUser(user);
+   /*
+    * Don't save the user name if it's read only, since the user name would have
+    * been given to us by the View Connection Server.
+    */
+   if (!dlg->GetIsUserReadOnly()) {
+      prefs->SetDefaultUser(user);
+   }
    prefs->SetDefaultDomain(domain);
 
+   SetBusy(_("Logging in..."));
    mBroker->SubmitPassword(user, dlg->GetPassword(), domain);
 }
 
@@ -1436,8 +1702,12 @@ Window::DoChangePassword()
    // The char * in this pair are zeroed by GTK when the text entry deconstructs.
    std::pair<const char *, const char *> pwords = dlg->GetNewPassword();
    if (Str_Strcmp(pwords.first, pwords.second)) {
-      ShowDialog(GTK_MESSAGE_ERROR, _("The passwords do not match."));
+      BaseApp::ShowError(CDK_ERR_PASSWORD_MISMATCH,
+                         _("Password Mismatch"),
+                         _("The passwords you entered do not match. Please "
+                           "try again."));
    } else {
+      SetBusy(_("Changing password..."));
       mBroker->ChangePassword(dlg->GetPassword(), pwords.first, pwords.second);
    }
 }
@@ -1466,7 +1736,11 @@ Window::DoDesktopAction(DesktopSelectDlg::Action action) // IN
    DesktopSelectDlg *dlg = dynamic_cast<DesktopSelectDlg *>(mDlg);
    ASSERT(dlg);
    Desktop *desktop = dlg->GetDesktop();
-   ASSERT(desktop);
+   if (!desktop) {
+      Log("Window::DoDesktopAction: Selected desktop is NULL "
+          "(see bz 528113).  Action attempted = %d.\n", action);
+      ASSERT_BUG(528113, desktop);
+   }
 
    switch (action) {
    case DesktopSelectDlg::ACTION_CONNECT:
@@ -1517,13 +1791,22 @@ Window::TunnelDisconnected(Util::string disconnectReason) // IN
    delete mDesktopHelper;
    mDesktopHelper = NULL;
 
-   Util::string message = _("The secure connection to the View Server has"
-                            " unexpectedly disconnected.");
+   ASSERT(mBroker);
+   Util::string message;
+   if (mBroker->GetSecure()) {
+      message = _("The secure connection to the View Server has"
+                  " unexpectedly disconnected.");
+   } else {
+      message = _("The connection to the View Server has"
+                  " unexpectedly disconnected.");
+   }
+
    if (!disconnectReason.empty()) {
       message += Util::Format(_("\n\nReason: %s."), _(disconnectReason.c_str()));
    }
 
-   ShowDialog(GTK_MESSAGE_ERROR, "%s", message.c_str());
+   BaseApp::ShowError(CDK_ERR_TUNNEL_DISCONNECTED,
+                      _("Tunnel Disconnected"), "%s", message.c_str());
    /*
     * If the tunnel really exited, it's probably not going to let us
     * get a new one until we log in again.  If we're at the desktop
@@ -1540,8 +1823,7 @@ Window::TunnelDisconnected(Util::string disconnectReason) // IN
  *
  * cdk::Window::OnSizeAllocate --
  *
- *      Resize the GtkAlignment to fill available space, and possibly
- *      the background image as well.
+ *      Callback for window size change.
  *
  * Results:
  *      None
@@ -1559,20 +1841,48 @@ Window::OnSizeAllocate(GtkWidget *widget,         // IN/UNUSED
 {
    Window *that = reinterpret_cast<Window *>(userData);
    ASSERT(that);
-   if (that->mFullscreenAlign) {
+   that->DoSizeAllocate(allocation);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::DoSizeAllocate --
+ *
+ *      Helper method.  Resize the GtkAlignment to fill available space, and
+ *      possibly the background image as well.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::DoSizeAllocate(GtkAllocation *allocation) // IN
+{
+   ASSERT(allocation);
+
+   if (mFullscreenAlign) {
       /*
        * This really does need to be a _set_size_request(), and not
        * _size_allocate(), otherwise there is some resize flickering
        * at startup (and quitting, if that happens).
        */
-      gtk_widget_set_size_request(GTK_WIDGET(that->mFullscreenAlign),
+      gtk_widget_set_size_request(GTK_WIDGET(mFullscreenAlign),
                                   allocation->width, allocation->height);
    }
-   if (dynamic_cast<DesktopDlg *>(that->mDlg)) {
-      gtk_widget_size_allocate(that->mDlg->GetContent(), allocation);
+#ifndef __MINGW32__
+   if (dynamic_cast<DesktopDlg *>(mDlg)) {
+      gtk_widget_size_allocate(mDlg->GetContent(), allocation);
    }
-   if (that->mBackgroundImage) {
-      that->ResizeBackground(allocation);
+#endif
+   if (mBackgroundImage) {
+      ResizeBackground(allocation);
    }
 }
 
@@ -1611,7 +1921,13 @@ Window::CreateBanner()
    }
    // If no custom logo specified (or loading failed), use the default.
    if (logo.empty()) {
-      pb = gdk_pixbuf_new_from_inline(-1, view_client_banner, false, NULL);
+      const guint8 *banner = view_client_banner;
+#ifdef HAVE_PCOIP_BANNER
+      if (RMks::GetIsProtocolAvailable()) {
+         banner = view_client_banner_pcoip;
+      }
+#endif
+      pb = gdk_pixbuf_new_from_inline(-1, banner, false, NULL);
    }
    ASSERT(pb);
 
@@ -1811,9 +2127,14 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
    Dlg *dlg = NULL;
    switch (Protocols::GetProtocolFromName(desktop->GetProtocol())) {
    case Protocols::RDP:
+#ifdef __MINGW32__
+      mDesktopHelper = new Mstsc();
+#else
       mDesktopHelper = new RDesktop();
       dlg = new DesktopDlg(mDesktopHelper, Prefs::GetPrefs()->GetAllowWMBindings());
+#endif
       break;
+#ifndef __MINGW32__
    case Protocols::PCOIP:
       {
          /*
@@ -1843,6 +2164,7 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
          dynamic_cast<DesktopDlg *>(dlg)->SetResizable(true);
          break;
       }
+#endif
    default:
       NOT_REACHED();
       break;
@@ -1857,11 +2179,13 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
    /*
     * Once the desktop connects, set it as the content dlg.
     */
+#ifndef __MINGW32__
    DesktopDlg *deskDlg = dynamic_cast<DesktopDlg *>(dlg);
    if (deskDlg) {
       deskDlg->onConnect.connect(boost::bind(&Window::SetContent, this, dlg));
       deskDlg->onCtrlAltDel.connect(boost::bind(&Window::OnCtrlAltDel, this));
    }
+#endif
 
    /*
     * Handle desktop exit by restarting it, quitting, or showing a
@@ -1915,12 +2239,15 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
    Log("Connecting to desktop with total geometry %dx%d.\n",
        geometry.width, geometry.height);
 
+#ifdef __MINGW32__
+   Mstsc *mstsc = dynamic_cast<Mstsc *>(mDesktopHelper);
+   ASSERT(mstsc);
+#else
    deskDlg->SetInitialDesktopSize(geometry.width, geometry.height);
-
-   RDesktop *rdesktop = dynamic_cast<RDesktop *>(mDesktopHelper);
    RMks *rmks = dynamic_cast<RMks *>(mDesktopHelper);
-
+   RDesktop *rdesktop = dynamic_cast<RDesktop *>(mDesktopHelper);
    ASSERT(!rmks || !rdesktop);
+#endif
 
    PushDesktopEnvironment();
 
@@ -1933,14 +2260,33 @@ Window::RequestLaunchDesktop(Desktop *desktop) // IN
        conn.id.c_str(), conn.protocol.c_str(), conn.username.c_str(),
        conn.address.c_str(), conn.port);
 
+#ifdef __MINGW32__
+   if (mstsc) {
+      mstsc->Start(conn, &geometry,
+                   gtk_widget_get_screen(GTK_WIDGET(mWindow)));
+      /*
+       * XXX - would prefer to only hide the window if we know the
+       * mstsc has successfully launched; otherwise, we would cancel
+       * the current dialog and revert back to the desktop select
+       * dialog.
+       */
+      Hide();
+   } else {
+#else
    if (rdesktop) {
       rdesktop->Start(conn, deskDlg->GetWindowId(), &geometry,
-                      GetSmartCardRedirects());
+                      mBroker->GetDesktop()->GetIsMMREnabled(),
+                      GetSmartCardRedirects(),
+                      gtk_widget_get_screen(GTK_WIDGET(mWindow)));
       deskDlg->SetInhibitCtrlEnter(true);
+      deskDlg->SetSendCADXMessage(false);
    } else if (rmks) {
-      rmks->Start(conn, deskDlg->GetWindowId(), &geometry);
+      rmks->Start(conn, deskDlg->GetWindowId(), &geometry,
+                  gtk_widget_get_screen(GTK_WIDGET(mWindow)));
       deskDlg->SetInhibitCtrlEnter(false);
+      deskDlg->SetSendCADXMessage(true);
    } else {
+#endif
       NOT_REACHED();
    }
 
@@ -1988,14 +2334,31 @@ Window::GetFullscreenGeometry(bool allMonitors,      // IN
          bounds->right = 0;
       }
 
-      gdk_screen_get_monitor_geometry(screen, 0, geometry);
+      int index = 0;
+      bool invalid = true;
+
+      while (invalid && index < numMonitors) {
+         gdk_screen_get_monitor_geometry(screen, index++, geometry);
+         invalid = (geometry->width <= 0 || geometry->height <= 0);
+      }
+      if (invalid) {
+         NOT_REACHED();
+         Warning("No valid screen found.\n");
+         return;
+      }
+
       int minX = geometry->x;
       int maxX = geometry->x + geometry->width;
       int minY = geometry->y;
       int maxY = geometry->y + geometry->height;
-      for (int i = 1; i < numMonitors; ++i) {
+      for (int i = index; i < numMonitors; ++i) {
          GdkRectangle nextMonitor;
          gdk_screen_get_monitor_geometry(screen, i, &nextMonitor);
+
+         if (nextMonitor.width <= 0 || nextMonitor.height <= 0) {
+            continue;
+         }
+
          gdk_rectangle_union(geometry, &nextMonitor, geometry);
 
          if (bounds) {
@@ -2049,6 +2412,7 @@ void
 Window::FullscreenWindow(GtkWindow *win,        // IN
                          MonitorBounds *bounds) // IN/OPT
 {
+#ifdef GDK_WINDOWING_X11
    GdkScreen *screen = gtk_window_get_screen(win);
    ASSERT(screen);
 
@@ -2118,14 +2482,26 @@ Window::FullscreenWindow(GtkWindow *win,        // IN
 
       gtk_window_move(win, geometry.x, geometry.y);
       gtk_window_resize(win, geometry.width, geometry.height);
+
+      if (GTK_WIDGET_VISIBLE(GTK_WIDGET(win))) {
+         gtk_widget_hide(GTK_WIDGET(win));
+         gtk_window_set_decorated(win, false);
+         gtk_widget_show(GTK_WIDGET(win));
+      } else {
+         gtk_window_set_decorated(win, false);
+      }
    }
+#else
+   // gtk on mingw supports fullscreen windows natively; no need to check.
+   gtk_window_fullscreen(win);
+#endif
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Window::ShowDialog --
+ * cdk::Window::ShowMessageDialog --
  *
  *      Pops up a dialog or shows a transition error message.  The
  *      format argument is a printf format string.
@@ -2140,31 +2516,33 @@ Window::FullscreenWindow(GtkWindow *win,        // IN
  */
 
 void
-Window::ShowDialog(GtkMessageType type,       // IN
-                   const Util::string format, // IN
-                   ...)
+Window::ShowMessageDialog(GtkMessageType type,         // IN
+                          const Util::string &message, // IN
+                          const Util::string &details, // IN
+                          va_list args)                // IN
 {
-   /*
-    * It would be nice if there was a va_list variant of
-    * gtk_message_dialog_new().
-    */
-   va_list args;
-   va_start(args, format);
-   Util::string label = Util::FormatV(format.c_str(), args);
-   va_end(args);
+   char *format = g_strdup_vprintf(details.c_str(), args);
+   char *label = g_markup_printf_escaped("<b>%s</b>\n\n%s", message.c_str(),
+                                         format);
 
    if (Prefs::GetPrefs()->GetNonInteractive()) {
-      Log("ShowDialog: %s; Turning off non-interactive mode.\n", label.c_str());
+      Log("ShowMessageDialog: %s: %s; Turning off non-interactive mode.\n",
+         message.c_str(), format);
       Prefs::GetPrefs()->SetNonInteractive(false);
    }
+
+   g_free(format);
 
    /*
     * If we're trying to connect, or have already connected, show the
     * error using the transition page.
     */
    if (type == GTK_MESSAGE_ERROR &&
-       (dynamic_cast<TransitionDlg *>(mDlg) ||
-        dynamic_cast<DesktopDlg *>(mDlg))) {
+       (dynamic_cast<TransitionDlg *>(mDlg)
+#ifndef __MINGW32__
+        || dynamic_cast<DesktopDlg *>(mDlg)
+#endif
+       )) {
       /*
        * We may get a tunnel error/message while the Desktop::Connect RPC is
        * still in flight, which puts us here. If so, and the user clicks
@@ -2174,25 +2552,29 @@ Window::ShowDialog(GtkMessageType type,       // IN
        */
       mBroker->CancelRequests();
       TransitionDlg *dlg = new TransitionDlg(TransitionDlg::TRANSITION_ERROR,
-                                             label);
+                                             label, true);
       dlg->SetStock(GTK_STOCK_DIALOG_ERROR);
       SetContent(dlg);
       Util::SetButtonIcon(mForwardButton, GTK_STOCK_REDO, _("_Retry"));
+      SetReady();
    } else {
       /*
-       * XXX: Ideally, we'd set our parent window here, except that
-       * when coming out of full screen, if our parent is the window,
-       * the dialog may be positioned strangely.
+       * We were seeing issues with dialog placement here when coming out of
+       * fullscreen, but that underlying issue seems to have been solved.  In
+       * that case, we will set the parent again, but if it leads to a
+       * regression, undo this change. See bz 458555 and 486230.
        */
-      GtkWidget *dialog = gtk_message_dialog_new(
-         NULL, GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK,
-         "%s", label.c_str());
-      gtk_widget_show(dialog);
-      gtk_window_set_title(GTK_WINDOW(dialog),
-                           gtk_window_get_title(mWindow));
+      GtkDialogFlags flags = (GtkDialogFlags)(GTK_DIALOG_DESTROY_WITH_PARENT |
+                                              GTK_DIALOG_MODAL);
+      GtkWidget *dialog = gtk_message_dialog_new(mWindow, flags, type,
+                                                 GTK_BUTTONS_OK, NULL);
+      gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), label);
+      gtk_window_set_title(GTK_WINDOW(dialog), gtk_window_get_title(mWindow));
       g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy),
                        NULL);
+      gtk_widget_show(dialog);
    }
+   g_free(label);
 }
 
 
@@ -2224,6 +2606,9 @@ Window::ShowDialog(GtkMessageType type,       // IN
 void
 Window::CancelHandler()
 {
+   if (!mDlg->GetCancelable()) {
+      return;
+   }
    if (Prefs::GetPrefs()->GetNonInteractive()) {
       Log("User cancelled; turning off non-interactive mode.\n");
       Prefs::GetPrefs()->SetNonInteractive(false);
@@ -2236,17 +2621,44 @@ Window::CancelHandler()
       } else if (dynamic_cast<ScInsertPromptDlg *>(mDlg) ||
                  dynamic_cast<ScCertDlg *>(mDlg) ||
                  dynamic_cast<ScPinDlg *>(mDlg)) {
-         mCanceledScDlg = true;
-         gtk_main_quit();
-      } else if (dlg) {
-         if (dlg->GetTransitionType() == TransitionDlg::TRANSITION_PROGRESS) {
-            mBroker->CancelRequests();
+         SetBusy(_("Logging in..."));
+         if (mTokenEventTimeout) {
+            StopWatchingForTokenEvents();
          }
+         mBroker->SubmitCertificate();
+      } else if (dlg) {
+         /*
+          * If we ask the broker to cancel requests, it will set mDesktop to
+          * NULL.  To avoid dereferencing a NULL pointer, disconnect the desktop
+          * now.  See bz 531542.
+          */
+         mBroker->GetDesktop()->Disconnect();
+         if (dlg->GetTransitionType() == TransitionDlg::TRANSITION_PROGRESS) {
+            /*
+             * If the user has canceled the connection, but the DesktopDlg has
+             * already kicked off the process, make sure to kill it.
+             *
+             * Otherwise, we can just cancel all the outstanding Broker
+             * requests.
+             */
+            if (mDesktopHelper) {
+               mDesktopUIExitCnx.disconnect();
+               delete mDesktopHelper;
+               mDesktopHelper = NULL;
+            } else {
+               mBroker->CancelRequests();
+            }
+         }
+         SetBusy(_("Loading desktops..."));
          mBroker->LoadDesktops();
       } else {
          RequestBroker();
       }
    } else {
+      /*
+       * If we made it here, the dialog has been desensitized.  In that case,
+       * there should be at least one RPC in flight.
+       */
       int reqs = mBroker->CancelRequests();
 
       ASSERT(reqs > 0);
@@ -2257,13 +2669,11 @@ Window::CancelHandler()
             Log("Tried to cancel requests, but none were pending; "
                 "requesting a new broker.\n");
          }
+         // This calls SetReady();
          RequestBroker();
+      } else {
+         SetReady();
       }
-   }
-
-   ProcHelper *proc = dynamic_cast<ProcHelper *>(mDlg);
-   if (proc) {
-      mDesktopUIExitCnx.disconnect();
    }
 }
 
@@ -2289,8 +2699,9 @@ Window::CancelHandler()
 void
 Window::PushDesktopEnvironment()
 {
+#ifndef __MINGW32__
    char *dpy = gdk_screen_make_display_name(gtk_window_get_screen(mWindow));
-   setenv("DISPLAY", dpy, true);
+   g_setenv("DISPLAY", dpy, true);
    g_free(dpy);
 
    Util::string mmrPath = Prefs::GetPrefs()->GetMMRPath();
@@ -2302,7 +2713,7 @@ Window::PushDesktopEnvironment()
                                       mOrigLDPath.c_str(),
                                       mOrigLDPath.empty() ? "" : ":",
                                       mmrPath.c_str());
-      setenv("LD_LIBRARY_PATH", env.c_str(), true);
+      g_setenv("LD_LIBRARY_PATH", env.c_str(), true);
 
       const char *gstpath = getenv("GST_PLUGIN_PATH");
       mOrigGSTPath = gstpath ? gstpath : "";
@@ -2313,8 +2724,9 @@ Window::PushDesktopEnvironment()
                          mOrigGSTPath.empty() ? "" : ":",
                          mOrigGSTPath.c_str());
       g_free(newPath);
-      setenv("GST_PLUGIN_PATH", env.c_str(), true);
+      g_setenv("GST_PLUGIN_PATH", env.c_str(), true);
    }
+#endif
 }
 
 
@@ -2339,11 +2751,13 @@ Window::PushDesktopEnvironment()
 void
 Window::PopDesktopEnvironment()
 {
-   setenv("LD_LIBRARY_PATH", mOrigLDPath.c_str(), true);
+#ifndef __MINGW32__
+   g_setenv("LD_LIBRARY_PATH", mOrigLDPath.c_str(), true);
    mOrigLDPath.clear();
 
-   setenv("GST_PLUGIN_PATH", mOrigGSTPath.c_str(), true);
+   g_setenv("GST_PLUGIN_PATH", mOrigGSTPath.c_str(), true);
    mOrigGSTPath.clear();
+#endif
 }
 
 
@@ -2383,7 +2797,9 @@ Window::OnKeyPress(GtkWidget *widget, // IN/UNUSED
       evt->state & GDK_MOD1_MASK ||    // Alt
       evt->state & GDK_MOD4_MASK;      // Super (Windows Key)
 
-   if (GDK_Escape == evt->keyval && !modKeyPressed) {
+   if (GDK_Escape == evt->keyval && !modKeyPressed &&
+       GTK_WIDGET_SENSITIVE(GTK_WIDGET(that->mCancelButton)) &&
+       GTK_WIDGET_VISIBLE(GTK_WIDGET(that->mCancelButton))) {
       ASSERT(that->mDlg);
       gtk_widget_activate(GTK_WIDGET(that->mCancelButton));
       return true;
@@ -2435,49 +2851,41 @@ Window::OnCtrlAltDel()
    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(mCadDlg)->vbox), img, false, false, 0);
    gtk_box_reorder_child(GTK_BOX(GTK_DIALOG(mCadDlg)->vbox), img, 0);
 
+   /*
+    * CanReset() would return false, as we didn't have a session when the
+    * desktop was loaded.  Obviously, we now do.
+    *
+    * Resetting can take time, so don't allow the user to request a reset again
+    * while waiting for the first request to process (bz 512077).
+    */
+   bool showReset = desktop->CanResetSession() &&
+                    desktop->GetStatus() != Desktop::STATUS_RESETTING;
    gtk_dialog_add_buttons(GTK_DIALOG(mCadDlg),
                           _("Send C_trl-Alt-Del"), RESPONSE_CTRL_ALT_DEL,
                           _("_Disconnect"), RESPONSE_DISCONNECT,
-                          desktop->CanReset() || desktop->CanResetSession()
-                             ? _("_Reset") : NULL,
+                          showReset ? _("_Reset") : NULL,
                           RESPONSE_RESET,
+#ifdef VMX86_DEVEL
+                          Prefs::GetPrefs()->GetKioskMode() ? GTK_STOCK_QUIT : NULL,
+                          RESPONSE_QUIT,
+#endif
                           NULL);
    gtk_dialog_add_action_widget(
       GTK_DIALOG(mCadDlg), GTK_WIDGET(Util::CreateButton(GTK_STOCK_CANCEL)),
       GTK_RESPONSE_CANCEL);
 
-   // Widget must be shown to do grabs on it.
-   gtk_widget_show(mCadDlg);
+#ifdef GDK_WINDOWING_X11
+   GrabResults grabResults = { false, false, NULL };
 
-   /*
-    * Grab the keyboard and mouse; our rdesktop window currently has
-    * the keyboard grab, which we need here to have keyboard
-    * focus/navigation.
-    */
-   GdkGrabStatus kbdStatus = gdk_keyboard_grab(mCadDlg->window, false,
-                                               GDK_CURRENT_TIME);
-   GdkGrabStatus mouseStatus =
-      gdk_pointer_grab(mCadDlg->window, true,
-                       (GdkEventMask)(GDK_POINTER_MOTION_MASK |
-                                      GDK_POINTER_MOTION_HINT_MASK |
-                                      GDK_BUTTON_MOTION_MASK |
-                                      GDK_BUTTON1_MOTION_MASK |
-                                      GDK_BUTTON2_MOTION_MASK |
-                                      GDK_BUTTON3_MOTION_MASK |
-                                      GDK_BUTTON_PRESS_MASK |
-                                      GDK_BUTTON_RELEASE_MASK),
-                       NULL, NULL, GDK_CURRENT_TIME);
+   g_signal_connect(mCadDlg, "map-event", G_CALLBACK(OnCADMapped),
+                    &grabResults);
+   g_signal_connect(mCadDlg, "unrealize", G_CALLBACK(OnCADUnrealized),
+                    &grabResults);
+#endif
 
    int response = gtk_dialog_run(GTK_DIALOG(mCadDlg));
    gtk_widget_destroy(mCadDlg);
    mCadDlg = NULL;
-
-   if (mouseStatus == GDK_GRAB_SUCCESS) {
-      gdk_pointer_ungrab(GDK_CURRENT_TIME);
-   }
-   if (kbdStatus == GDK_GRAB_SUCCESS) {
-      gdk_keyboard_ungrab(GDK_CURRENT_TIME);
-   }
 
    switch (response) {
    case RESPONSE_CTRL_ALT_DEL:
@@ -2488,6 +2896,9 @@ Window::OnCtrlAltDel()
    case RESPONSE_RESET:
       mBroker->ResetDesktop(mBroker->GetDesktop(), true);
       return true;
+   case RESPONSE_QUIT:
+      Close();
+      exit(0);
    case GTK_RESPONSE_DELETE_EVENT:
    case GTK_RESPONSE_CANCEL:
       return true;
@@ -2520,20 +2931,32 @@ void
 Window::OnDesktopUIExit(Dlg *dlg,   // IN
                         int status) // IN
 {
+   ASSERT(mDesktopHelper);
+
+   bool exitedWithError = false;
+   bool connected = true;
+
+#ifndef __MINGW32__
+   exitedWithError = !WIFEXITED(status) ||
+      mDesktopHelper->GetIsErrorExitStatus(WEXITSTATUS(status));
    DesktopDlg *deskDlg = dynamic_cast<DesktopDlg *>(mDlg);
-   if (status && deskDlg && deskDlg->GetHasConnected() &&
-       !mRDesktopMonitor.ShouldThrottle()) {
+   connected = deskDlg != NULL && deskDlg->GetHasConnected();
+#endif
+
+   if (exitedWithError && connected && !mRDesktopMonitor.ShouldThrottle()) {
+      SetBusy(_("Connecting to desktop..."));
       mBroker->ReconnectDesktop();
-   } else if (!status) {
+   } else if (!exitedWithError) {
       Close();
    } else {
-      // The ShowDialog() below will delete rdesktop if it is mDlg.
+      // The ShowError() below will delete rdesktop if it is mDlg.
       if (dlg != mDlg) {
          delete dlg;
       }
       mRDesktopMonitor.Reset();
-      ShowDialog(GTK_MESSAGE_ERROR,
-                 _("The desktop has unexpectedly disconnected."));
+      BaseApp::ShowError(CDK_ERR_DESKTOP_DISCONNECTED,
+                         _("Disconnected"),
+                         _("The desktop has unexpectedly disconnected."));
    }
    delete mDesktopHelper;
    mDesktopHelper = NULL;
@@ -2563,17 +2986,43 @@ Window::OnHelp(GtkButton *button, // IN
    Window *that = reinterpret_cast<Window *>(data);
    ASSERT(that);
 
-   HelpSupportDlg::ShowDlg(GTK_WINDOW(that->mWindow));
+   HelpSupportDlg *helpDlg = that->GetHelpSupportDlg();
+   helpDlg->Run();
 }
 
 
 /*
  *-----------------------------------------------------------------------------
  *
- * cdk::Window::OnScPinRequested --
+ * cdk::Window::CreateHelpSupportDlg --
  *
- *      Cryptoki callback for when a PIN is requested.  Ask Window for
- *      the PIN.
+ *      Returns help and support dialog, set up ready to run.
+ *
+ * Results:
+ *      HelpSupportDlg *
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+HelpSupportDlg *
+Window::GetHelpSupportDlg()
+{
+   static HelpSupportDlg instance;
+
+   InitializeHelpSupportDlg(&instance);
+   return &instance;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::InitializeHelpSupportDlg --
+ *
+ *      Preps the passed in dialog to be run.
  *
  * Results:
  *      None
@@ -2584,36 +3033,16 @@ Window::OnHelp(GtkButton *button, // IN
  *-----------------------------------------------------------------------------
  */
 
-const char *
-Window::OnScPinRequested(const Util::string &label, // IN
-                         const X509 *x509)          // IN
+void
+Window::InitializeHelpSupportDlg(HelpSupportDlg *dlg)
 {
-   ASSERT(mCertAuthInfo);
-   // If the old PIN was incorrect...
-   if (mCertAuthInfo->pin) {
-      ZERO_STRING(mCertAuthInfo->pin);
-      g_free(mCertAuthInfo->pin);
-      mCertAuthInfo->pin = NULL;
-   }
+   Util::string brokerHostName = mBroker ? mBroker->GetSupportBrokerUrl() : "";
 
-   SetReady();
-   ScPinDlg *dlg = new ScPinDlg();
-   SetContent(dlg);
-   Util::SetButtonIcon(mForwardButton, GTK_STOCK_OK, _("Co_nnect"));
-   dlg->SetTokenName(label);
-   dlg->SetCertificate(x509);
-
-   mCanceledScDlg = false;
-
-   // We need to block the caller until we have an answer.
-   gtk_main();
-
-   mCertAuthInfo->pin = mCanceledScDlg ? NULL : g_strdup(dlg->GetPin());
-
-   // Disable the OK button
-   SetBusy(_("Logging in..."));
-
-   return mCertAuthInfo->pin;
+   dlg->SetParent(mWindow);
+   dlg->SetHelpContext(mDlg->GetHelpContext());
+   dlg->SetSupportFile(Prefs::GetPrefs()->GetSupportFile());
+   dlg->SetBrokerHostName(brokerHostName.empty() ? _("Not Connected") :
+                                                   brokerHostName);
 }
 
 
@@ -2641,9 +3070,8 @@ Window::GetSmartCardRedirects()
    std::vector<Util::string> names;
    if (mCryptoki) {
       names = mCryptoki->GetSlotNames();
-      for (std::vector<Util::string>::iterator i = names.begin();
-           i != names.end(); i++) {
-         *i = "scard:" + *i;
+      for (unsigned int i = 0; i < names.size(); i++) {
+         names[i] = Util::Format("scard:%s=%s;Virtual Slot %u", names[i].c_str(), names[i].c_str(), i);
       }
    }
    return names;
@@ -2737,25 +3165,26 @@ Window::TokenEventMonitor(gpointer data) // IN
       return true;
    }
 
-   // Don't let Reset() remove this source.
-   that->mTokenEventTimeout = 0;
-
    switch (that->mTokenEventAction) {
-   case ACTION_QUIT_MAIN_LOOP:
-      gtk_main_quit();
+   case ACTION_REQUEST_CERTIFICATE:
+      that->mTokenEventTimeout = 0;
+      that->RequestCertificate();
       break;
    case ACTION_LOGOUT:
       if (that->mCryptoki->GetIsInserted(that->mAuthCert)) {
+         // If our card is still inserted, ignore the event.
          return true;
       }
+      that->mTokenEventTimeout = 0;
       that->RequestBroker();
-      that->ShowDialog(GTK_MESSAGE_INFO,
-                       _("Your smart card or token was removed, so you have "
-                         "been logged out of the View Connection Server."));
+      BaseApp::ShowInfo(_("You have been logged out"),
+                        _("Your smart card or token was removed, so you have "
+                          "been logged out of the View Connection Server."));
       break;
    case ACTION_NONE:
    default:
       NOT_IMPLEMENTED();
+      that->mTokenEventTimeout = 0;
       break;
    }
 
@@ -2859,6 +3288,353 @@ Window::GetFullscreen()
    return Prefs::GetPrefs()->GetFullScreen() ||
       !Prefs::GetPrefs()->GetBackground().empty();
 }
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::OnWindowManagerChanged --
+ *
+ *      Callback for when the window manager changed.  Recall the our fullscreen
+ *      method to ensure we are properly displayed.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifndef __MINGW32__
+void
+Window::OnWindowManagerChanged(GdkScreen *screen, // IN/UNUSED
+                               gpointer data)     // IN
+{
+   Window *that = reinterpret_cast<Window *>(data);
+   ASSERT(that);
+
+   ASSERT(that->mWindow);
+   if (that->GetFullscreen() || dynamic_cast<DesktopDlg *>(that->mDlg)) {
+      that->FullscreenWindow(that->mWindow);
+   }
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::OnRealize --
+ *
+ *      Callback for when the window is realized.  Attach to the GdkScreen
+ *      'window-manager-changed' signal.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifndef __MINGW32__
+void
+Window::OnRealize(GtkWindow *window, // IN
+                  gpointer data)     // IN
+{
+   Window *that = reinterpret_cast<Window *>(data);
+   ASSERT(that);
+   ASSERT(window);
+
+   GdkScreen *screen = gtk_window_get_screen(window);
+   ASSERT(screen);
+   g_signal_connect(screen, "window-manager-changed",
+                    G_CALLBACK(OnWindowManagerChanged), that);
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::OnUnrealize --
+ *
+ *      Callback for when the window is unrealized.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifndef __MINGW32__
+void
+Window::OnUnrealize(GtkWindow *window, // IN
+                    gpointer data)     // IN
+{
+   Window *that = reinterpret_cast<Window *>(data);
+   ASSERT(that);
+
+   GdkScreen *screen = gtk_window_get_screen(window);
+   ASSERT(screen);
+   g_signal_handlers_disconnect_by_func(screen,
+                                        (gpointer)OnWindowManagerChanged, that);
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::SetBroker --
+ *
+ *      Safely set the effective broker.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Current broker is deleted.  Note that a Window instance owns its
+ *      broker and as such the caller should not delete it.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::SetBroker(Broker *broker)  // IN
+{
+   if (mBroker) {
+      mBroker->SetDelegate(NULL);
+   }
+   delete mBroker;
+   mBroker = broker;
+   if (mBroker) {
+      mBroker->SetDelegate(this);
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::OnCADMapped --
+ *
+ *      Grabs only work if the window has been mapped, so wait for this signal
+ *      to grab the pointer (if pointer is outside our window).
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef GDK_WINDOWING_X11
+void
+Window::OnCADMapped(GtkWidget *widget,  // IN
+                    GdkEventAny *event, // IN
+                    gpointer userData)  // IN
+{
+   GrabResults *results = reinterpret_cast<GrabResults *>(userData);
+   ASSERT(results);
+
+   ::Window root;
+   ::Window *children = NULL;
+   ::Window parentWin;
+   unsigned int num;
+   XQueryTree(GDK_WINDOW_XDISPLAY(event->window), GDK_WINDOW_XID(event->window),
+              &root, &parentWin, &children, &num);
+   if (children) {
+      XFree(children);
+   }
+
+   /*
+    * Look to see if our window decoration X window has a corresponding
+    * GdkWindow.  If not, create one.
+    */
+   GdkWindow *newWin = NULL;
+   gpointer xidLookup = gdk_xid_table_lookup(parentWin);
+   if (!xidLookup) {
+      newWin = gdk_window_foreign_new(parentWin);
+      ASSERT(newWin);
+   } else if (GDK_IS_WINDOW(xidLookup)) {
+      newWin = GDK_WINDOW(xidLookup);
+   } else {
+      // Our decoration window shouldn't be anything but a GdkWindow
+      NOT_REACHED();
+      return;
+   }
+
+   results->window = newWin;
+   gdk_window_set_events(newWin,
+                         (GdkEventMask)(GDK_ENTER_NOTIFY_MASK |
+                                        GDK_LEAVE_NOTIFY_MASK));
+   gdk_window_add_filter(newWin, CADEventFilter, results);
+
+   if (gdk_window_at_pointer(NULL, NULL) != newWin) {
+      GrabPointer(results);
+   }
+
+   gdk_keyboard_grab(event->window, false, GDK_CURRENT_TIME);
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::OnCADUnrealized --
+ *
+ *      Make sure we don't have the pointer grabbed anymore, and remove our
+ *      event filter.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef GDK_WINDOWING_X11
+void
+Window::OnCADUnrealized(GtkWidget *widget, // IN/UNUSED
+                        gpointer userData) // IN
+{
+   GrabResults *results = reinterpret_cast<GrabResults *>(userData);
+   ASSERT(results);
+
+   UngrabPointer(results);
+   gdk_window_remove_filter(results->window, CADEventFilter, results);
+
+   gdk_keyboard_ungrab(GDK_CURRENT_TIME);
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::GrabPointer --
+ *
+ *      Grab the pointer for the given window.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::GrabPointer(GrabResults *results) // IN
+{
+   if (!results->mouseGrabbed) {
+      results->ignoreNext = true;
+      GdkGrabStatus mouseStatus =
+         gdk_pointer_grab(results->window, true,
+                          (GdkEventMask)(GDK_BUTTON_PRESS_MASK |
+                                         GDK_BUTTON_RELEASE_MASK |
+                                         GDK_ENTER_NOTIFY_MASK |
+                                         GDK_LEAVE_NOTIFY_MASK),
+                          NULL, NULL, GDK_CURRENT_TIME);
+      results->mouseGrabbed = mouseStatus == GDK_GRAB_SUCCESS;
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::UngrabPointer --
+ *
+ *      Ungrab the pointer.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Window::UngrabPointer(GrabResults *results) // IN
+{
+   if (results->mouseGrabbed) {
+      results->ignoreNext = false;
+      gdk_pointer_ungrab(GDK_CURRENT_TIME);
+      results->mouseGrabbed = false;
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Window::CADEventFilter --
+ *
+ *      Filter all events for WM decoration window for the CAD dialog.  We're
+ *      only interested in EnterNotify, LeaveNotify, ButtonPress, and
+ *      ButtonRelease.  The window will grab the pointer on leave to prevent
+ *      interation with the socket, and will ungrab on enter, so the user can
+ *      interact with us.  We ignore button press and button release events due
+ *      to the fact that this window is not a top-level window and doesn't have
+ *      any way to interact with it.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Pointer may be grabbed or ungrabbed.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef GDK_WINDOWING_X11
+GdkFilterReturn
+Window::CADEventFilter(GdkXEvent *xevent, // IN
+                       GdkEvent *event,   // IN/UNUSED
+                       gpointer userData) // IN
+{
+   GrabResults *results = reinterpret_cast<GrabResults *>(userData);
+   ASSERT(results);
+
+   XEvent *castEvent = (XEvent *)xevent;
+
+   if (castEvent->type == EnterNotify ||
+       castEvent->type == LeaveNotify) {
+
+      if (results->ignoreNext) {
+         results->ignoreNext = false;
+         return GDK_FILTER_REMOVE;
+      }
+
+      if (castEvent->type == LeaveNotify) {
+         GrabPointer(results);
+      } else {
+         UngrabPointer(results);
+      }
+   } else if (castEvent->type == ButtonPress ||
+              castEvent->type == ButtonRelease) {
+      return GDK_FILTER_REMOVE;
+   }
+
+   return GDK_FILTER_CONTINUE;
+}
+#endif
 
 
 } // namespace cdk

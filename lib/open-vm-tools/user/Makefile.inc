@@ -20,6 +20,8 @@ noinst_LIBRARIES += libUser.a
 
 libUser_a_SOURCES =
 libUser_a_SOURCES += lib/open-vm-tools/user/util.c
+if VIEW_POSIX
 libUser_a_SOURCES += lib/open-vm-tools/user/utilPosix.c
+endif # VIEW_POSIX
 
 libUser_a_CFLAGS = @LIB_USER_CPPFLAGS@

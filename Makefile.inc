@@ -25,6 +25,7 @@ endif
 if VIEW_COCOA
 noinst_PROGRAMS += vmware-view
 endif
+noinst_PROGRAMS += testUrl
 
 nodist_vmware_view_SOURCES :=
 vmware_view_SOURCES :=
@@ -37,6 +38,9 @@ vmware_view_SOURCES += broker.cc
 vmware_view_SOURCES += broker.hh
 vmware_view_SOURCES += brokerXml.cc
 vmware_view_SOURCES += brokerXml.hh
+vmware_view_SOURCES += cdkErrors.h
+vmware_view_SOURCES += cdkUrl.c
+vmware_view_SOURCES += cdkUrl.h
 vmware_view_SOURCES += desktop.cc
 vmware_view_SOURCES += desktop.hh
 vmware_view_SOURCES += procHelper.cc
@@ -53,18 +57,27 @@ vmware_view_SOURCES += usb.hh
 vmware_view_SOURCES += util.cc
 vmware_view_SOURCES += util.hh
 
-noinst_LIBRARIES += libProxy.a
-libProxy_a_SOURCES :=
-libProxy_a_SOURCES += cdkProxy.h
+noinst_LIBRARIES += libCdk.a
+libCdk_a_SOURCES :=
+libCdk_a_SOURCES += cdkProxy.h
 if VIEW_COCOA
-libProxy_a_SOURCES += cdkProxyDarwin.c
+libCdk_a_SOURCES += cdkProxyDarwin.c
 else
-libProxy_a_SOURCES += cdkProxy.c
+libCdk_a_SOURCES += cdkProxy.c
 endif
+libCdk_a_SOURCES += cdkUrl.c
+libCdk_a_SOURCES += cdkUrl.h
+
+libCdk_a_CPPFLAGS =
+libCdk_a_CPPFLAGS += $(AM_CPPFLAGS)
+libCdk_a_CPPFLAGS += $(GLIB_CFLAGS)
+libCdk_a_CPPFLAGS += $(ICU_CPPFLAGS)
 
 dist_noinst_DATA += icudata/NamePrepProfile.txt
 dist_noinst_DATA += icudata/NormalizationCorrections.txt
 dist_noinst_DATA += icudata/README
+
+dist_patch_DATA += rdesktop-1.6.0-win7scard.patch
 
 dist_noinst_HEADERS += extraTranslations.hh
 
@@ -82,13 +95,27 @@ $(ICUDATA_ENTRY_POINT)l.dat: uidna.spp
 	-rm -f tmp.lst
 
 $(ICUDATA_ENTRY_POINT)l_dat.s: $(ICUDATA_ENTRY_POINT)l.dat
+if VIEW_WIN32
+	$(GENCCODE) -a $(GENCCODE_ASM_TARGET) -n $(ICUDATA_ENTRY_POINT)l -e $(ICUDATA_ENTRY_POINT) -f $@.tmp $<
+	sed -e 's/-stack,"",@progbits/,""/' -e '/\.type icudt38_dat,@object/d' $@.tmp.s > $@
+	-rm -f $@.tmp.s
+else
 	$(GENCCODE) -a $(GENCCODE_ASM_TARGET) -n $(ICUDATA_ENTRY_POINT)l -e $(ICUDATA_ENTRY_POINT) $<
+endif
 
 uidna_spp.c: uidna.spp
 	$(GENCCODE) -n $(ICUDATA_ENTRY_POINT)l $<
 endif # STATIC_ICU
 
+dist_noinst_DATA += icons/desktop_checkin_32x.png
+dist_noinst_DATA += icons/desktop_checkin_pause32x.png
+dist_noinst_DATA += icons/desktop_checkout_32x.png
+dist_noinst_DATA += icons/desktop_checkout_pause32x.png
+dist_noinst_DATA += icons/desktop_local32x.png
+dist_noinst_DATA += icons/desktop_local32xdisabled.png
+dist_noinst_DATA += icons/desktop_local_rollback_32x.png
 dist_noinst_DATA += icons/desktop_remote32x.png
+dist_noinst_DATA += icons/desktop_remote32x_disabled.png
 dist_noinst_DATA += icons/list_button_hover.png
 dist_noinst_DATA += icons/list_button_normal.png
 dist_noinst_DATA += icons/list_button_open.png
@@ -98,13 +125,27 @@ dist_noinst_DATA += icons/open/view_48x.png
 dist_noinst_DATA += icons/open/view_client_banner.png
 dist_noinst_DATA += icons/spinner_anim.png
 
-gtk/vmware_view-window.$(OBJEXT): icons/spinner_anim.h
-gtk/vmware_view-window.$(OBJEXT): icons/view_16x.h
-gtk/vmware_view-window.$(OBJEXT): icons/view_32x.h
-gtk/vmware_view-window.$(OBJEXT): icons/view_48x.h
-gtk/vmware_view-window.$(OBJEXT): icons/view_client_banner.h
+window_icons :=
+window_icons += icons/spinner_anim.h
+window_icons += icons/view_16x.h
+window_icons += icons/view_32x.h
+window_icons += icons/view_48x.h
+window_icons += icons/view_client_banner.h
+if VIEW_PCOIP_BANNER
+window_icons += icons/view_client_banner_pcoip.h
+endif
 
+gtk/vmware_view-window.$(OBJEXT): $(window_icons)
+
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_checkin_32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_checkin_pause32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_checkout_32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_checkout_pause32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_local32xdisabled.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_local32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_local_rollback_32x.h
 gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_remote32x.h
+gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/desktop_remote32x_disabled.h
 gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/list_button_hover.h
 gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/list_button_normal.h
 gtk/vmware_view-desktopSelectDlg.$(OBJEXT): icons/list_button_open.h
@@ -166,12 +207,11 @@ vmware_view_LDADD += libDui.a
 endif
 vmware_view_LDADD += libProductState.a
 vmware_view_LDADD += libSig.a
-vmware_view_LDADD += libSsl.a
 vmware_view_LDADD += libDict.a
 vmware_view_LDADD += libMisc.a
 vmware_view_LDADD += libErr.a
 vmware_view_LDADD += libUnicode.a
-vmware_view_LDADD += libProxy.a
+vmware_view_LDADD += libCdk.a
 if VIEW_COCOA
 vmware_view_LDADD += $(GLIB_LIBS)
 endif
@@ -184,6 +224,24 @@ vmware_view_LDADD += $(SSL_LIBS)
 vmware_view_LDADD += $(BOOST_LDFLAGS) $(BOOST_SIGNALS_LIB)
 vmware_view_LDADD += $(ICU_LIBS)
 vmware_view_LDADD += $(VIEW_FRAMEWORKS)
+
+testUrl_SOURCES :=
+testUrl_SOURCES += testUrl.cc
+nodist_testUrl_SOURCES :=
+if STATIC_ICU
+nodist_testUrl_SOURCES += $(ICUDATA_ENTRY_POINT)l_dat.s
+endif
+
+testUrl_CPPFLAGS =
+testUrl_CPPFLAGS += $(AM_CPPFLAGS)
+testUrl_CPPFLAGS += $(GLIB_CFLAGS)
+testUrl_CPPFLAGS += $(ICU_CPPFLAGS)
+
+testUrl_LDADD :=
+testUrl_LDADD += libCdk.a
+testUrl_LDADD += $(GLIB_LIBS)
+testUrl_LDADD += $(ICU_LIBS)
+testUrl_LDADD += $(TUNNEL_FRAMEWORKS)
 
 dist_noinst_DATA += intltool-extract.in
 dist_noinst_DATA += intltool-merge.in
@@ -266,7 +324,12 @@ TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION).$(RPM_ARCH)
 bindist: all-am
 	rm -rf $(TAR_STAGE_DIR)
 	$(MKDIR_P) $(TAR_STAGE_DIR)/bin
-	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help
+	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/de
+	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/en
+	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/fr
+	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/ja
+	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/zh_CN
+	$(MKDIR_P) $(TAR_STAGE_DIR)/patches
 	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view \
 		$(TAR_STAGE_DIR)/bin
 	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view-tunnel \
@@ -287,17 +350,19 @@ if VIEW_EULAS
 	done
 endif
 	@for lang in en $(ALL_LINGUAS) ; do \
-		echo $(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-$$lang.pdf \
-			$(TAR_STAGE_DIR)/doc ; \
-		$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-$$lang.pdf \
-			$(TAR_STAGE_DIR)/doc ; \
-		echo $(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-$$lang.txt \
-			$(TAR_STAGE_DIR)/doc/help ; \
-		$(INSTALL_DATA) $(srcdir)/doc/help/integrated_help-$$lang.txt \
-			$(TAR_STAGE_DIR)/doc/help ; \
+		if test -e $(srcdir)/doc/help/$$lang ; then \
+			echo $(INSTALL_DATA) $(srcdir)/doc/help/$$lang/*.txt \
+				$(TAR_STAGE_DIR)/doc/help/$$lang ; \
+			$(INSTALL_DATA) $(srcdir)/doc/help/$$lang/*.txt \
+				$(TAR_STAGE_DIR)/doc/help/$$lang ; \
+		fi ; \
 	done
+	$(INSTALL_DATA) $(srcdir)/doc/View_Client_Admin_Guide-en.pdf \
+		$(TAR_STAGE_DIR)/doc
 	$(INSTALL_SCRIPT) $(srcdir)/vmware-view-log-collector \
 		$(TAR_STAGE_DIR)/bin
+	$(INSTALL_DATA) $(srcdir)/rdesktop-1.6.0-win7scard.patch \
+		$(TAR_STAGE_DIR)/patches
 	$(MAKE) -C po $(AM_MAKEFLAGS) install itlocaledir=../$(TAR_STAGE_DIR)/share/locale
 	tardir=$(TAR_STAGE_DIR) && $(am__tar) | GZIP=$(GZIP_ENV) $(GZIP) -c \
 		>$(TAR_STAGE_DIR).tar.gz
@@ -315,13 +380,6 @@ DELIVERABLES += rpms
 ifneq ($(DPKG_DEB),)
 DELIVERABLES += debs
 @ENDIF@
-
-ifeq ($(PACKAGING_NAME),VMware-view-open-client)
-ifeq ($(host_cpu),i686)
-# XXX: dist should be distcheck
-DELIVERABLES += dist
-@ENDIF@
-@ENDIF@
 endif # VIEW_GTK
 
 if VIEW_COCOA
@@ -333,9 +391,6 @@ ifneq ($(PUBLISH_DIR),)
 	$(MKDIR_P) $(PUBLISH_DIR)
 if VIEW_GTK
 	$(INSTALL_DATA) $(TAR_STAGE_DIR).tar.gz $(PUBLISH_DIR)
-ifeq ($(PACKAGING_NAME),VMware-view-open-client)
-	$(INSTALL_DATA) $(distdir).tar.gz $(PUBLISH_DIR)
-@ENDIF@ # PACKAGING_NAME
 ifneq ($(RPMBUILD),)
 	$(INSTALL_DATA) \
 		$(PACKAGING_NAME)-$(PACKAGE_VERSION).$(RPM_ARCH).rpm \

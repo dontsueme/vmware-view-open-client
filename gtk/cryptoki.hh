@@ -38,7 +38,6 @@
 #endif
 
 
-#include <boost/signal.hpp>
 #include <gmodule.h>
 #include <list>
 #include <openssl/evp.h>
@@ -52,12 +51,24 @@
 #include "util.hh"
 
 
+#define CDK_CRYPTOKI_ERROR cdk::Cryptoki::GetErrorQuark()
+
+
 namespace cdk {
 
 
 class Cryptoki
 {
 public:
+   enum ErrorCode {
+      ERR_UNKNOWN = 1,
+      ERR_INVALID_PIN,
+      ERR_PIN_FINAL_TRY,
+      ERR_PIN_LOCKED,
+      ERR_DEVICE_REMOVED,
+      ERR_SESSION_NOT_FOUND
+   };
+
    Cryptoki();
    ~Cryptoki();
 
@@ -69,11 +80,13 @@ public:
 
    bool GetHadEvent();
 
-   std::list<X509 *> GetCertificates(STACK_OF(X509_NAME) *CAs);
+   std::list<X509 *> GetCertificates(std::list<Util::string> &trustedIssuers);
+   bool Login(const X509 *cert, const char *pin, GError **error);
    EVP_PKEY *GetPrivateKey(const X509 *cert);
 
    std::vector<Util::string> GetSlotNames();
    Util::string GetSlotName(const X509 *cert);
+   Util::string GetTokenName(const X509 *cert);
 
    X509 *DupCert(X509 *cert);
    void FreeCert(X509 *cert);
@@ -82,9 +95,8 @@ public:
 
    void CloseAllSessions();
 
-   boost::signal2<const char *, const Util::string &, const X509 *> requestPin;
-
    static void FreeCertificates(std::list<X509 *> &certs);
+   static GQuark GetErrorQuark();
 
 private:
    class Module
@@ -94,7 +106,8 @@ private:
       ~Module();
 
       bool Load(const Util::string &filePath);
-      void GetCertificates(std::list<X509 *> &certs, STACK_OF(X509_NAME) *CAs);
+      void GetCertificates(std::list<X509 *> &certs,
+                           std::list<Util::string> &issuers);
       void GetSlotNames(std::set<Util::string> &slots);
       Util::string GetSlotName(CK_SLOT_ID slot);
 
@@ -127,15 +140,17 @@ private:
 
       CK_RV Open(CK_SLOT_ID slot);
       CK_RV Logout();
-      void GetCertificates(std::list<X509 *> &certs, STACK_OF(X509_NAME) *CAs);
+      void GetCertificates(std::list<X509 *> &certs,
+                           std::list<Util::string> &issuers);
       EVP_PKEY *GetPrivateKey(const X509 *cert);
       Util::string GetSlotName();
+      Util::string GetTokenName() const { return mLabel; }
 
       bool GetIsInserted();
 
-   private:
-      bool Login(const X509 *cert);
+      bool Login(const X509 *cert, const char *pin, GError **error);
 
+   private:
       static const RSA_METHOD *GetRsaMethod();
       static int RsaSign(int type,
                          const unsigned char *m, unsigned int m_length,
@@ -187,6 +202,7 @@ private:
    };
 
    std::list<Module *> mModules;
+   static GQuark sErrorQuark;
 };
 
 

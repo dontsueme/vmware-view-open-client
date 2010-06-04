@@ -38,21 +38,67 @@
 #include "util.hh"
 
 
+extern "C" {
+#include "productState.h"
+}
+
+
 namespace cdk {
 
 
 class HelpSupportDlg
 {
 public:
-   static void ShowDlg(GtkWindow *parent);
+   HelpSupportDlg();
+   virtual ~HelpSupportDlg();
+
+   virtual void Run();
+
+   void SetParent(GtkWindow *window) { mParent = window; }
+   void SetHelpContext(Util::string context) { mHelpContext = context; }
+   void SetSupportFile(Util::string path) { mSupportFile = path; }
+   void SetBrokerHostName(Util::string hostname) { mBrokerHostName = hostname; }
+
+protected:
+   virtual GtkWidget *CreateHelpTab();
+   virtual void InsertHelpText();
+
+   virtual GtkWidget *CreateSupportTab();
+   virtual void CreateProductInformationSection(GtkTable *table);
+   virtual void CreateHostInformationSection(GtkTable *table);
+   virtual void CreateConnectionInformationSection(GtkTable *table);
+
+   GtkLabel *CreateLabel(const Util::string &text);
+   guint AppendRow(GtkTable *table);
+   void AddTitle(GtkTable *table, const Util::string &text);
+   void AddPair(GtkTable *table, const Util::string &label,
+                const Util::string &data);
+   void AddWidget(GtkTable *table, GtkWidget *widget);
+   GtkTextView *GetSupportView(const Util::string &supportFilePath);
+
+   virtual bool ShowLogLocation() { return true; }
+   virtual Util::string GetVersionString() const
+      { return ProductState_GetVersion(); }
+
+   GtkDialog *GetDialog() { return mDialog; }
+   GtkTextView *GetTextView() { return mHelpTextView; }
+   GtkWindow *GetParent() { return mParent; }
+   Util::string GetHelpContext() { return mHelpContext; }
+   Util::string GetSupportFile() { return mSupportFile; }
+   Util::string GetBrokerHostName() { return mBrokerHostName; }
 
 private:
-   static GtkWidget *CreateHelpWidget();
-   static Util::string ReadHelpFile();
-   static bool GetHelpContents(const char *directory, const char *locale,
-                               char **helpText);
+   Util::string ReadHelpFile();
+   bool GetHelpContents(const char *directory,
+                        const char *locale,
+                        char **helpText);
 
-   static GtkDialog *sDialog;
+   GtkDialog *mDialog;
+   GtkTextView *mHelpTextView;
+   GtkWindow *mParent;
+   Util::string mHelpContext;
+   Util::string mSupportFile;
+   Util::string mBrokerHostName;
 };
 
 

@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 ################################################################################
-# Copyright 2008 VMware, Inc.  All rights reserved.
+# Copyright 2008-2010 VMware, Inc.  All rights reserved.
 #
 # This file is part of VMware View Open Client.
 #
@@ -18,11 +18,6 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
-# If this changes, we need to rebuild the list of wrapped functions
-# (which is done at configure time).
-CONFIG_STATUS_DEPENDENCIES += lib/bora/include/sslFunctionList.h
-
-dist_noinst_HEADERS += lib/bora/include/asyncsocket.h
 dist_noinst_HEADERS += lib/bora/include/basicHttp.h
 dist_noinst_HEADERS += lib/bora/include/crypto.h
 dist_noinst_HEADERS += lib/bora/include/cryptoBuffer.h
@@ -45,10 +40,6 @@ dist_noinst_HEADERS += lib/bora/include/poll.h
 dist_noinst_HEADERS += lib/bora/include/pollImpl.h
 dist_noinst_HEADERS += lib/bora/include/sig.h
 dist_noinst_HEADERS += lib/bora/include/sigPosix.h
-dist_noinst_HEADERS += lib/bora/include/ssl.h
-dist_noinst_HEADERS += lib/bora/include/sslFunctionList.h
-dist_noinst_HEADERS += lib/bora/include/sslPRNG.h
-dist_noinst_HEADERS += lib/bora/include/sslWrapper.h
 dist_noinst_HEADERS += lib/bora/include/syncRecMutex.h
 dist_noinst_HEADERS += lib/bora/include/sysSocket.h
 dist_noinst_HEADERS += lib/bora/include/url.h
@@ -56,5 +47,12 @@ dist_noinst_HEADERS += lib/bora/include/urlAppend.h
 dist_noinst_HEADERS += lib/bora/include/urlTable.h
 dist_noinst_HEADERS += lib/bora/include/vcpuid.h
 dist_noinst_HEADERS += lib/bora/include/vmlocale.h
+dist_noinst_HEADERS += lib/bora/include/VMwareVDPPlugin.h
 dist_noinst_HEADERS += lib/bora/include/vthread.h
 dist_noinst_HEADERS += lib/bora/include/vthreadBase.h
+dist_noinst_HEADERS += lib/bora/include/win32u.h
+dist_noinst_HEADERS += lib/bora/include/win32uRegistry.h
+dist_noinst_HEADERS += lib/bora/include/vm_group.h
+dist_noinst_HEADERS += lib/bora/include/winsidtypes.h
+dist_noinst_HEADERS += lib/bora/include/winsockerr.h
+

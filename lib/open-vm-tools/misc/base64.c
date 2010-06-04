@@ -46,8 +46,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "vm_basic_types.h"
-#include "vm_assert.h"
+
 #include "base64.h"
 
 static const char Base64[] =
@@ -190,8 +189,8 @@ static const signed char base64Reverse[256] = {
  *----------------------------------------------------------------------------
  */
 
-Bool
-Base64_Encode(uint8 const *src,  // IN:
+gboolean
+Base64_Encode(guint8 const *src, // IN:
               size_t srcSize,    // IN:
               char *dst,         // OUT:
               size_t dstMax,     // IN: max result length, including NUL byte
@@ -199,8 +198,8 @@ Base64_Encode(uint8 const *src,  // IN:
 {
    char *dst0 = dst;
 
-   ASSERT(src || srcSize == 0);
-   ASSERT(dst);
+   g_assert(src || srcSize == 0);
+   g_assert(dst);
 
    if (4 * ((srcSize + 2) / 3) >= dstMax) {
       if (dstSize) {
@@ -210,7 +209,7 @@ Base64_Encode(uint8 const *src,  // IN:
       return FALSE;
    }
 
-   while (LIKELY(srcSize > 2)) {
+   while (G_LIKELY(srcSize > 2)) {
       dst[0] = Base64[src[0] >> 2];
       dst[1] = Base64[(src[0] & 0x03) << 4 | src[1] >> 4];
       dst[2] = Base64[(src[1] & 0x0f) << 2 | src[2] >> 6];
@@ -222,8 +221,8 @@ Base64_Encode(uint8 const *src,  // IN:
    }
 
    /* Now we worry about padding. */
-   if (LIKELY(srcSize--)) {
-      uint8 src1 = srcSize ? src[1] : 0;
+   if (G_LIKELY(srcSize--)) {
+      guint8 src1 = srcSize ? src[1] : 0;
 
       dst[0] = Base64[src[0] >> 2];
       dst[1] = Base64[(src[0] & 0x03) << 4 | src1 >> 4];
@@ -270,7 +269,7 @@ main()
 
          test = tests;
          for (; test->in; ++test) {
-            Bool r;
+            gboolean r;
 
             r = Base64_Decode(test->in, buf, bufMax, &bufSize);
 
@@ -302,7 +301,7 @@ main()
       char random_out[16000];
       size_t bufSize;
 
-      Bool r = Base64_Encode(random_in, sizeof random_in,
+      gboolean r = Base64_Encode(random_in, sizeof random_in,
                              random_out, sizeof random_out, &bufSize);
 
       if (!r) {
@@ -332,19 +331,19 @@ main()
  *----------------------------------------------------------------------------
  */
 
-Bool
+gboolean
 Base64_Decode(char const *in,      // IN:
-              uint8 *out,          // OUT:
+              guint8 *out,         // OUT:
               size_t outSize,      // IN:
               size_t *dataLength)  // OUT:
 {
-   uint32 b = 0;
+   guint32 b = 0;
    int n = 0;
-   uintptr_t i = 0;
+   int i = 0;
 
-   ASSERT(in);
-   ASSERT(out || outSize == 0);
-   ASSERT(dataLength);
+   g_assert(in);
+   g_assert(out || outSize == 0);
+   g_assert(dataLength);
 
    *dataLength = 0;
 
@@ -352,19 +351,19 @@ Base64_Decode(char const *in,      // IN:
    for (;;) {
        int p = base64Reverse[*(unsigned char *)in++];
 
-      if (UNLIKELY(p < 0)) {
+      if (G_UNLIKELY(p < 0)) {
          switch (p) {
          case ILLEGAL: return FALSE;
          case WS: continue;
          case EOM: *dataLength = i; return TRUE;
          }
       } else {
-         if (UNLIKELY(i >= outSize)) {
+         if (G_UNLIKELY(i >= outSize)) {
             return FALSE;
          }
          b = (b << 6) | p;
          n += 6;
-         if (LIKELY(n >= 8)) {
+         if (G_LIKELY(n >= 8)) {
             n -= 8;
             out[i++] = b >> n;
          }
@@ -389,15 +388,15 @@ Base64_Decode(char const *in,      // IN:
  *----------------------------------------------------------------------------
  */
 
-Bool
+gboolean
 Base64_ValidEncoding(char const *src,   // IN:
                      size_t srcLength)  // IN:
 {
    size_t i;
 
-   ASSERT(src);
+   g_assert(src);
    for (i = 0; i < srcLength; i++) {
-      uint8 c = src[i]; /* MSVC CRT will die on negative arguments to is* */
+      guint8 c = src[i]; /* MSVC CRT will die on negative arguments to is* */
 
       if (!isalpha(c) && !isdigit(c) &&
           c != '+' && c != '=' && c != '/') {
@@ -426,7 +425,7 @@ Base64_ValidEncoding(char const *src,   // IN:
  */
 
 size_t
-Base64_EncodedLength(uint8 const *src,  // IN:
+Base64_EncodedLength(guint8 const *src, // IN:
                      size_t srcLength)  // IN:
 {
    return ((srcLength + 2) / 3 * 4) + 1;
@@ -458,7 +457,7 @@ Base64_DecodedLength(char const *src,   // IN:
 {
    size_t length;
 
-   ASSERT(src);
+   g_assert(src);
 
    length = srcLength / 4 * 3;
    // PR 303173 - do the following check to avoid a negative value returned
@@ -484,7 +483,7 @@ Base64_DecodedLength(char const *src,   // IN:
  *
  * Results:
  *      On success: TRUE. '*target' is set to an allocated string, that the
- *                  caller must eventually free().
+ *                  caller must eventually g_free().
  *      On failure: FALSE. '*target' is set to NULL.
  *
  * Side effects:
@@ -493,20 +492,20 @@ Base64_DecodedLength(char const *src,   // IN:
  *-----------------------------------------------------------------------------
  */
 
-Bool
-Base64_EasyEncode(const uint8 *src,  // IN: data to encode
+gboolean
+Base64_EasyEncode(const guint8 *src, // IN: data to encode
                   size_t srcLength,  // IN: data size
                   char **target)     // OUT: encoded string
 {
-   Bool succeeded = FALSE;
+   gboolean succeeded = FALSE;
    size_t size;
 
-   ASSERT(src);
-   ASSERT(target);
+   g_assert(src);
+   g_assert(target);
 
    size = Base64_EncodedLength(src, srcLength);
 
-   *target = (char *) malloc(size);
+   *target = (char *) g_malloc(size);
 
    if (!*target) {
       goto exit;
@@ -520,7 +519,7 @@ Base64_EasyEncode(const uint8 *src,  // IN: data to encode
 
 exit:
    if (!succeeded) {
-      free(*target);
+      g_free(*target);
       *target = NULL;
    }
 
@@ -537,7 +536,7 @@ exit:
  *
  * Results:
  *      TRUE on success, FALSE otherwise, plus the decoded data on success.
- *      Caller must free 'target' with free().
+ *      Caller must free 'target' with g_free().
  *
  * Side effects:
  *      None.
@@ -545,29 +544,29 @@ exit:
  *-----------------------------------------------------------------------------
  */
 
-Bool
+gboolean
 Base64_EasyDecode(const char *src,   // IN: data to decode
-                  uint8 **target,    // OUT: decoded data
+                  guint8 **target,   // OUT: decoded data
                   size_t *targSize)  // OUT: data size
 {
-   Bool succeeded = FALSE;
+   gboolean succeeded = FALSE;
    size_t theDataSize;
-   uint8 *theData;
+   guint8 *theData;
 
-   ASSERT(src);
-   ASSERT(target);
-   ASSERT(targSize);
+   g_assert(src);
+   g_assert(target);
+   g_assert(targSize);
 
    theDataSize = Base64_DecodedLength(src, strlen(src));
 
-   theData = (uint8 *) malloc(theDataSize);
+   theData = (guint8 *) g_malloc(theDataSize);
 
    if (!theData) {
       goto exit;
    }
 
    if (!Base64_Decode(src, theData, theDataSize, &theDataSize)) {
-      free(theData);
+      g_free(theData);
       goto exit;
    }
 

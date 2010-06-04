@@ -72,7 +72,7 @@
 /*
  * And these platforms/setups use bsd_vsnwprintf()
  */
-#if (defined _WIN32 && !defined STR_NO_WIN32_LIBS) || \
+#if (defined _WIN32 && !defined __MINGW32__ && !defined STR_NO_WIN32_LIBS) || \
    (defined __GNUC__ && (__GNUC__ < 2                 \
                          || (__GNUC__ == 2            \
                              && __GNUC_MINOR__ < 96)))

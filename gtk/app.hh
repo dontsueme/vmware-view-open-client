@@ -34,15 +34,20 @@
 #define APP_HH
 
 
+#define VMWARE_HOME_DIR "~/.vmware"
+
+
 #include <gtk/gtk.h>
 
 
 #include "baseApp.hh"
+#include "prefs.hh"
 #include "util.hh"
 
 
 extern "C" {
 #include "poll.h"
+#include "sig.h"
 }
 
 
@@ -61,17 +66,37 @@ public:
 
    // overrides BaseApp
    virtual int Main(int argc, char *argv[]);
-   virtual void Quit();
-   static void ShowDialog(GtkMessageType type,
-                          const Util::string format, ...);
+
 protected:
    // Overrides BaseApp
    void InitPoll() { Poll_InitGtk(); }
    Util::string GetLocaleDir();
 
-   virtual Window *CreateWindow();
+   virtual void InitPrefs()
+      { Prefs::SetPrefFilePath(VMWARE_HOME_DIR); }
 
+   virtual Window *CreateAppWindow();
+
+   virtual void TriageError(CdkError error,
+                            const Util::string &message,
+                            const Util::string &details,
+                            va_list args);
 private:
+   virtual void ShowErrorDialog(const Util::string &message,
+                                const Util::string &details,
+                                va_list args);
+   virtual void ShowInfoDialog(const Util::string &message,
+                               const Util::string &details,
+                               va_list args);
+   virtual void ShowWarningDialog(const Util::string &message,
+                                  const Util::string &details,
+                                  va_list args);
+   virtual Util::string GetWindowManagerName();
+
+#ifdef VIEW_POSIX
+   static void SigTermHandler(int s, siginfo_t *info, void *clientData);
+#endif
+
    Window *mWindow;
 };
 

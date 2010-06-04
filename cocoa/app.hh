@@ -40,11 +40,6 @@ extern "C" {
 }
 
 
-extern "C" typedef enum {
-   GTK_MESSAGE_INFO,
-   GTK_MESSAGE_ERROR
-} GtkMessageType;
-
 
 namespace cdk {
 
@@ -56,12 +51,21 @@ public:
    // Overridden from BaseApp.
    int Main(int argc, char *argv[]);
 
-   static void ShowDialog(GtkMessageType type,
-                          const Util::string format, ...);
 protected:
    // overridden from BaseApp
    void InitPoll() { Poll_InitCF(); }
    Util::string GetLocaleDir();
+   virtual void InitLogging();
+private:
+   virtual void ShowErrorDialog(const Util::string &message,
+                                const Util::string &details,
+                                va_list args);
+   virtual void ShowInfoDialog(const Util::string &message,
+                               const Util::string &details,
+                               va_list args);
+   virtual void ShowWarningDialog(const Util::string &message,
+                                  const Util::string &details,
+                                  va_list args);
 };
 
 

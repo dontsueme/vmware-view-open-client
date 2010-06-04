@@ -33,10 +33,14 @@
 
 @interface CdkWinCredsViewController : CdkViewController
 {
+   IBOutlet NSTextField *passwordField;
 }
 
 
 +(CdkWinCredsViewController *)winCredsViewController;
+
+
+-(void)updateFocus;
 
 
 @end // @interface CdkWinCredsViewController

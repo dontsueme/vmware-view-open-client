@@ -1726,18 +1726,20 @@ PollExecuteDevice(uint32 timeout,       // IN microsecs
        * Handle this case by ignoring Windows messages for threads
        * that shouldn't get any.
        */
+#ifndef __MINGW32__
       switch (VThread_CurID()) {
       case VTHREAD_UI_ID:
       case VTHREAD_MKS_ID:
-	 PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE);
-	 break;
+         PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE);
+         break;
       default:
-	 if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-	    Warning("Ignoring windows message posted to non-UI thread."
-		    " hwnd %d msg %d wp %08x lp %08x\n",
-		    msg.hwnd, msg.message, msg.wParam, msg.lParam);
-	 }
+         if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+            Warning("Ignoring windows message posted to non-UI thread."
+               " hwnd %d msg %d wp %08x lp %08x\n",
+               msg.hwnd, msg.message, msg.wParam, msg.lParam);
+         }
       }
+#endif
    } else if (retval == WAIT_TIMEOUT) {
       // nothing signaled and nothing to do
    } else if (retval == WAIT_IO_COMPLETION) {

@@ -29,7 +29,6 @@
  */
 
 
-#include <glib/gi18n.h>
 #include <gtk/gtkbbox.h>
 #include <gtk/gtkalignment.h>
 #include <gtk/gtkstock.h>

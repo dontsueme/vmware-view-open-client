@@ -28,10 +28,6 @@
  *    Broker selection dialog.
  */
 
-
-#include <glib/gi18n.h>
-
-
 #include "brokerDlg.hh"
 #include "prefs.hh"
 
@@ -66,7 +62,6 @@ BrokerDlg::BrokerDlg(Util::string initialBroker) // IN/OPT
      mAutoConnect(GTK_CHECK_BUTTON(gtk_check_button_new_with_mnemonic(
                                       _("_Always connect to this server at "
                                         "startup")))),
-     mServer(""),
      mPort(443),
      mSecure(true),
      mFreezeState(FREEZE_NOTHING)

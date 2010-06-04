@@ -148,6 +148,7 @@ struct BasicHttpResponse {
    BasicHttpErrorCode      errorCode;
    BasicHttpResponseCode   responseCode;
    char                    *content;
+   char                    *effectiveURL;
 };
 
 typedef VMwareStatus PollCallbackProc(PollClassSet classSet, int flags,
@@ -259,6 +260,9 @@ void BasicHttp_SetSslCtxProc(BasicHttpRequest *request,
 void BasicHttp_SetProxy(BasicHttpRequest *request,
                         const char *proxy,
                         BasicHttpProxyType proxyType);
+
+void BasicHttp_SetConnectTimeout(BasicHttpRequest *request,
+                                 unsigned long seconds);
 
 Bool BasicHttp_SendRequest(BasicHttpRequest *request,
                            BasicHttpOnSentProc *onSentProc,

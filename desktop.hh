@@ -65,21 +65,52 @@ public:
     * used for status messages and icons.
     */
    enum Status {
+      /* We could not determine the status. */
       STATUS_UNKNOWN,
+      /* The server reported an offline state we do not understand. */
+      STATUS_UNKNOWN_OFFLINE_STATE,
+      /* We are current resetting the desktop. */
       STATUS_RESETTING,
+      /* We are currently logging off from the desktop. */
       STATUS_LOGGING_OFF,
+      /* We are currently rolling back the desktop. */
       STATUS_ROLLING_BACK,
-      STATUS_LOCAL_ROLLBACK,
+      /*
+       * The administrator has initiated a rollback of the desktop that has not
+       * yet completed.
+       */
+      STATUS_SERVER_ROLLBACK,
+      /*
+       * We are in the process of doing local processing in response to a
+       * a server side rollback.
+       */
+      STATUS_HANDLING_SERVER_ROLLBACK,
+      /* The desktop is checked out here but is currently disabled. */
       STATUS_CHECKED_OUT_DISABLED,
+      /* The desktop is checked out by another user. */
       STATUS_CHECKED_OUT_BY_OTHER,
-      STATUS_NONBACKGROUND_TRANSFER,
+      /* The desktop is checked out, but unavailable. */
+      STATUS_CHECKED_OUT_UNAVAILABLE,
+      /* The desktop is currently being checked in. */
+      STATUS_NONBACKGROUND_TRANSFER_CHECKING_IN,
+      /* The desktop is currently being checked out. */
+      STATUS_NONBACKGROUND_TRANSFER_CHECKING_OUT,
+      /* We are currently discarding the desktop's checkout. */
+      STATUS_DISCARDING_CHECKOUT,
+      /* The desktop is in maintenance mode. */
       STATUS_MAINTENANCE_MODE,
+      /* The desktop currently has a login session. */
       STATUS_LOGGED_ON,
-      STATUS_AVAILABLE
+      /* The desktop is available for remote use. */
+      STATUS_AVAILABLE_REMOTE,
+      /* The desktop is available for local use. */
+      STATUS_AVAILABLE_LOCAL,
+      /* The desktop is expired. */
+      STATUS_EXPIRED
    };
 
    Desktop(BrokerXml &xml, BrokerXml::Desktop &desktopInfo);
-   virtual ~Desktop();
+   ~Desktop();
 
    void SetInfo(BrokerXml::Desktop &desktopInfo);
    ConnectionState GetConnectionState() const { return mConnectionState; }
@@ -101,16 +132,15 @@ public:
 
    Util::string GetState() const { return mDesktopInfo.state; }
    bool GetOfflineEnabled() const { return mDesktopInfo.offlineEnabled; }
+   bool GetEndpointEnabled() const { return mDesktopInfo.endpointEnabled; }
    BrokerXml::OfflineState GetOfflineState() const
       { return mDesktopInfo.offlineState; }
+   bool GetCheckedOutUnavailable() const;
    bool GetCheckedOutByOther() const { return mDesktopInfo.checkedOutByOther; }
    bool InMaintenanceMode() const { return mDesktopInfo.inMaintenance; }
-   bool InLocalRollback() const { return mDesktopInfo.inLocalRollback; }
    bool IsCheckedOutHereAndDisabled() const;
    bool InNonBackgroundDesktopTransfer() const;
-
-   Util::string GetCheckedOutHereAndDisabledMessage() const;
-   Util::string GetNonBackgroundDesktopTransferMessage() const;
+   bool IsExpired() const { return mDesktopInfo.expired; }
 
    bool GetIsUSBEnabled() const { return mDesktopConn.enableUSB; }
    bool GetIsMMREnabled() const { return mDesktopConn.enableMMR; }
@@ -118,12 +148,12 @@ public:
    std::vector<Util::string> GetProtocols() const
       { return mDesktopInfo.protocols; }
    Util::string GetProtocol() const { return mProtocol; }
-   void SetProtocol(Util::string protocol) { mProtocol = protocol; }
+   void SetProtocol(const Util::string &protocol);
 
    bool GetAutoConnect() const;
 
-   virtual Status GetStatus() const;
-   virtual Util::string GetStatusMsg();
+   Status GetStatus() const;
+   Util::string GetStatusMsg(bool isOffline) const;
    bool IsCVP() const;
    bool GetRequiresDownload() const;
 
@@ -131,6 +161,13 @@ public:
 
    const BrokerXml::DesktopConnection &GetConnection() const
       { return mDesktopConn; }
+
+   void SetForcedStatus(Status status)
+      { mForcedStatus = status; }
+   void ClearForcedStatus()
+      { mForcedStatus = STATUS_UNKNOWN; }
+   bool HasForcedStatus() const
+      { return STATUS_UNKNOWN != mForcedStatus; }
 
    boost::signal0<void> changed;
 
@@ -160,6 +197,7 @@ private:
    Usb mUsb;
 
    Util::string mProtocol;
+   Status mForcedStatus;
 };
 
 

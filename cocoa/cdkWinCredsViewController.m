@@ -170,17 +170,17 @@ extern "C" {
    [[CdkPrefs sharedPrefs] setUser:[creds username]];
    [[CdkPrefs sharedPrefs] setDomain:[creds domain]];
 
-   if (![creds savePassword]) {
-      return;
-   }
-
    CdkBrokerAddress *address = [[windowController broker] address];
 
    const char *hostname = [[address hostname] UTF8String];
    const char *username = [[creds username] UTF8String];
    const char *secret = [[creds secret] UTF8String];
+   UInt32 pwordLen = 0;
+   void *pwordData = NULL;
+   BOOL passwordsDiffer = YES;
 
-   OSStatus rv = SecKeychainAddInternetPassword(
+   SecKeychainItemRef item;
+   OSStatus rv = SecKeychainFindInternetPassword(
       NULL,
       strlen(hostname), hostname,
       0, NULL, // security domain
@@ -188,13 +188,62 @@ extern "C" {
       0, NULL, // path
       [address port],
       [address secure] ? kSecProtocolTypeHTTPS : kSecProtocolTypeHTTP,
-      kSecAuthenticationTypeDefault,
-      strlen(secret), secret, NULL);
+      kSecAuthenticationTypeDefault, &pwordLen, &pwordData, &item);
 
-   if (rv != noErr) {
-      Warning("Could not save password: %d: %s (%s)\n", (int)rv,
-              GetMacOSStatusErrorString(rv),
-              GetMacOSStatusCommentString(rv));
+   /*
+    * Delete the old password if we're not saving the password or it
+    * differs from the current password.
+    */
+   if (rv == noErr) {
+      passwordsDiffer = strncmp((const char *)pwordData, secret, pwordLen);
+      if (![creds savePassword] || passwordsDiffer) {
+         SecKeychainItemDelete(item);
+      }
+      SecKeychainItemFreeContent(NULL, pwordData);
+   }
+
+   if ([creds savePassword] && passwordsDiffer) {
+      rv = SecKeychainAddInternetPassword(
+         NULL,
+         strlen(hostname), hostname,
+         0, NULL, // security domain
+         strlen(username), username,
+         0, NULL, // path
+         [address port],
+         [address secure] ? kSecProtocolTypeHTTPS : kSecProtocolTypeHTTP,
+         kSecAuthenticationTypeDefault,
+         strlen(secret), secret, NULL);
+      if (rv != noErr) {
+         Warning("Could not save password: %d: %s (%s)\n", (int)rv,
+                 GetMacOSStatusErrorString(rv),
+                 GetMacOSStatusCommentString(rv));
+      }
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkWinCredsViewController updateFocus] --
+ *
+ *      Make the password field the first responder if they already
+ *      entered a username.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)updateFocus
+{
+   CdkCreds *creds = [self representedObject];
+   if ([[creds username] length]) {
+      [[passwordField window] makeFirstResponder:passwordField];
    }
 }
 

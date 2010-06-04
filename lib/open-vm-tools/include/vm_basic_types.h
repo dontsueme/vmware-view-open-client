@@ -265,7 +265,9 @@ typedef char      int8;
 #            ifdef VM_X86_64
 typedef int64     intptr_t;
 #            else
+#               ifndef __MINGW32__
 typedef int32     intptr_t;
+#               endif
 #            endif
 #         endif
 #      endif
@@ -936,25 +938,52 @@ typedef void * UserVA;
  * preprocessor arithmetic.
  * Use this like this: printf("The mode is %"FMTTIME".\n", time);
  */
-#if defined(__FreeBSD__) && (__FreeBSD__ + 0) && ((__FreeBSD__ + 0) >= 5)
-#   define FMTTIME FMTSZ"d"
-#else
-#   if defined(_MSC_VER)
-#      ifndef _SAFETIME_H_
-#         if (_MSC_VER < 1400) || defined(_USE_32BIT_TIME_T)
-#             define FMTTIME "ld"
-#         else
-#             define FMTTIME FMT64"d"
-#         endif
-#      else
-#         ifndef FMTTIME
-#            error "safetime.h did not define FMTTIME"
-#         endif
-#      endif
+#ifndef FMTTIME
+#  if defined(__FreeBSD__) && (__FreeBSD__ + 0) && ((__FreeBSD__ + 0) >= 5)
+#     define FMTTIME FMTSZ"d"
+#  else
+#     if defined(_MSC_VER)
+#        ifndef _SAFETIME_H_
+#           if (_MSC_VER < 1400) || defined(_USE_32BIT_TIME_T)
+#               define FMTTIME "ld"
+#           else
+#               define FMTTIME FMT64"d"
+#           endif
+#        else
+#           ifndef FMTTIME
+#              error "safetime.h did not define FMTTIME"
+#           endif
+#        endif
+#     else
+#        define FMTTIME "ld"
+#     endif
+#  endif
+#endif
+
+#ifdef __APPLE__
+/*
+ * Format specifier for all these annoying types such as {S,U}Int32
+ * which are 'long' in 32-bit builds
+ *       and  'int' in 64-bit builds.
+ */
+#   ifdef __LP64__
+#      define FMTLI ""
 #   else
-#      define FMTTIME "ld"
+#      define FMTLI "l"
+#   endif
+
+/*
+ * Format specifier for all these annoying types such as NS[U]Integer
+ * which are  'int' in 32-bit builds
+ *       and 'long' in 64-bit builds.
+ */
+#   ifdef __LP64__
+#      define FMTIL "l"
+#   else
+#      define FMTIL ""
 #   endif
 #endif
+
 
 /*
  * Define MXSemaHandle here so both vmmon and vmx see this definition.
@@ -1006,5 +1035,11 @@ typedef struct VMRect {
    int bottom;
 } VMRect;
 #endif
+
+/*
+ * ranked locks "everywhere"
+ */
+
+typedef uint32 MX_Rank;
 
 #endif  /* _VM_BASIC_TYPES_H_ */

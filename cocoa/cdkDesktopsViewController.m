@@ -36,14 +36,19 @@ extern "C" {
 
 #import "cdkBroker.h"
 #import "cdkDesktop.h"
+#import "cdkDesktopFormatter.h"
 #import "cdkDesktopSize.h"
 #import "cdkDesktopSizesWindowController.h"
 #import "cdkDesktopsViewController.h"
 #import "cdkPrefs.h"
+#import "cdkString.h"
 #import "cdkWindowController.h"
 
 
 #include "util.hh"
+
+
+#define ICON_SIZE 32
 
 
 @interface CdkDesktopsViewController ()
@@ -109,7 +114,7 @@ static NSString const *KEY_PATH_CONTINE_ENABLED_DEP =
    if (!self) {
       return nil;
    }
-   desktops = [[NSArray alloc] init];
+   [self setDesktops:[NSArray array]];
    [[CdkPrefs sharedPrefs] addObserver:self
                             forKeyPath:KEY_PATH_CUSTOM_DESKTOP_SIZE
                                options:0
@@ -169,7 +174,10 @@ static NSString const *KEY_PATH_CONTINE_ENABLED_DEP =
 {
    [self updateCustomSize];
    [self selectPreferedSize];
+   [desktopsView setRowHeight:ICON_SIZE + VM_SPACING];
+   [desktopCell setFormatter:[CdkDesktopFormatter desktopFormatter]];
 }
+
 
 /*
  *-----------------------------------------------------------------------------
@@ -385,6 +393,28 @@ static NSString const *KEY_PATH_CONTINE_ENABLED_DEP =
    }
    NOT_IMPLEMENTED();
    return CDK_PREFS_FULL_SCREEN;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkDesktopsViewController updateDesktops] --
+ *
+ *      Refresh the desktop list.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Desktop list refreshed.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)updateDesktops
+{
+   [desktopsView reloadData];
 }
 
 

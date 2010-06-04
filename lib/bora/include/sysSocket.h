@@ -1,3 +1,4 @@
+//depot/vdi/vdm30/framework/cdk/lib/bora/include/sysSocket.h#1 - add change 23245 (text)
 /*********************************************************
  * Copyright (C) 1998 VMware, Inc. All rights reserved.
  *

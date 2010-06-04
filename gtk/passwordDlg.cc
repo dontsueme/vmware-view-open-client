@@ -119,6 +119,7 @@ PasswordDlg::PasswordDlg()
    // See http://technet.microsoft.com/en-us/library/cc512606.aspx
    gtk_entry_set_max_length(mNew, 127);
    AddSensitiveWidget(GTK_WIDGET(mNew));
+   AddRequiredEntry(mNew);
    gtk_entry_set_activates_default(mNew, true);
 
    l = GTK_LABEL(gtk_label_new_with_mnemonic(_("Con_firm:")));
@@ -134,6 +135,7 @@ PasswordDlg::PasswordDlg()
    // See http://technet.microsoft.com/en-us/library/cc512606.aspx
    gtk_entry_set_max_length(mConfirm, 127);
    AddSensitiveWidget(GTK_WIDGET(mConfirm));
+   AddRequiredEntry(mConfirm);
    gtk_entry_set_activates_default(mConfirm, true);
 }
 
@@ -213,6 +215,30 @@ PasswordDlg::SetSensitive(bool sensitive) // IN
 {
    LoginDlg::SetSensitive(sensitive);
    gtk_widget_set_sensitive(GTK_WIDGET(mDomain), false);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::PasswordDlg::IsValid --
+ *
+ *      Bypass LoginDlg::IsValid() since that added checks that aren't valid
+ *      here.
+ *
+ * Results:
+ *      true if the dlg is valid
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+PasswordDlg::IsValid()
+{
+   return !strcmp(gtk_entry_get_text(mNew), gtk_entry_get_text(mConfirm));
 }
 
 

@@ -29,8 +29,16 @@
  */
 
 
+#ifndef __MINGW32__
 #include <arpa/inet.h>
+#else
+#include <windows.h>
+#endif
+
 #include <glib.h>
+#include <glib/gstdio.h>
+
+
 #ifdef VIEW_GTK
 #include <gtk/gtkalignment.h>
 #include <gtk/gtkentry.h>
@@ -43,16 +51,22 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <libxml/uri.h>
+#ifndef __MINGW32__
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <vector>
 
 #if defined(__linux__)
 #include <linux/if_ether.h>
 #include <net/if.h>
+#endif
+#else // __MINGW32__
+#include <winsock2.h>
+#include <libintl.h>
+#include <unistd.h>
+#include <ws2tcpip.h>
 #endif
 
 #if defined(__APPLE__)
@@ -70,15 +84,22 @@
 #include <sys/sysctl.h>
 #endif
 
+#ifdef HAVE_UIDNA_IDNTOASCII
 extern "C" {
 #include <unicode/uidna.h>
 }
+#endif // HAVE_UIDNA_IDNTOASCII
 
 
 #include "util.hh"
 #ifdef VIEW_GTK
 #include "app.hh"
 #endif
+#ifdef __APPLE__
+#include "cdkProxy.h"
+#endif
+#include "cdkUrl.h"
+
 
 extern "C" {
 #include "file.h"
@@ -87,7 +108,7 @@ extern "C" {
 }
 
 
-#ifdef VIEW_GTK
+#ifdef GDK_WINDOWING_X11
 // Here to avoid conflict with vm_basic_types.h
 #include <gdk/gdkx.h>
 #endif
@@ -347,8 +368,7 @@ CreateButton(const string stockId, // IN
  * cdk::Util::SetButtonIcon --
  *
  *      Changes the image and label displayed in the button.  This button must
- *      have been created by the Util::CreateButton method.  gtk_widget_show
- *      is also called on the button before the function returns.
+ *      have been created by the Util::CreateButton method.
  *
  * Results:
  *      None
@@ -379,8 +399,6 @@ SetButtonIcon(GtkButton *button,     // IN
    }
 
    gtk_label_set_text_with_mnemonic(l, label.c_str());
-
-   gtk_widget_show(GTK_WIDGET(button));
 }
 
 
@@ -442,6 +460,7 @@ CreateActionArea(GtkButton *button1, // IN
  *-----------------------------------------------------------------------------
  */
 
+#ifdef GDK_WINDOWING_X11
 void
 OverrideWindowUserTime(GtkWindow *window) // IN
 {
@@ -472,6 +491,7 @@ OverrideWindowUserTime(GtkWindow *window) // IN
                        GDK_PROP_MODE_REPLACE, (guchar*)&evTime, 1);
 #endif
 }
+#endif
 
 
 #endif // VIEW_GTK
@@ -504,94 +524,6 @@ UserWarning(const char *format, // IN
    va_end(arguments);
    fprintf(stderr, line.c_str());
    Log(line.c_str());
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Util::IDNToASCII --
- *
- *      Convert a string from UTF-8/IDN to Punycode/ASCII.
- *
- *      For explanations of IDN, see:
- *      https://developer.mozilla.org/En/Internationalized_Domain_Names_(IDN)_Support_in_Mozilla_Browsers
- *      http://www.ietf.org/rfc/rfc3490.txt
- *      http://www.ietf.org/rfc/rfc3491.txt
- *      http://www.ietf.org/rfc/rfc3492.txt
- *
- * Results:
- *      An ASCII representation of the UTF-8 hostname, or an empty
- *      string if the conversion failed.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-string
-IDNToASCII(const string &text) // IN
-{
-   /*
-    * To convert UTF-8 to ASCII, first we need to convert it to UTF-16
-    * for ICU, then convert it to 16-bit "ASCII", and then back to
-    * 8-bit ASCII (which is ASCII) for xmlParse().
-    */
-   long utf16Len;
-   GError *error = NULL;
-   gunichar2 *utf16Text = g_utf8_to_utf16(text.c_str(), -1, NULL, &utf16Len,
-                                          &error);
-   if (error) {
-      Log("Could not convert text \"%s\" to UTF-16: %s\n", text.c_str(),
-          error->message);
-      g_error_free(error);
-      return "";
-   }
-
-   int32_t idnLen = 2 * utf16Len;
-   UChar *idnText;
-   UErrorCode status;
-   int32_t len;
-   /*
-    * If we don't allocate enough characters on the first attempt,
-    * IDNToASCII() will return how many characters we need.  If the
-    * second attempt fails, just give up rather than looping forever.
-    */
-tryConversion:
-   idnText = g_new(UChar, idnLen + 1);
-   status = U_ZERO_ERROR;
-   len = uidna_IDNToASCII((const UChar *)utf16Text, utf16Len,
-                          idnText, idnLen, UIDNA_DEFAULT, NULL,
-                          &status);
-   if (len > idnLen) {
-      g_free(idnText);
-      // Guard against multiple loops.
-      if (idnLen != 2 * utf16Len) {
-         Log("The ASCII length was greater than we allocated after two "
-             "attempts; giving up on \"%s\".", text.c_str());
-         g_free(idnText);
-         g_free(utf16Text);
-         return "";
-      }
-      idnLen = len;
-      goto tryConversion;
-   } else if (U_FAILURE(status)) {
-      Log("Could not convert text \"%s\" to IDN: %s\n", text.c_str(),
-          u_errorName(status));
-      g_free(idnText);
-      g_free(utf16Text);
-      return "";
-   }
-
-   // Convert it back to UTF-8/ASCII.
-   char *utf8Idn = g_utf16_to_utf8((gunichar2 *)idnText, len, NULL, NULL,
-                                   NULL);
-   string ret(utf8Idn);
-   g_free(idnText);
-   g_free(utf8Idn);
-   g_free(utf16Text);
-   return ret;
 }
 
 
@@ -653,51 +585,17 @@ ParseHostLabel(const string &label,  // IN
 	       unsigned short *port, // OUT/OPT
 	       bool *secure)         // OUT/OPT
 {
-   string text(label);
-   /*
-    * If there are multibyte characters, we need to convert from IDN
-    * to ASCII (punycode).
-    */
-   if (g_utf8_strlen(text.c_str(), -1) != (long)text.length()) {
-      text = IDNToASCII(text);
-   }
-   if (text.empty()) {
-      return text;
-   }
-
-   xmlURIPtr parsed = xmlParseURI(text.c_str());
-   if (parsed == NULL || parsed->server == NULL) {
-      text = "https://" + text;
-      /* xmlParseURI requires that the protocol be specified in order to parse
-       * correctly.  In the event that the parsing fails, this line will add
-       * the protocol in as "https://" and attempt to reparse.  If it fails
-       * the second time, it will fall back to default values.
-       */
-      parsed = xmlParseURI(text.c_str());
-   }
-
-   /*
-    * For some invalid URLs, path will contain a bunch of stuff.
-    * Since the user shouldn't be specifying a path here, use that to
-    * catch a few strange parsing errors.
-    * See bugs 379938 & 367370.
-    */
-   if (parsed != NULL &&
-       (parsed->path == NULL || parsed->path[0] == '\0') &&
-       parsed->server && strlen(parsed->server) <= MAX_HOSTNAME_LENGTH) {
-      bool tmpSecure = !parsed->scheme || !strcmp(parsed->scheme, "https");
+   string ret;
+   gboolean aSecure = true;
+   char *host = NULL;
+   if (CdkUrl_Parse(label.c_str(), NULL, &host, port, NULL, &aSecure)) {
       if (secure) {
-	 *secure = tmpSecure;
+         *secure = aSecure;
       }
-      if (port) {
-	 *port = parsed->port ? parsed->port : (tmpSecure ? 443 : 80);
-      }
-      text = parsed->server ? parsed->server : "";
-   } else {
-      text = "";
+      ret = host;
+      g_free(host);
    }
-   xmlFreeURI(parsed);
-   return text;
+   return ret;
 }
 
 
@@ -736,6 +634,10 @@ GetUsefulPath(const string systemPath,   // IN
    if (rv != 0) {
       ASSERT(rv == 0);
    }
+#elif defined(__MINGW32__)
+   self = (char *)malloc(FILE_MAXPATH);
+   ASSERT(self);
+   GetModuleFileName(NULL, self,  FILE_MAXPATH);
 #else
    self = Posix_ReadLink("/proc/self/exe");
    ASSERT(self);
@@ -749,9 +651,12 @@ GetUsefulPath(const string systemPath,   // IN
    Util::string selfPath(dirname);
    free(dirname);
 
+#ifdef BINDIR
    if (selfPath == BINDIR) {
       selfPath = systemPath;
-   } else {
+   } else
+#endif
+   {
       selfPath += G_DIR_SEPARATOR_S;
       selfPath += relativePath;
    }
@@ -762,6 +667,35 @@ GetUsefulPath(const string systemPath,   // IN
    return selfPath;
 }
 
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util::GetClientHostName --
+ *
+ *      Attempts to determine the hostname for this machine.
+ *
+ * Results:
+ *      The hostname of this machine, or an empty string.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+string
+GetClientHostName()
+{
+   char name[MAX_HOSTNAME_LENGTH + 1];
+   if (gethostname(name, MAX_HOSTNAME_LENGTH) == 0) {
+      name[MAX_HOSTNAME_LENGTH] = '\0';
+      return name;
+   } else {
+      Warning("gethostname() failed: %s\n", strerror(errno));
+      return "";
+   }
+}
 
 /*
  *-----------------------------------------------------------------------------
@@ -778,19 +712,18 @@ GetUsefulPath(const string systemPath,   // IN
  *-----------------------------------------------------------------------------
  */
 
+#if defined(__linux__) || defined(__APPLE__)
 ClientInfoMap
 GetClientInfo(const string broker, // IN
               int port)            // IN
 {
    ClientInfoMap info = GetNICInfo(broker, port);
 
-   char name[MAX_HOSTNAME_LENGTH + 1];
-   if (gethostname(name, MAX_HOSTNAME_LENGTH) == 0) {
-      name[MAX_HOSTNAME_LENGTH] = '\0';
-      info["Machine_Name"] = name;
-   } else {
-      Warning("gethostname() failed: %s\n", strerror(errno));
+   string hostname = GetClientHostName();
+   if (!hostname.empty()) {
+      info["Machine_Name"] = hostname;
    }
+   char name[MAX_HOSTNAME_LENGTH + 1];
    if (getdomainname(name, MAX_HOSTNAME_LENGTH) == 0) {
       name[MAX_HOSTNAME_LENGTH] = '\0';
       info["Machine_Domain"] = name;
@@ -807,9 +740,22 @@ GetClientInfo(const string broker, // IN
       info["Language"] = lang;
    }
 
-   time_t now = time(NULL);
-   struct tm tm_now;
-   localtime_r(&now, &tm_now);
+#ifdef __APPLE__
+   info["Type"] = "Mac";
+
+   /*
+    * In Obj-C++ you can simply do [[NZimeZone localTimeZone] name].
+    */
+   CFTimeZoneRef zone = CFTimeZoneCopyDefault();
+   CFStringRef zoneName = CFTimeZoneGetName(zone);
+   char *tzid = CdkProxy_CFStringToUTF8CString(zoneName);
+   if (tzid) {
+      info["TZID"] = tzid;
+      free(tzid);
+   }
+   CFRelease(zone);
+#else // !__APPLE__
+   info["Type"] = "Linux";
 
    const char *tzid = getenv("TZ");
    char *contents = NULL;
@@ -865,7 +811,7 @@ GetClientInfo(const string broker, // IN
                 // Read time zone result from bash script.
                 if (read(std_out, contents, maxTzIdLen - 1) != -1) {
                     if (contents[0] != '\0') {
-                        /* 
+                        /*
                          * bash script returns timezone gleaned from clock
                          * file: strip any trailing space or newline.
                          */
@@ -882,16 +828,97 @@ GetClientInfo(const string broker, // IN
          }
       }
    }
-   info["TZID"] = tzid ? tzid : tm_now.tm_zone;
+   if (tzid) {
+      info["TZID"] = tzid;
+   } else {
+      time_t now = time(NULL);
+      struct tm tm_now;
+      localtime_r(&now, &tm_now);
+      info["TZID"] = tm_now.tm_zone;
+   }
    g_free(contents);
+#endif // !__APPLE__
 
-#ifdef __APPLE__
-   info["Type"] = "Mac";
-#elif defined(__linux__)
-   info["Type"] = "Linux";
-#endif
    return info;
 }
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util::GetClientInfo --
+ *      Collects information about the client and stores it in a std::map.
+ *
+ * Results:
+ *      A mapping of the client information.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef _WIN32
+ClientInfoMap
+GetClientInfo(const string broker, // IN
+              int port)            // IN
+
+{
+   ClientInfoMap info = GetNICInfo(broker, port);
+
+   string hostname = GetClientHostName();
+   if (!hostname.empty()) {
+      info["Machine_Name"] = hostname;
+   }
+
+#if 0
+   // XXX - this is incomplete
+   char name[MAX_HOSTNAME_LENGTH + 1];
+   if (getdomainname(name, MAX_HOSTNAME_LENGTH) == 0) {
+      name[MAX_HOSTNAME_LENGTH] = '\0';
+      info["Machine_Domain"] = name;
+   } else {
+      Warning("getdomainname() failed: %s\n", strerror(errno));
+   }
+#endif
+
+   info["LoggedOn_Username"] = g_get_user_name();
+
+#if 0
+   // XXX - incomplete - no setlocale in Windows.
+   string lang = setlocale(LC_MESSAGES, NULL);
+#endif
+   string lang = "C";
+   if (lang == "C" || lang == "POSIX" || lang == "") {
+      info["Language"] = "en";
+   } else {
+      info["Language"] = lang;
+   }
+
+   TIME_ZONE_INFORMATION tzInfo;
+   char tzid[(sizeof(tzInfo.StandardName) / sizeof(wchar_t)) + 1];
+   wchar_t *tzname = NULL;
+   int tztype = GetTimeZoneInformation(&tzInfo);
+
+   if (tztype == TIME_ZONE_ID_STANDARD) {
+      tzname = tzInfo.StandardName;
+   } else if (tztype == TIME_ZONE_ID_DAYLIGHT) {
+      tzname = tzInfo.DaylightName;
+   }
+   if (tzname && wcstombs(tzid, tzname, sizeof(tzid)) > 0) {
+      // wcstobms does not guarantee null termination of tzid so just to be sure...
+      tzid[sizeof(tzid)-1] = '\0';
+      info["Windows_Timezone"] = g_strdup(tzid);
+   } else {
+      Warning("Unable to determine time zone.");
+   }
+
+   info["Type"] = "Windows";
+
+   return info;
+}
+#endif
 
 
 /*
@@ -1064,6 +1091,7 @@ GetMacAddr(int sock,                 // IN
  *-----------------------------------------------------------------------------
  */
 
+#if defined(__linux__) || defined(__APPLE__)
 ClientInfoMap
 GetNICInfo(const string broker, // IN
            int port)            // IN
@@ -1089,7 +1117,7 @@ GetNICInfo(const string broker, // IN
       return info;
    }
 
-   int sock = socket(serverInfo->h_addrtype, SOCK_STREAM, 0);
+   int sock = socket(serverInfo->h_addrtype, SOCK_DGRAM, 0);
    if (sock < 0) {
       Warning("socket() failed while compiling client info: %s\n",
               strerror(errno));
@@ -1137,7 +1165,121 @@ GetNICInfo(const string broker, // IN
    close(sock);
    return info;
 }
+#endif
 
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util::GetNICInfo --
+ *      Gets the IP and MAC address of the active network card and adds them
+ *      to info.
+ *
+ * Results:
+ *      If the IP and MAC addresses can be determined, they will be added to
+ *      info.  If they can not, info will be left alone.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef _WIN32
+ClientInfoMap
+GetNICInfo(const string broker, // IN
+           int port)            // IN
+{
+   // XXX - need windows implementation.
+   ClientInfoMap info;
+   return info;
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util:Utf8Casecmp: --
+ *
+ *      Compare two UTF-8 strings, ignoring case.
+ *
+ * Results:
+ *      An int less than, greater than, or equal to zero if s1 is less
+ *      than, greater than, or equal to s2.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+int
+Utf8Casecmp(const char *s1, // IN
+            const char *s2) // IN
+{
+   ASSERT(s1);
+   ASSERT(s2);
+
+   char *folded1 = g_utf8_casefold(s1, -1);
+   char *folded2 = g_utf8_casefold(s2, -1);
+
+   int ret = g_utf8_collate(folded1, folded2);
+
+   g_free(folded1);
+   g_free(folded2);
+
+   return ret;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Util:MkdirWithParents: --
+ *
+ *      Create a directory and, if needed, its parent directories
+ *
+ * Results:
+ *      0 if the directory was created successfully.
+ *      -1 if an error occurred, with errno set by g_mkdir.
+ *
+ * Side effects:
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+int
+MkdirWithParents(const char *path, // IN
+                 int mode)         // IN
+{
+#if GLIB_CHECK_VERSION(2, 8, 0)
+   return g_mkdir_with_parents(path, mode);
+#else
+   char *dirPath = g_str_has_suffix(path, G_DIR_SEPARATOR_S)
+                      ? g_strdup(path)
+                      : g_strdup_printf("%s%c", path, G_DIR_SEPARATOR);
+   bool skipFirst = g_path_is_absolute(path);
+   for (char *c = dirPath; *c != '\0'; c++) {
+      if (*c != G_DIR_SEPARATOR) {
+         continue;
+      } else if (skipFirst) {
+         skipFirst = false;
+         continue;
+      }
+      *c = '\0';
+      if (g_mkdir(dirPath, mode) && errno != EEXIST) {
+         int errnoSave = errno;
+         g_free(dirPath);
+         errno = errnoSave;
+         return -1;
+      }
+      *c = G_DIR_SEPARATOR;
+   }
+   g_free(dirPath);
+   return 0;
+#endif
+}
 
 
 /*
@@ -1178,42 +1320,6 @@ EnsureFilePermissions(const char *path, // IN
               path, strerror(errno));
    }
    return fileOk;
-}
-
-
-/*
- *-----------------------------------------------------------------------------
- *
- * cdk::Util:Utf8Casecmp: --
- *
- *      Compare two UTF-8 strings, ignoring case.
- *
- * Results:
- *      An int less than, greater than, or equal to zero if s1 is less
- *      than, greater than, or equal to s2.
- *
- * Side effects:
- *      None
- *
- *-----------------------------------------------------------------------------
- */
-
-int
-Utf8Casecmp(const char *s1, // IN
-            const char *s2) // IN
-{
-   ASSERT(s1);
-   ASSERT(s2);
-
-   char *folded1 = g_utf8_casefold(s1, -1);
-   char *folded2 = g_utf8_casefold(s2, -1);
-
-   int ret = g_utf8_collate (folded1, folded2);
-
-   g_free(folded1);
-   g_free(folded2);
-
-   return ret;
 }
 
 

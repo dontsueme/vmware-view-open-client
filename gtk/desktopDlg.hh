@@ -57,6 +57,9 @@ public:
    bool GetInhibitCtrlEnter() const { return mInhibitCtrlEnter; }
    void SetInhibitCtrlEnter(bool inhibit) { mInhibitCtrlEnter = inhibit; }
 
+   bool GetSendCADXMessage() const { return mSendCADXMessage; }
+   void SetSendCADXMessage(bool send) { mSendCADXMessage = send; }
+
    bool GetResizable() const { return mResizable; }
    void SetResizable(bool resizable) { mResizable = resizable; }
 
@@ -91,6 +94,7 @@ private:
    static void SetMetacityKeybindingsEnabled(bool enabled);
    static void OnMetacityMessageExit(ProcHelper *helper);
    bool GetDisableMetacityKeybindings();
+   void ClearMetaKeys();
 
    static guint LookupKeyval(guint keyval);
 
@@ -100,6 +104,7 @@ private:
    bool mIgnoreNextLeaveNotify;
    bool mInhibitCtrlEnter;
    bool mHandlingCtrlAltDel;
+   bool mSendCADXMessage;
    bool mAllowWMBindings;
    bool mResizable;
    int mInitialWidth;

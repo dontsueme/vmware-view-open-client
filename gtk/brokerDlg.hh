@@ -56,6 +56,7 @@ public:
    bool GetSecure() const { return mSecure; }
    // overrides Dlg::IsValid()
    virtual bool IsValid();
+   virtual Util::string GetHelpContext() { return "connect"; }
 
 private:
    enum FreezeState {

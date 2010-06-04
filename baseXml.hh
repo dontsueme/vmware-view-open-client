@@ -31,7 +31,7 @@
 #ifndef BASE_XML_HH
 #define BASE_XML_HH
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
 #include <atlbase.h>
 #endif
 
@@ -107,6 +107,7 @@ public:
                        RawSlot onDone);
 
    void QueueRequests();
+   bool QueueingRequests() const { return mMulti != NULL; }
    bool SendQueuedRequests(Util::AbortSlot onAbort = Util::AbortSlot(),
                            QueuedRequestsDoneSlot onDone = QueuedRequestsDoneSlot());
 
@@ -117,12 +118,19 @@ public:
 
    boost::signal3<int, SSL *, X509 **, EVP_PKEY **> certificateRequested;
 
+   static Util::string Encode(const Util::string &val);
+
+#ifdef  VMX86_DEBUG
+   Util::string CensorXml(const Util::string &xml);
+#endif  // VMX86_DEBUG
+
 protected:
    struct RequestState
    {
       Util::string requestOp;
       Util::string responseOp;
       std::vector<Util::string> extraHeaders;
+      bool alwaysDispatchResponse;
       bool isRaw;
       Util::string args;
       Util::AbortSlot onAbort;
@@ -131,11 +139,15 @@ protected:
       BasicHttpResponse *response;
       Util::string proxy;
       BasicHttpProxyType proxyType;
+      unsigned long connectTimeoutSec;
 
       RequestState() :
+         alwaysDispatchResponse(false),
          isRaw(false),
          request(NULL),
-	 proxyType(BASICHTTP_PROXY_NONE)
+         response(NULL),
+         proxyType(BASICHTTP_PROXY_NONE),
+         connectTimeoutSec(0)
       {
       }
 
@@ -158,8 +170,9 @@ protected:
    static uint64 GetChildContentUInt64(xmlNode *parentNode,
                                        const char *targetName);
 
-   static Util::string Encode(const Util::string &val);
-
+   static void InvokeAbortOnConnectError(BasicHttpErrorCode errorCode,
+                                         BasicHttpResponseCode responseCode,
+                                         RequestState *state);
    bool SendRequest(RequestState *req);
    virtual bool SendHttpRequest(RequestState *req, const Util::string &body);
 
@@ -169,23 +182,25 @@ protected:
 
    virtual Util::string GetDocumentElementTag() const;
    Util::string GetProtocolVersionStr() const;
+   void SetDocElementName(const Util::string &elemName)
+   { ASSERT(!elemName.empty()); mDocElementName = elemName; }
 
-#ifdef  VMX86_DEBUG
-   Util::string CensorXml(const Util::string &xml);
-#endif  // VMX86_DEBUG
+   unsigned long CalculateConnectTimeout(const RequestState *req) const;
 
 private:
    static void OnResponse(BasicHttpRequest *request,
                           BasicHttpResponse *response,
                           void *data);
+   static void OnIdleProcessResponses(void *data);
    static void OnSslCtx(BasicHttpRequest *request, void *sslctx,
                         void *clientData);
    static int OnCertificateRequest(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
 
+   bool ProcessResponse(RequestState *state);
 
    std::list<RequestState *> mActiveRequests;
    Util::string mHostname;
-   int mPort;
+   unsigned short mPort;
    bool mSecure;
    BasicHttpCookieJar *mCookieJar;
    Version mVersion;

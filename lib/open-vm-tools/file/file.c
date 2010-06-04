@@ -34,8 +34,12 @@
 #include "safetime.h"
 #if defined(_WIN32)
 #include <io.h>
+#ifndef S_IXUSR
 #define S_IXUSR    0100
+#endif
+#ifndef S_IWUSR
 #define S_IWUSR    0200
+#endif
 #else
 #include <unistd.h>
 #endif
@@ -469,7 +473,11 @@ FileLockGetMachineID(void)
        */
 
 #if defined(_WIN32)
+#  if !defined(__MINGW32__)
       q = UUID_GetRealHostUUID();
+#  else
+      q = NULL;
+#  endif
 #elif defined(__APPLE__) || defined(VMX86_SERVER)
       q = UUID_GetHostUUID();
 #else
@@ -1111,6 +1119,7 @@ File_MakeTempEx(ConstUnicode dir,       // IN:
                 ConstUnicode fileName,  // IN:
                 Unicode *presult)       // OUT:
 {
+#ifndef _WIN32
    int fd;
    int err;
    uint32 var;
@@ -1174,6 +1183,10 @@ File_MakeTempEx(ConstUnicode dir,       // IN:
    errno = err;
 
    return fd;
+#else
+   // XXX - need a Windows/mingw version of this function.
+   return -1;
+#endif
 }
 
 
@@ -1930,6 +1943,7 @@ File_CreateDirectoryHierarchy(ConstUnicode pathName)
 Bool
 File_DeleteDirectoryTree(ConstUnicode pathName)  // IN: directory to delete
 {
+#ifndef __MINGW32__
    int i;
    int numFiles;
    Unicode base;
@@ -2019,6 +2033,9 @@ File_DeleteDirectoryTree(ConstUnicode pathName)  // IN: directory to delete
    free(fileList);
 
    return !sawFileError;
+#else
+   return FALSE;
+#endif
 }
 
 
@@ -2103,6 +2120,7 @@ File_FindFileInSearchPath(const char *fileIn,       // IN
                           const char *cwd,          // IN
                           char **result)            // OUT
 {
+#ifndef __MINGW32__
    char *cur;
    char *tok;
    Bool found;
@@ -2187,6 +2205,9 @@ done:
    free(file);
 
    return found;
+#else
+   return FALSE;
+#endif
 }
 
 

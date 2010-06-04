@@ -34,6 +34,11 @@
 #else
 #include <glib.h>
 #endif
+#include <glib/gstdio.h>
+
+#if GLIB_CHECK_VERSION(2, 8, 0)
+#include <unistd.h>
+#endif
 
 
 #include "prefs.hh"
@@ -46,16 +51,19 @@ extern "C" {
 }
 
 
-#define VMWARE_HOME_DIR "~/.vmware"
-#define PREFERENCES_FILE_NAME VMWARE_HOME_DIR"/view-preferences"
-
 #define VMWARE_SYS_DIR "/etc/vmware"
 #define SYSTEM_PREFS_FILE_NAME VMWARE_SYS_DIR"/view-default-config"
 #define MANDATORY_PREFS_FILE_NAME VMWARE_SYS_DIR"/view-mandatory-config"
 
-#define MAX_BROKER_MRU 10
+#define PREFERENCES_FILE_NAME "view-preferences"
 #define VIEW_DEFAULT_MMR_PATH "/usr/lib/mmr"
 #define VMWARE_VIEW "vmware-view"
+
+#ifdef _WIN32
+#define INFO_TZ_KEY "Windows_Timezone"
+#else
+#define INFO_TZ_KEY "TZID"
+#endif
 
 
 namespace cdk {
@@ -66,6 +74,7 @@ namespace cdk {
  */
 
 Prefs *Prefs::sPrefs = NULL;
+Util::string Prefs::sFilePath;
 
 
 /*
@@ -87,12 +96,13 @@ Prefs *Prefs::sPrefs = NULL;
 Prefs::Prefs()
    : mPassword(NULL)
 {
-   char *prefPath = Util_ExpandString(PREFERENCES_FILE_NAME);
+   char *prefPath = g_build_filename(sFilePath.c_str(), PREFERENCES_FILE_NAME,
+                                     NULL);
    ASSERT_MEM_ALLOC(prefPath);
 
    mPrefPath = prefPath;
    ASSERT(!mPrefPath.empty());
-   free(prefPath);
+   g_free(prefPath);
 
    mSysDict = Dictionary_Create();
    ASSERT_MEM_ALLOC(mSysDict);
@@ -105,12 +115,6 @@ Prefs::Prefs()
 
    mMandatoryDict = Dictionary_Create();
    ASSERT_MEM_ALLOC(mMandatoryDict);
-
-   Msg_Reset(true);
-   if (!Util_MakeSureDirExistsAndAccessible(VMWARE_HOME_DIR, 0755)) {
-      Util::UserWarning(_("Creating ~/.vmware failed: %s\n"),
-                        Msg_GetMessagesAndReset());
-   }
 
    // This may fail if the file doesn't exist yet.
    Dictionary_Load(mSysDict, SYSTEM_PREFS_FILE_NAME, DICT_NOT_DEFAULT);
@@ -183,6 +187,81 @@ Prefs::GetPrefs()
       sPrefs = new Prefs();
    }
    return sPrefs;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::SetPrefFilePath --
+ *
+ *      Static setter for the file path where the preferences file is located.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      The directory maybe created if it does not exist.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Prefs::SetPrefFilePath(const char *filePath)
+{
+   char *absFilePath;
+   /* First, expand the initial tilde, if one exists */
+   if (*filePath == '~') {
+      absFilePath = g_build_filename(g_get_home_dir(), &filePath[1], NULL);
+   } else if (g_path_is_absolute(filePath)) {
+      absFilePath = g_strdup(filePath);
+   } else {
+      absFilePath = g_build_filename(g_get_current_dir(), filePath, NULL);
+   }
+   ASSERT(absFilePath);
+   ASSERT(g_path_is_absolute(absFilePath));
+
+   Util::string errorMessage;
+   if (g_file_test(absFilePath, G_FILE_TEST_IS_DIR)) {
+#if GLIB_CHECK_VERSION(2, 8, 0)
+      if (g_access(absFilePath, W_OK)) {
+         errorMessage = Util::Format(_("Directory \"%s\" is not writable.\n"),
+                                     absFilePath);
+      }
+#else
+      /*
+       * Test if the directory is writable
+       *
+       * The proper way to do this would be to use g_access(), but
+       * we don't have that available to us in glib 2.6, so create
+       * a temporary file in the directory indicated by absFilePath
+       * in order to test if we can write to it.
+       */
+      char *tmpFilename = g_build_filename(absFilePath, ".writetest.XXXXXX",
+                                           NULL);
+      int tmpFile = g_mkstemp(tmpFilename);
+      if (tmpFile == -1) {
+         errorMessage = Util::Format(_("Directory \"%s\" is not writable.\n"),
+                                     absFilePath);
+      } else {
+         close(tmpFile);
+         g_remove(tmpFilename);
+      }
+      g_free(tmpFilename);
+#endif
+   } else if (g_file_test(absFilePath, G_FILE_TEST_IS_REGULAR)) {
+      errorMessage = Util::Format(_("The path \"%s\" exists, but it is "
+                                  "not a directory.\n"), absFilePath);
+   } else if (Util::MkdirWithParents(absFilePath, 0700)) {
+      errorMessage = Util::Format(_("Cannot create directory \"%s\".\n"),
+                                  absFilePath);
+   }
+   if (!errorMessage.empty()) {
+      Util::UserWarning("%s", errorMessage.c_str());
+   }
+
+   sFilePath = absFilePath;
+   g_free(absFilePath);
 }
 
 
@@ -389,7 +468,7 @@ Prefs::SetInt(Util::string key, // IN
  * cdk::Prefs::GetBrokerMRU --
  *
  *      Accessor for the broker MRU list stored in the preferences.
- *      These are the view.broker0-10 keys.
+ *      These are the view.broker0-n keys.
  *
  * Results:
  *      List of brokers.
@@ -406,12 +485,13 @@ Prefs::GetBrokerMRU()
 {
    std::vector<Util::string> brokers;
 
-   for (int brokerIdx = 0; brokerIdx <= MAX_BROKER_MRU; brokerIdx++) {
+   for (int brokerIdx = 0 ; ; brokerIdx++) {
       Util::string key = Util::Format("view.broker%d", brokerIdx);
       Util::string val = GetString(key);
-      if (!val.empty()) {
-         brokers.push_back(val);
+      if (val.empty()) {
+         break;
       }
+      brokers.push_back(val);
    }
 
    return brokers;
@@ -448,7 +528,7 @@ Prefs::AddBrokerMRU(Util::string first) // IN
 
    unsigned int brokerIdx = 1;
    for (std::vector<Util::string>::iterator i = brokers.begin();
-        i != brokers.end() && brokerIdx <= MAX_BROKER_MRU; i++) {
+        i != brokers.end(); i++) {
       if (*i != first) {
          SetString(Util::Format("view.broker%d", brokerIdx++), *i);
       }
@@ -541,9 +621,17 @@ PREF_STRING(DEFAULT_PROTOCOL, DefaultProtocol, allowDefaultProtocol, defaultProt
 PREF_STRING(DEFAULT_USER,     DefaultUser,     allowDefaultUser,     defaultUser,   "")
 PREF_STRING(MMR_PATH,         MMRPath,         allowMMRPath,         mmrPath, "")
 PREF_STRING(RDESKTOP_OPTIONS, RDesktopOptions, allowRDesktopOptions, rdesktopOptions, "")
+PREF_STRING(SUPPORT_FILE,     SupportFile,     allowSupportFile,     supportFile, "")
+PREF_STRING(KBDLAYOUT,        KbdLayout,       allowKbdLayout,       kbdLayout, "")
 
 PREF_BOOL(AUTO_CONNECT,    AutoConnect,    allowAutoConnect,    autoConnect,    false)
 PREF_BOOL(FULL_SCREEN,     FullScreen,     allowFullScreen,     fullScreen,     false)
+PREF_BOOL(KIOSK_MODE,      KioskMode,      allowKioskMode,      kioskMode,      false)
+PREF_BOOL(ONCE,            Once,           allowOnce,           once,           false)
+PREF_INT(INITIAL_RETRY_PERIOD, InitialRetryPeriod,
+          allowInitialRetryPeriod, initialRetryPeriod, 30)
+PREF_INT(MAXIMUM_RETRY_PERIOD, MaximumRetryPeriod,
+          allowMaximumRetryPeriod, maximumRetryPeriod, 240)
 PREF_BOOL(NON_INTERACTIVE, NonInteractive, allowNonInteractive, nonInteractive, false)
 PREF_BOOL(DEFAULT_SHOW_BROKER_OPTIONS, DefaultShowBrokerOptions,
           allowDefaultShowBrokerOptions, defaultShowBrokerOptions, false)
@@ -621,7 +709,6 @@ Prefs::SetDefaultDesktopSize(Prefs::DesktopSize size)
 }
 
 
-
 /*
  *-----------------------------------------------------------------------------
  *
@@ -676,8 +763,8 @@ Prefs::SetDefaultCustomDesktopSize(GdkRectangle *rect) // IN
       SetInt(KEY_DEFAULT_DESKTOP_WIDTH, rect->width);
       SetInt(KEY_DEFAULT_DESKTOP_HEIGHT, rect->height);
    } else {
-      Log("Not saving the default custom desktop size "
-          "(%s=false).\n", KEY_ALLOW_DEFAULT_CUSTOM_DESKTOP_SIZE);
+       Log("Not saving the default custom desktop size "
+           "(%s=false).\n", KEY_ALLOW_DEFAULT_CUSTOM_DESKTOP_SIZE);
    }
 }
 
@@ -718,13 +805,18 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    char *optCustomLogo = NULL;
    char *optMMRPath = NULL;
    char *optRDesktop = NULL;
+   char *optSupportFile = NULL;
    char **optUsb = NULL;
    gboolean optAllowWMBindings = false;
    char *optProtocol = NULL;
+   gboolean optKioskMode = false;
+   gboolean optPrintEnvironmentInfo = false;
+   gboolean optOnce = false;
+   char *optKbdLayout = NULL;
 
    GOptionEntry optEntries[] = {
       { "keep-wm-bindings", 'K', 0, G_OPTION_ARG_NONE, &optAllowWMBindings,
-        N_("Keep window manager key bindings.") },
+        N_("Keep window manager key bindings (ignored by some remoting protocols).") },
       { "serverURL", 's', 0, G_OPTION_ARG_STRING, &optBroker,
         N_("Specify connection broker."), N_("<broker URL>") },
       { "userName", 'u', 0, G_OPTION_ARG_STRING, &optUser,
@@ -752,11 +844,22 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       { "rdesktopOptions", '\0', 0, G_OPTION_ARG_STRING, &optRDesktop,
         N_("Command line options to forward to rdesktop."),
         N_("<rdesktop options>") },
+      { "supportFile", '\0', 0, G_OPTION_ARG_STRING, &optSupportFile,
+        N_("Path to file containing support contents."), N_("<support file>") },
       { "usb", '\0', 0, G_OPTION_ARG_STRING_ARRAY, &optUsb,
         N_("Options for USB forwarding."), N_("<usb options>") },
       { "protocol", '\0', 0, G_OPTION_ARG_STRING, &optProtocol,
         N_("Preferred connection protocol [RDP|PCOIP|RGS|localvm]"),
         N_("<protocol name>") },
+      { "unattended", '\0', 0, G_OPTION_ARG_NONE, &optKioskMode,
+        N_("Enable unattended (kiosk) mode."), NULL },
+      { "printEnvironmentInfo", '\0', 0, G_OPTION_ARG_NONE, &optPrintEnvironmentInfo,
+        N_("Print environment information."), NULL },
+      { "once", '\0', 0, G_OPTION_ARG_NONE, &optOnce,
+        N_("Do not retry on error events in unattended mode."), NULL },
+      { "kbdLayout", 'k', 0, G_OPTION_ARG_STRING, &optKbdLayout,
+        N_("Initial keyboard layout locale (en-us, de, fr, etc...)"),
+        N_("<kbdlayout name>") },
       { NULL }
    };
 
@@ -769,11 +872,11 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       { NULL }
    };
 
-   GOptionContext *context =
-      g_option_context_new(_("- connect to VMware View desktops"));
-
    GError *fileError = NULL;
    if (allowFileOpts) {
+      GOptionContext *context =
+         g_option_context_new(_("- connect to VMware View desktops"));
+
       g_option_context_add_main_entries(context, optFileEntries, NULL);
 
       /*
@@ -790,6 +893,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
          Util::UserWarning(_("Error parsing command line: %s\n"),
                            fileError->message);
       }
+      g_option_context_free(context);
 
       if (optVersion) {
          printf(_(
@@ -823,33 +927,33 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
        * Hold on to the error--we might get the same message the next time we
        * parse, and we only want to show it once.
        */
+
+      // If --file was specified and it exists, it will be opened and parsed.
+      if (optFile) {
+         gchar *contents = NULL;
+         gsize length = 0;
+
+         GError *error = NULL;
+         gint argc = 0;
+         gchar **argv = NULL;
+
+         if (g_file_get_contents(optFile, &contents, &length, &error) &&
+             g_shell_parse_argv(Util::Format(VMWARE_VIEW " %s", contents).c_str(),
+                                &argc, &argv, &error)) {
+            ParseArgs(&argc, &argv, false);
+         }
+
+         g_strfreev(argv);
+         g_free(contents);
+         g_free(optFile);
+      }
    }
+
+   GOptionContext *context =
+      g_option_context_new(_("- connect to VMware View desktops"));
 
    g_option_context_add_main_entries(context, optEntries, NULL);
-
-   // If --file was specified and it exists, it will be opened and parsed.
-   if (optFile) {
-      GOptionContext *context =
-         g_option_context_new(_("- connect to VMware View desktops"));
-      g_option_context_add_main_entries(context, optEntries, NULL);
-
-      gchar *contents = NULL;
-      gsize length = 0;
-
-      GError *error = NULL;
-      gint argc = 0;
-      gchar **argv = NULL;
-
-      if (g_file_get_contents(optFile, &contents, &length, &error) &&
-          g_shell_parse_argv(Util::Format(VMWARE_VIEW " %s", contents).c_str(),
-                             &argc, &argv, &error)) {
-         ParseArgs(&argc, &argv, false);
-      }
-
-      g_strfreev(argv);
-      g_free(contents);
-      g_free(optFile);
-   }
+   g_option_context_add_main_entries(context, optFileEntries, NULL);
 
 #if defined(VIEW_GTK) && GTK_CHECK_VERSION(2, 6, 0)
    g_option_context_add_group(context, gtk_get_option_group(true));
@@ -868,6 +972,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
        (!fileError || Str_Strcmp(fileError->message, error->message) != 0)) {
       Util::UserWarning(_("Error parsing command line: %s\n"), error->message);
    }
+   g_option_context_free(context);
    g_clear_error(&fileError);
    g_clear_error(&error);
 
@@ -881,6 +986,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    }
    g_free(optUser);
 
+#ifndef __MINGW32__
    if (optPassword && Str_Strcmp(optPassword, "-") == 0) {
       char *tmp = getpass(_("Password: "));
       optPassword = g_strdup(tmp);
@@ -890,6 +996,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       ClearPassword();
       mPassword = optPassword;
    }
+#endif
 
    if (optDomain && GetBool(KEY_ALLOW_DEFAULT_DOMAIN, true)) {
       Dict_SetString(mOptDict, optDomain, KEY_DEFAULT_DOMAIN);
@@ -948,6 +1055,11 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    }
    g_free(optRDesktop);
 
+   if (optSupportFile && GetBool(KEY_ALLOW_SUPPORT_FILE, true)) {
+      Dict_SetString(mOptDict, optSupportFile, KEY_SUPPORT_FILE);
+   }
+   g_free(optSupportFile);
+
    if (optProtocol && GetBool(KEY_ALLOW_DEFAULT_PROTOCOL, true)) {
       Protocols::ProtocolType proto = Protocols::GetProtocolFromName(optProtocol);
       if (proto != Protocols::UNKNOWN) {
@@ -962,6 +1074,75 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    if (optAllowWMBindings && GetBool(KEY_ALLOW_WM_BINDINGS, true)) {
       Dict_SetBool(mOptDict, optAllowWMBindings, KEY_ALLOW_WM_BINDINGS);
    }
+
+   if (optKioskMode && GetBool(KEY_ALLOW_KIOSK_MODE, true)) {
+      Dict_SetBool(mOptDict, true, KEY_KIOSK_MODE);
+      // Kiosk mode accepts no settings from the user prefs file so clear it.
+      Dictionary_Clear(mDict);
+   }
+
+   if (optOnce && GetBool(KEY_ALLOW_ONCE, true)) {
+      Dict_SetBool(mOptDict, optOnce, KEY_ONCE);
+   }
+
+   if (optKbdLayout && GetBool(KEY_ALLOW_KBDLAYOUT, true)) {
+      Dict_SetString(mOptDict, optKbdLayout, KEY_KBDLAYOUT);
+   }
+   g_free(optKbdLayout);
+
+   // Evaluate print env info last to ensure all prefs it depends on are set.
+   if (optPrintEnvironmentInfo) {
+      PrintEnvironmentInfo();
+   }
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Prefs::PrintEnvironmentInfo --
+ *
+ *    Display view client environment info.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Environment info print to stdout.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+Prefs::PrintEnvironmentInfo()
+{
+#define INFO(k) info[k].empty() ? _("Unknown") : info[k].c_str()
+#define PRINT_INFO(l, k) fprintf(stdout, l, INFO(k))
+
+   unsigned short port;
+
+   Util::string host = Util::ParseHostLabel(
+      Prefs::GetPrefs()->GetDefaultBroker(), &port, NULL);
+   if (host.empty()) {
+      Util::UserWarning(_("A valid connection server name must be specified "
+                          "to print the environment information.\n"));
+      exit(1);
+   }
+
+   Util::ClientInfoMap info = Util::GetClientInfo(host, port);
+
+   PRINT_INFO(_("IP Address: %s\n"), "IP_Address");
+   PRINT_INFO(_("MAC Address: %s\n"), "MAC_Address");
+   PRINT_INFO(_("Machine Name: %s\n"), "Machine_Name");
+   PRINT_INFO(_("Machine Domain: %s\n"), "Machine_Domain");
+   PRINT_INFO(_("Logged On User Name: %s\n"), "LoggedOn_Username");
+   PRINT_INFO(_("Logged On Domain Name: %s\n"), "LoggonOn_Domainname");
+   PRINT_INFO(_("Time Zone: %s\n"), INFO_TZ_KEY);
+
+   exit(0);
+
+#undef INFO
+#undef PRINT_INFO
 }
 
 

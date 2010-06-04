@@ -56,14 +56,18 @@
 #include "sysSocket.h" // Don't move this: it fixes a system header.
 #include <sys/un.h>
 #include <netinet/in.h>
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#endif
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/kauth.h>
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <CoreFoundation/CoreFoundation.h>
+#ifdef HAVE_DLFCN_H
 #include <dlfcn.h>
+#endif
 #include <sys/xattr.h>
 #else
 #if defined(__FreeBSD__)

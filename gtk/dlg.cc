@@ -59,7 +59,8 @@ namespace cdk {
 Dlg::Dlg()
    : mContent(NULL),
      mFocusWidget(NULL),
-     mSensitive(true)
+     mSensitive(true),
+     mCancelable(true)
 {
 }
 

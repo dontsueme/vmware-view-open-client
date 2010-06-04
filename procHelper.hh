@@ -50,14 +50,16 @@ public:
 
    void Start(Util::string procName, Util::string procPath,
               std::vector<Util::string> args = std::vector<Util::string>(),
-              int argsCensorMask = 0, Util::string stdIn = "",
-              int skipFd1 = 0, int skipFd2 = 0);
+              int argsCensorMask = 0, gpointer screen = NULL,
+              Util::string stdIn = "");
 
    void Kill();
    static bool GetIsInPath(const Util::string &programName);
 
-   bool IsRunning() const { return mPid > -1; }
-   pid_t GetPID() const { return mPid; }
+   bool IsRunning() const { return mPid > (GPid)-1; }
+   GPid GetPID() const { return mPid; }
+
+   virtual bool GetIsErrorExitStatus(int exitCode) { return exitCode != 0; }
 
    boost::signal1<void, int> onExit;
    boost::signal1<void, Util::string> onErr;
@@ -65,11 +67,15 @@ public:
 private:
    static void OnErr(void *data);
 
-   void ResetProcessState(int stdIn, int stdOut, int stdErr,
-                          int skipFd1, int skipFd2) const;
+#ifdef __MINGW32__
+   static void OnProcExit(GPid pid, int status, gpointer data);
+#endif
 
    Util::string mProcName;
-   pid_t mPid;
+   GPid mPid;
+#ifdef __MINGW32__
+   unsigned int mSourceId;
+#endif
    int mErrFd;
    Util::string mErrPartialLine;
 };

@@ -45,6 +45,8 @@
 +(BOOL)protocolAvailable;
 
 -(void)startWithConnection:(const cdk::BrokerXml::DesktopConnection &)connection
-                      size:(CdkDesktopSize *)desktopSize;
+                  password:(const char *)password
+                      size:(CdkDesktopSize *)desktopSize
+                    screen:(NSScreen *)screen;
 
 @end // @interface CdkRdc

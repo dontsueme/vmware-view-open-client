@@ -1,3 +1,4 @@
+//depot/vdi/vdm30/framework/cdk/lib/open-vm-tools/include/memaligned.h#1 - add change 23244 (text)
 /*********************************************************
  * Copyright (C) 1998 VMware, Inc. All rights reserved.
  *

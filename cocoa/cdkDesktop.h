@@ -60,12 +60,16 @@ namespace boost {
 @property(readonly) BOOL checkedOut;
 @property(readonly) NSString *name;
 @property(copy) NSString *protocol;
+// Really a cdk::Desktop::Status.
+@property(readonly) int status;
+@property(readonly) NSString *statusText;
 
 
 +(CdkDesktop *)desktopWithDesktop:(cdk::Desktop *)desktop;
 
 
 -(id)initWithDesktop:(cdk::Desktop *)desktop;
+-(void)disconnect;
 
 
 @end // @interface CdkDesktop

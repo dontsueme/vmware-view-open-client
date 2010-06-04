@@ -1,3 +1,4 @@
+//depot/vdi/vdm30/framework/cdk/lib/open-vm-tools/misc/utilMem.c#1 - add change 23244 (text)
 /*********************************************************
  * Copyright (C) 2009 VMware, Inc. All rights reserved.
  *

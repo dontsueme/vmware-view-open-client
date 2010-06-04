@@ -30,18 +30,22 @@
 #ifndef _BASE64_H
 #define _BASE64_H
 
-Bool Base64_Encode(uint8 const *src, size_t srcLength,
-                   char *target, size_t targSize,
-                   size_t *dataLength);
-Bool Base64_Decode(char const *src,
-                   uint8 *target, size_t targSize,
-                   size_t *dataLength);
-Bool Base64_ValidEncoding(char const *src, size_t srcLength);
-size_t Base64_EncodedLength(uint8 const *src, size_t srcLength);
+
+#include <glib.h>
+
+
+gboolean Base64_Encode(guint8 const *src, size_t srcLength,
+                       char *target, size_t targSize,
+                       size_t *dataLength);
+gboolean Base64_Decode(char const *src,
+                       guint8 *target, size_t targSize,
+                       size_t *dataLength);
+gboolean Base64_ValidEncoding(char const *src, size_t srcLength);
+size_t Base64_EncodedLength(guint8 const *src, size_t srcLength);
 size_t Base64_DecodedLength(char const *src, size_t srcLength);
-Bool Base64_EasyEncode(const uint8 *src, size_t srcLength,
-                       char **target);
-Bool Base64_EasyDecode(const char *src,
-                       uint8 **target, size_t *targSize);
+gboolean Base64_EasyEncode(const guint8 *src, size_t srcLength,
+                           char **target);
+gboolean Base64_EasyDecode(const char *src,
+                           guint8 **target, size_t *targSize);
 
 #endif

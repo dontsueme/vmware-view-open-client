@@ -51,6 +51,8 @@ public:
    void ClearAndFocusPassword();
    void SetSensitive(bool sensitive);
 
+   virtual bool IsValid();
+
 private:
    GtkEntry *mNew;
    GtkEntry *mConfirm;

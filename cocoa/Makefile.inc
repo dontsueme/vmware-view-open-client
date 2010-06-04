@@ -46,6 +46,10 @@ vmware_view_SOURCES += cocoa/cdkDebugAssert.h
 vmware_view_SOURCES += cocoa/cdkDebugAssert.c
 vmware_view_SOURCES += cocoa/cdkDesktop.h
 vmware_view_SOURCES += cocoa/cdkDesktop.m
+vmware_view_SOURCES += cocoa/cdkDesktopCell.h
+vmware_view_SOURCES += cocoa/cdkDesktopCell.m
+vmware_view_SOURCES += cocoa/cdkDesktopFormatter.h
+vmware_view_SOURCES += cocoa/cdkDesktopFormatter.m
 vmware_view_SOURCES += cocoa/cdkDesktopSize.h
 vmware_view_SOURCES += cocoa/cdkDesktopSize.m
 vmware_view_SOURCES += cocoa/cdkDesktopSizesWindowController.h
@@ -99,22 +103,55 @@ nibs += TokencodeCredsView.nib
 nibs += WaitingView.nib
 nibs += WinCredsView.nib
 
-nib_dirs := $(addprefix English.lproj/,$(nibs))
-
 nib_files =
-nib_files += $(addsuffix /designable.nib,$(nib_dirs))
-nib_files += $(addsuffix /keyedobjects.nib,$(nib_dirs))
+nib_files += $(addsuffix /designable.nib,$(nibs))
+nib_files += $(addsuffix /keyedobjects.nib,$(nibs))
 
-dist_noinst_DATA += $(addprefix cocoa/,$(nib_files))
+base_lang_files :=
+base_lang_files += $(nib_files)
+base_lang_files += Credits.html
+base_lang_files += InfoPlist.strings
 
+base_lang_dirs :=
+base_lang_dirs += $(nibs)
+
+lang_files :=
+lang_files += $(addprefix English.lproj/,$(base_lang_files))
+lang_files += $(addprefix French.lproj/,$(base_lang_files))
+lang_files += $(addprefix German.lproj/,$(base_lang_files))
+lang_files += $(addprefix Japanese.lproj/,$(base_lang_files))
+lang_files += $(addprefix zh-Hans.lproj/,$(base_lang_files))
+
+lang_dirs :=
+lang_dirs += $(addprefix English.lproj/,$(base_lang_dirs))
+lang_dirs += $(addprefix French.lproj/,$(base_lang_dirs))
+lang_dirs += $(addprefix German.lproj/,$(base_lang_dirs))
+lang_dirs += $(addprefix Japanese.lproj/,$(base_lang_dirs))
+lang_dirs += $(addprefix zh-Hans.lproj/,$(base_lang_dirs))
+
+help_zips :=
+help_zips += cocoa/viewclient_mac_help_en.zip
+
+dist_noinst_DATA += $(addprefix cocoa/,$(lang_files))
 dist_noinst_DATA += fix-toolchain-paths.sh.in
 dist_noinst_DATA += $(ICONS_DIR)/view.icns
 dist_noinst_DATA += $(ICONS_DIR)/view_client_banner.png
-dist_noinst_DATA += cocoa/English.lproj/InfoPlist.strings
 dist_noinst_DATA += cocoa/vmware-view.rdp
 dist_noinst_DATA += cocoa/rdc.webloc
+dist_noinst_DATA += $(help_zips)
 
 dist_noinst_SCRIPTS += cocoa/pkg-dmg
+
+desktop_icons :=
+desktop_icons += desktop_checkin_32x.png
+desktop_icons += desktop_checkin_pause32x.png
+desktop_icons += desktop_checkout_32x.png
+desktop_icons += desktop_checkout_pause32x.png
+desktop_icons += desktop_local32xdisabled.png
+desktop_icons += desktop_local32x.png
+desktop_icons += desktop_local_rollback_32x.png
+desktop_icons += desktop_remote32x.png
+desktop_icons += desktop_remote32x_disabled.png
 
 appname := "$(PRODUCT_VIEW_CLIENT_NAME)"
 appdir := $(appname).app
@@ -124,10 +161,10 @@ if VIEW_COCOA
 ALL += app
 endif
 app: vmware-view vmware-view-tunnel Info.plist fix-toolchain-paths.sh
-	rm -rf $(appdir)
+	rm -rf $(appdir) locale.tmp
 	$(MKDIR_P) $(appdir)/Contents/MacOS
 	$(MKDIR_P) $(appdir)/Contents/Frameworks
-	@for i in $(nib_dirs) ; do \
+	@for i in $(lang_dirs) ; do \
 		echo $(MKDIR_P) $(appdir)/Contents/Resources/$$i ; \
 		$(MKDIR_P) $(appdir)/Contents/Resources/$$i ; \
 	done
@@ -145,15 +182,34 @@ ifeq ($(PUBLISH_DIR),)
 		$(appdir)/Contents/Resources
 	$(INSTALL_DATA) $(ICONS_DIR)/view_client_banner.png \
 		$(appdir)/Contents/Resources
+	@for i in $(desktop_icons) ; do \
+		echo $(INSTALL_DATA) $(top_srcdir)icons/$$i \
+			$(appdir)/Contents/Resources ; \
+		$(INSTALL_DATA) $(top_srcdir)/icons/$$i \
+			$(appdir)/Contents/Resources ; \
+	done
 	$(INSTALL_DATA) $(srcdir)/cocoa/vmware-view.rdp \
 		$(appdir)/Contents/Resources
+	$(INSTALL_DATA) $(srcdir)/cocoa/English.lproj/Credits.html \
+		$(appdir)/Contents/Resources/English.lproj
 	$(INSTALL_DATA) $(srcdir)/cocoa/English.lproj/InfoPlist.strings  \
 		$(appdir)/Contents/Resources/English.lproj
-	@for i in $(nib_files) ; do \
+	@for i in $(lang_files) ; do \
 		echo $(INSTALL_DATA) $(srcdir)/cocoa/$$i \
 			$(appdir)/Contents/Resources/$$i ; \
 		$(INSTALL_DATA) $(srcdir)/cocoa/$$i \
 			$(appdir)/Contents/Resources/$$i ; \
+	done
+	$(MAKE) -C po $(AM_MAKEFLAGS) install itlocaledir=../locale.tmp
+	mv locale.tmp $(appdir)/Contents/Resources/locale
+# this is crazy! we use $UNZIP to allow someone to specify the path to
+# unzip, but unzip uses that for its options! so if it's set, it'll
+# try to unzip itself. clearing $UNZIP before running unzip fixes
+# this, but will never get back the hour of my life i just lost
+# tracking this down.
+	@for i in $(help_zips) ; do \
+		echo UNZIP= $(UNZIP) $(srcdir)/$$i -d $(appdir)/Contents/Resources ; \
+		UNZIP= $(UNZIP) $(srcdir)/$$i -d $(appdir)/Contents/Resources ; \
 	done
 	/bin/bash ./fix-toolchain-paths.sh $(appdir)/Contents/MacOS/vmware-view \
 		$(appdir)/Contents/Frameworks
@@ -169,6 +225,7 @@ dmg: app
 	mkdir -p $(stagedir)/$(appname)
 	cp -r $(top_builddir)/$(appdir) $(stagedir)/$(appname)
 	cp $(top_srcdir)/cocoa/rdc.webloc $(stagedir)/$(appname)/"Download Microsoft RDC.webloc"
+	cp doc/open_source_licenses.txt $(stagedir)/$(appname)
 	cp $(ICONS_DIR)/view.icns $(stagedir)
 if VIEW_EULAS
 # XXX: Need to support multiple EULA languages...

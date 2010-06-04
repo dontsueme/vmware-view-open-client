@@ -33,6 +33,11 @@
 #define CDK_PROXY_H
 
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,8 +50,12 @@ typedef enum {
 } CdkProxyType;
 
 
-/* Don't forget to free the returned string with free(). */
+/* Don't forget to free the returned string with g_free(). */
 char *CdkProxy_GetProxyForUrl(const char *aUrl, CdkProxyType *proxyType);
+
+#ifdef __APPLE__
+char *CdkProxy_CFStringToUTF8CString(CFStringRef s);
+#endif
 
 
 #ifdef __cplusplus

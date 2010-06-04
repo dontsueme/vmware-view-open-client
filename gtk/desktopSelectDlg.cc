@@ -30,12 +30,19 @@
 
 
 #include <boost/bind.hpp>
-#include <glib/gi18n.h>
 
 
 #include "app.hh"
 #include "desktopSelectDlg.hh"
+#include "icons/desktop_checkin_32x.h"
+#include "icons/desktop_checkin_pause32x.h"
+#include "icons/desktop_checkout_32x.h"
+#include "icons/desktop_checkout_pause32x.h"
+#include "icons/desktop_local_rollback_32x.h"
+#include "icons/desktop_local32x.h"
+#include "icons/desktop_local32xdisabled.h"
 #include "icons/desktop_remote32x.h"
+#include "icons/desktop_remote32x_disabled.h"
 #include "icons/list_button_normal.h"
 #include "icons/list_button_hover.h"
 #include "icons/list_button_open.h"
@@ -47,6 +54,12 @@
 
 #define BUTTON_SIZE 16
 #define DIALOG_DATA_KEY "cdk-dialog"
+
+/*
+ * The pango version we link to as of view 4.5 is 1.4.1 and it does not define
+ * PANGO_ELLIPSIZE_END, so we must define it for ourselves.
+ */
+#define VIEW_PANGO_ELLIPSIZE_END   3
 
 
 namespace cdk {
@@ -88,14 +101,15 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop *> &desktops, // IN
      mWindowSize(NULL),
      mInButtonPress(false),
      mPopup(NULL),
-     mButtonPath(NULL)
+     mButtonPath(NULL),
+     mIsOffline(false)
 {
    GtkLabel *l;
 
    Init(GTK_WIDGET(mBox));
    gtk_container_set_border_width(GTK_CONTAINER(mBox), VM_SPACING);
 
-   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Available Desktops:")));
+   l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Desktops:")));
    gtk_widget_show(GTK_WIDGET(l));
    gtk_box_pack_start(GTK_BOX(mBox), GTK_WIDGET(l), false, true, 0);
    gtk_misc_set_alignment(GTK_MISC(l), 0.0, 0.5);
@@ -145,6 +159,13 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop *> &desktops, // IN
    gtk_tree_view_append_column(mDesktopList, column);
 
    renderer = gtk_cell_renderer_text_new();
+   if (g_object_class_find_property(
+         G_OBJECT_GET_CLASS(G_OBJECT(renderer)), "ellipsize")) {
+      g_object_set(G_OBJECT(renderer), "ellipsize",
+                   VIEW_PANGO_ELLIPSIZE_END, NULL);
+   } else {
+      Log("BZ 547730: This GTK version does not support the 'ellipsize' property.\n");
+   }
    column = gtk_tree_view_column_new_with_attributes("XXX",
                                                      renderer,
                                                      "markup", LABEL_COLUMN,
@@ -244,7 +265,7 @@ DesktopSelectDlg::DesktopSelectDlg(std::vector<Desktop *> &desktops, // IN
       }
       SetDesktopSize(Prefs::GetPrefs()->GetDefaultDesktopSize());
 
-      l = GTK_LABEL(gtk_label_new_with_mnemonic(_("_Display:")));
+      l = GTK_LABEL(gtk_label_new_with_mnemonic(_("D_isplay:")));
       gtk_widget_show(GTK_WIDGET(l));
       gtk_box_pack_end(GTK_BOX(box), GTK_WIDGET(l), false, false, 0);
       gtk_label_set_mnemonic_widget(l, GTK_WIDGET(mWindowSize));
@@ -296,6 +317,41 @@ DesktopSelectDlg::~DesktopSelectDlg()
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::DesktopSelectDlg::IsValid --
+ *
+ *      Overridden from Dlg::IsValid.  Indicates whether a valid desktop has
+ *      been selected.
+ *
+ * Results:
+ *      true if the current choose is an 'active' desktop
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+DesktopSelectDlg::IsValid()
+{
+   Desktop *desktop = GetDesktop();
+   if (desktop && desktop->CanConnect()) {
+      switch (desktop->GetStatus()) {
+      case Desktop::STATUS_AVAILABLE_REMOTE:
+      case Desktop::STATUS_NONBACKGROUND_TRANSFER_CHECKING_IN:
+      case Desktop::STATUS_NONBACKGROUND_TRANSFER_CHECKING_OUT:
+         return !mIsOffline;
+      default:
+         return true;
+      }
+   }
+   return false;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::DesktopSelectDlg::UpdateButton --
  *
  *      Updates the sensitivity of the Connect button.
@@ -314,9 +370,7 @@ DesktopSelectDlg::UpdateButton(DesktopSelectDlg *that) // IN
 {
    ASSERT(that);
 
-   Desktop *desktop = that->GetDesktop();
-   that->updateForwardButton(desktop && desktop->CanConnect(),
-                             that->GetForwardVisible());
+   that->updateForwardButton(that->IsValid(), that->GetForwardVisible());
 }
 
 
@@ -367,9 +421,8 @@ DesktopSelectDlg::UpdateList(std::vector<Desktop *> &desktops, // IN
       gtk_list_store_append(mStore, &iter);
 
       Util::string name = desktop->GetName();
-      Util::string status = desktop->GetStatusMsg();
-      GdkPixbuf *pb =
-         gdk_pixbuf_new_from_inline(-1, desktop_remote32x, false, NULL);
+      Util::string status = desktop->GetStatusMsg(mIsOffline);
+      GdkPixbuf *pb = GetDesktopIcon(desktop->GetStatus());
 
       char *label = g_markup_printf_escaped(
          "<b>%s</b>\n<span size=\"smaller\">%s</span>",
@@ -394,6 +447,60 @@ DesktopSelectDlg::UpdateList(std::vector<Desktop *> &desktops, // IN
       }
    }
    UpdateButton(this);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::GetDesktopIcon --
+ *
+ *      Given a desktop status, returns a GdkPixbuf representing that status.
+ *
+ * Results:
+ *      GdkPixbuf * which must be unrefed by the user.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GdkPixbuf*
+DesktopSelectDlg::GetDesktopIcon(Desktop::Status status) // IN
+{
+   const guint8 *data;
+
+   switch (status) {
+   case Desktop::STATUS_ROLLING_BACK:
+   case Desktop::STATUS_SERVER_ROLLBACK:
+   case Desktop::STATUS_HANDLING_SERVER_ROLLBACK:
+      data = desktop_local_rollback_32x;
+      break;
+   case Desktop::STATUS_CHECKED_OUT_DISABLED:
+      data = desktop_local32xdisabled;
+      break;
+   case Desktop::STATUS_NONBACKGROUND_TRANSFER_CHECKING_IN:
+      // XXX: Need to add an icon for when we are offline.
+      data = desktop_checkin_pause32x;
+      break;
+   case Desktop::STATUS_NONBACKGROUND_TRANSFER_CHECKING_OUT:
+      // XXX: Need to add an icon for when we are offline.
+      data = desktop_checkout_pause32x;
+      break;
+   case Desktop::STATUS_AVAILABLE_LOCAL:
+      data = desktop_local32x;
+      break;
+   case Desktop::STATUS_LOGGED_ON:
+   case Desktop::STATUS_AVAILABLE_REMOTE:
+      data = mIsOffline ? desktop_remote32x_disabled : desktop_remote32x;
+      break;
+   default:
+      data = desktop_remote32x_disabled;
+      break;
+   }
+
+   return gdk_pixbuf_new_from_inline(-1, data, false, NULL);
 }
 
 
@@ -878,7 +985,6 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
     * the issue.
     */
    GSList *group = NULL;
-   bool setDefault = false;
    std::vector<Util::string> protocols = desktop->GetProtocols();
    for (std::vector<Util::string>::reverse_iterator iter = protocols.rbegin();
         iter != protocols.rend(); iter++) {
@@ -887,19 +993,12 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
       gtk_widget_show(item);
       gtk_menu_shell_prepend(GTK_MENU_SHELL(submenu), item);
       group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
-      bool active = !setDefault && *iter == desktop->GetProtocol();
+      bool active = *iter == desktop->GetProtocol();
 
       // XXX: Need checks to make sure these are actually installed
       switch (Protocols::GetProtocolFromName(*iter)) {
       case Protocols::RDP:
       case Protocols::PCOIP:
-         if (*iter == Prefs::GetPrefs()->GetDefaultProtocol()) {
-            if (!active) {
-               active = true;
-               desktop->SetProtocol(*iter);
-            }
-            setDefault = true;
-         }
          gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), active);
          g_signal_connect(G_OBJECT(item), "toggled",
                           G_CALLBACK(OnProtocolSelected), desktop);
@@ -928,7 +1027,7 @@ DesktopSelectDlg::ShowPopup(GdkEventButton *evt, // IN/OPT
    item = gtk_menu_item_new_with_mnemonic(_("_Reset"));
    gtk_widget_show(item);
    gtk_menu_shell_append(GTK_MENU_SHELL(mPopup), item);
-   if (desktop->CanReset() && desktop->CanResetSession() && !busy) {
+   if (desktop->CanReset() && !busy) {
       g_signal_connect(G_OBJECT(item), "activate",
                        G_CALLBACK(&DesktopSelectDlg::OnResetDesktop), this);
    } else {
@@ -1554,6 +1653,34 @@ DesktopSelectDlg::OnProtocolSelected(GtkButton *button, // IN
 
    ASSERT(index < (int)protoVector.size());
    desktop->SetProtocol(protoVector[index]);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::DesktopSelectDlg::SetIsOffline --
+ *
+ *      Sets offline state and updates the forward button.
+ *
+ * Results:
+ *      true if the offline state has changed and the list needs to be updated.
+ *      false otherwise.
+ *
+ * Side effects:
+ *      UpdateButton called.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+DesktopSelectDlg::SetIsOffline(bool isOffline) // IN
+{
+   if (mIsOffline != isOffline) {
+      mIsOffline = isOffline;
+      return true;
+   }
+   return false;
 }
 
 

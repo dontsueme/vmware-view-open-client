@@ -29,7 +29,6 @@
  */
 
 
-#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
 
@@ -57,12 +56,14 @@ namespace cdk {
  */
 
 TransitionDlg::TransitionDlg(TransitionType type,         // IN
-                             const Util::string &message) // IN
+                             const Util::string &message, // IN
+                             bool useMarkup)              // IN/OPT
    : mImage(gtk_image_new()),
      mFrame(0),
      mRate(0),
      mTimeout(0),
-     mTransitionType(type)
+     mTransitionType(type),
+     mLabel(NULL)
 {
    GtkWidget *box = gtk_vbox_new(false, 3 * VM_SPACING);
    Init(box);
@@ -76,10 +77,12 @@ TransitionDlg::TransitionDlg(TransitionType type,         // IN
    g_signal_connect(mImage, "unrealize",
                     G_CALLBACK(&TransitionDlg::OnImageUnrealized), this);
 
-   GtkWidget *label = gtk_label_new(message.c_str());
-   gtk_widget_show(label);
-   gtk_box_pack_start_defaults(GTK_BOX(box), label);
-   gtk_label_set_line_wrap(GTK_LABEL(label), true);
+   mLabel = GTK_LABEL(gtk_label_new(message.c_str()));
+   gtk_widget_show(GTK_WIDGET(mLabel));
+   gtk_box_pack_start_defaults(GTK_BOX(box), GTK_WIDGET(mLabel));
+   gtk_label_set_line_wrap(mLabel, true);
+   gtk_label_set_use_markup(mLabel, useMarkup);
+   g_object_add_weak_pointer(G_OBJECT(mLabel), (gpointer *)&mLabel);
 }
 
 
@@ -394,6 +397,31 @@ TransitionDlg::LoadAnimation(int data_length,     // IN
    }
    gdk_pixbuf_unref(pb);
    return ret;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::TransitionDlg::SetMessage --
+ *
+ *      Set the message text of the transition dialog.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+TransitionDlg::SetMessage(const Util::string &message) // IN
+{
+   ASSERT(mLabel);
+
+   gtk_label_set_label(mLabel, message.c_str());
 }
 
 

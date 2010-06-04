@@ -72,6 +72,11 @@ public:
 
    boost::signal1<void, Action> action;
 
+   virtual Util::string GetHelpContext() { return "list"; }
+   bool SetIsOffline(bool isOffline);
+
+   virtual bool IsValid();
+
 private:
    enum ListColumns {
       ICON_COLUMN,
@@ -104,6 +109,8 @@ private:
 
    void GetIterForDesktopSize(Prefs::DesktopSize size, GtkTreeIter *iter);
    void UpdateCustomSize();
+
+   GdkPixbuf *GetDesktopIcon(Desktop::Status status);
 
    static void OnConnect(GtkButton *button, gpointer userData);
    static void OnResetDesktop(GtkMenuItem *item, gpointer data);
@@ -139,6 +146,8 @@ private:
    GdkPixbuf *mButtonNormal;
    GdkPixbuf *mButtonHover;
    GdkPixbuf *mButtonOpen;
+
+   bool mIsOffline;
 };
 
 

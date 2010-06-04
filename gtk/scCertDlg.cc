@@ -29,9 +29,6 @@
  */
 
 
-#include <glib/gi18n.h>
-
-
 #include "scCertDetailsDlg.hh"
 #include "scCertDlg.hh"
 

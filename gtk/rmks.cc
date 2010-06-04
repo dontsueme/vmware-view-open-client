@@ -34,7 +34,9 @@
 
 
 #include "app.hh"
+#include "cdkErrors.h"
 #include "rmks.hh"
+#include "VMwareVDPPlugin.h"
 
 
 namespace cdk {
@@ -144,7 +146,9 @@ RMks::OnError(Util::string errorString,  // IN
    }
 
    // An error dialog here will kill the desktop window and show an error.
-   App::ShowDialog(GTK_MESSAGE_ERROR, "%s", message.c_str());
+   BaseApp::ShowError(CDK_ERR_RMKS_CONNECTION_ERROR,
+                      _("An error occurred while connecting to the "
+                        "remote desktop"), "%s", message.c_str());
 }
 
 
@@ -168,10 +172,12 @@ RMks::OnError(Util::string errorString,  // IN
 void
 RMks::Start(const BrokerXml::DesktopConnection &connection, // IN/UNUSED
             const Util::string &windowId,                   // IN
-            const Util::Rect *geometry)                     // IN/UNUSED
+            const Util::Rect *geometry,                     // IN/UNUSED
+            GdkScreen *screen)                              // IN
 {
    std::vector<Util::string> args;
    int argsMask = 0;
+   Util::string kbdLayout;
 
    args.push_back("pcoip_client");
    args.push_back("mksvchanclient");
@@ -184,7 +190,49 @@ RMks::Start(const BrokerXml::DesktopConnection &connection, // IN/UNUSED
    args.push_back(Util::Format("%dx%d", geometry->width, geometry->height));
    args.push_back(windowId);
 
+   kbdLayout = Prefs::GetPrefs()->GetKbdLayout();
+   if (!kbdLayout.empty()) {
+      args.push_back(kbdLayout);
+   }
+
+   if (Prefs::GetPrefs()->GetAllowWMBindings()) {
+      Util::UserWarning(_("Warning: -K option is ignored when using PCoIP.\n"));
+   }
+
    ProcHelper::Start(VMwareRMksBinary, VMwareRMksBinary, args, argsMask);
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::RMks::ExitStatusIsError --
+ *
+ *      Tells you if an exit code for RMks was an error or a user initiated and
+ *      successful exit.
+ *
+ * Results:
+ *      true if the exit code given was an error, false otherwise.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+RMks::GetIsErrorExitStatus(int exitCode) // IN
+{
+   switch (exitCode) {
+   case VDPCONNECT_SUCCESS:
+   case VDPCONNECT_SERVER_DISCONNECTED:
+   case VDPCONNECT_SERVER_DISCONNECTED_MANUAL_LOGOUT:
+   case VDPCONNECT_SERVER_DISCONNECTED_ADMIN_MANUAL:
+   case VDPCONNECT_SERVER_DISCONNECTED_RECONNECT:
+      return false;
+   default:
+      return true;
+   }
 }
 
 

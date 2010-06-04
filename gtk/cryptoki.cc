@@ -34,7 +34,6 @@
 #include <openssl/x509v3.h>
 
 
-#include "app.hh"
 #include "cryptoki.hh"
 
 
@@ -42,7 +41,7 @@
  * d2i_X509() changed signature between 0.9.7 and 0.9.8, which we use
  * on OS X 10.5.
  */
-#ifdef OPENSSL_097
+#if OPENSSL_VERSION_NUMBER < 0x00908000L
 #define D2I_X509_CONST
 #else
 #define D2I_X509_CONST const
@@ -127,6 +126,9 @@ Cryptoki::~Cryptoki()
 unsigned int
 Cryptoki::LoadModules(const Util::string &dirPath) // IN
 {
+#ifdef __MINGW32__
+   return 0;
+#else
    DIR *dir = opendir(dirPath.c_str());
    if (!dir) {
       Warning("Could not open module directory path %s: %s\n", dirPath.c_str(),
@@ -152,6 +154,7 @@ Cryptoki::LoadModules(const Util::string &dirPath) // IN
    loadedCount = mModules.size() - loadedCount;
    Log("Loaded %u modules from %s\n", loadedCount, dirPath.c_str());
    return loadedCount;
+#endif
 }
 
 
@@ -201,18 +204,51 @@ Cryptoki::LoadModule(const Util::string &filePath) // IN
  */
 
 std::list<X509 *>
-Cryptoki::GetCertificates(STACK_OF(X509_NAME) *CAs) // IN
+Cryptoki::GetCertificates(std::list<Util::string> &trustedIssuers) // IN
 {
    std::list<X509 *> certs;
 
    for (std::list<Module *>::iterator i = mModules.begin();
         i != mModules.end(); i++) {
-      (*i)->GetCertificates(certs, CAs);
+      (*i)->GetCertificates(certs, trustedIssuers);
    }
 
    Log("Found %d certificates.\n", (int)certs.size());
 
    return certs;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Cryptoki::Login --
+ *
+ *      Attempt to log in to the token which contains cert using the
+ *      provided pin.
+ *
+ * Results:
+ *      true if the user is now authenticated to the token.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+bool
+Cryptoki::Login(const X509 *cert, // IN
+                const char *pin,  // IN
+                GError **error)   // OUT
+{
+   Session *session = ExData<X509>::GetSession(cert);
+   if (!session) {
+      g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_SESSION_NOT_FOUND,
+                  _("No smart card sessions for your certificate could be "
+                    "found"));
+      return false;
+   }
+   return session->Login(cert, pin, error);
 }
 
 
@@ -297,6 +333,30 @@ Cryptoki::GetSlotName(const X509 *cert) // IN
 {
    Session *session = ExData<X509>::GetSession(cert);
    return session ? session->GetSlotName() : "";
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::Cryptoki::GetTokenName --
+ *
+ *      Get the name of the token on which a certificate is stored.
+ *
+ * Results:
+ *      A possibly empty string name.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+Util::string
+Cryptoki::GetTokenName(const X509 *cert) // IN
+{
+   Session *session = ExData<X509>::GetSession(cert);
+   return session ? session->GetTokenName() : "";
 }
 
 
@@ -531,6 +591,29 @@ Cryptoki::GetHadEvent()
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::Cryptoki::GetErrorQuark --
+ *
+ *      Returns the quark used for crytpoki GErrors.
+ *
+ * Results:
+ *      A quark.
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+GQuark
+Cryptoki::GetErrorQuark()
+{
+   return g_quark_from_static_string("cdk-crytpoki-error-quark");
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::Cryptoki::Module::Module --
  *
  *      Cryptoki::Module constructor; initialize fields to NULL.
@@ -692,8 +775,8 @@ Cryptoki::Module::Load(const Util::string &filePath) // IN
  */
 
 void
-Cryptoki::Module::GetCertificates(std::list<X509 *> &certs, // IN/OUT
-                                  STACK_OF(X509_NAME) *CAs) // IN
+Cryptoki::Module::GetCertificates(std::list<X509 *> &certs,         // IN/OUT
+                                  std::list<Util::string> &issuers) // IN
 {
    Log("Getting certificates for module %s\n", mLabel.c_str());
    std::list<CK_SLOT_ID> slots = GetSlots();
@@ -702,7 +785,7 @@ Cryptoki::Module::GetCertificates(std::list<X509 *> &certs, // IN/OUT
       Session *session = new Session(this);
       CK_RV rv = session->Open(*i);
       if (rv == CKR_OK) {
-         session->GetCertificates(certs, CAs);
+         session->GetCertificates(certs, issuers);
       }
       session->Release();
    }
@@ -1081,7 +1164,7 @@ Cryptoki::Session::Open(CK_SLOT_ID slot) // IN
  *      Attempts to log in to this token if necessary.
  *
  * Results:
- *      Whether login is needed or not.
+ *      Whether the user is authenticated to the token.
  *
  * Side effects:
  *      mNeedLogin set to false on success.
@@ -1090,85 +1173,90 @@ Cryptoki::Session::Open(CK_SLOT_ID slot) // IN
  */
 
 bool
-Cryptoki::Session::Login(const X509 *cert)
+Cryptoki::Session::Login(const X509 *cert, // IN
+                         const char *pin,  // IN
+                         GError **error)   // OUT
 {
    if (!mNeedLogin) {
-      return false;
+      return true;
    }
 
    CK_FUNCTION_LIST funcs = mModule->GetFunctions();
    CK_RV rv;
    CK_TOKEN_INFO info;
-   bool warnFinal = true;
-   while (true) {
+
+   rv = funcs.C_GetTokenInfo(mSlot, &info);
+   if (rv != CKR_OK) {
+      Warning("C_GetTokenInfo(%lu) failed: %#lx\n", mSlot, rv);
+      info.flags = 0;
+   }
+
+   if (info.flags & CKF_USER_PIN_LOCKED) {
+      goto errLockedPin;
+   }
+
+   if (!pin) {
+      Log("No PIN specified for [%s]\n", mLabel.c_str());
+      if (info.flags & CKF_USER_PIN_FINAL_TRY) {
+         goto errFinalTry;
+      }
+      g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_INVALID_PIN,
+                  _("A PIN is required to unlock this smartcard or "
+                    "token."));
+      return false;
+   }
+
+   rv = funcs.C_Login(mSession, CKU_USER, (unsigned char *)pin, strlen(pin));
+   switch (rv) {
+   case CKR_USER_ALREADY_LOGGED_IN:
+      Log("Already logged in to card; continuing.\n");
+      break;
+   case CKR_OK:
+      break;
+   case CKR_PIN_LOCKED:
+      goto errLockedPin;
+   case CKR_PIN_INCORRECT:
       rv = funcs.C_GetTokenInfo(mSlot, &info);
       if (rv != CKR_OK) {
          Warning("C_GetTokenInfo(%lu) failed: %#lx\n", mSlot, rv);
          info.flags = 0;
       }
-
-      if (warnFinal && info.flags & CKF_USER_PIN_FINAL_TRY) {
-         warnFinal = false;
-         App::ShowDialog(GTK_MESSAGE_WARNING,
-                         _("An incorrect PIN entry will result in your smart "
-                           "card or token being locked."));
-      } else if (info.flags & CKF_USER_PIN_LOCKED) {
-         App::ShowDialog(GTK_MESSAGE_ERROR,
-                         _("Your smart card or token has been locked.  Please "
-                           "contact your administrator to unlock it."));
-         return false;
+      if (info.flags & CKF_USER_PIN_FINAL_TRY) {
+         goto errFinalTry;
       }
-
-      const char *pin = mModule->GetCryptoki()->requestPin(mLabel, cert);
-      if (!pin) {
-         Log("No PIN specified for [%s]\n", mLabel.c_str());
-         return false;
-      }
-      rv = funcs.C_Login(mSession, CKU_USER, (unsigned char *)pin, strlen(pin));
-
-      switch (rv) {
-      case CKR_USER_ALREADY_LOGGED_IN:
-         Log("Already logged in to card; continuing.\n");
-         rv = CKR_OK;
-         // fall through
-      case CKR_OK:
-         mNeedLogin = false;
-         return true;
-      case CKR_PIN_LOCKED:
-         // We'll show the error after calling GetTokenInfo above.
-         continue;
-      case CKR_PIN_INCORRECT:
-         rv = funcs.C_GetTokenInfo(mSlot, &info);
-         if (rv != CKR_OK) {
-            Warning("C_GetTokenInfo(%lu) failed: %#lx\n", mSlot, rv);
-            info.flags = 0;
-         }
-         App::ShowDialog(
-            GTK_MESSAGE_ERROR,
-            _("You have entered an incorrect PIN.\n\n%s"),
-            info.flags & CKF_USER_PIN_FINAL_TRY
-            ? _("An additional incorrect PIN entry will result in your smart "
-                "card or token being locked.")
-            : _("Please enter your PIN again."));
-         if (info.flags & CKF_USER_PIN_FINAL_TRY) {
-            warnFinal = false;
-         }
-         break;
-      case CKR_DEVICE_REMOVED:
-         /*
-          * UI will go back to "insert smart card" so we don't want to
-          * display an error in this case.
-          */
-         return false;
-      default:
-         Warning("C_Login attempt failed: %#lx [%s]\n", rv, mLabel.c_str());
-         App::ShowDialog(
-            GTK_MESSAGE_ERROR,
-            _("There was an error logging in to your smart card or token."));
-         return false;
-      }
+      g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_INVALID_PIN,
+                  _("Please try entering your PIN again."));
+      return false;
+   case CKR_DEVICE_REMOVED:
+      /*
+       * UI will go back to "insert smart card" so we don't want to
+       * display an error in this case.
+       */
+      g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_DEVICE_REMOVED,
+                  _("Your smart card or token has been removed."));
+      return false;
+   default:
+      Warning("C_Login attempt failed: %#lx [%s]\n", rv, mLabel.c_str());
+      g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_UNKNOWN,
+                  _("There was an error logging in to your smart card or "
+                    "token.\n\n"
+                    "The error code was %#lx."), rv);
+      return false;
    }
-   NOT_REACHED();
+
+   mNeedLogin = false;
+   return true;
+
+errLockedPin:
+   g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_PIN_LOCKED,
+               _("Your smart card or token has been locked.  Please "
+                 "contact your administrator to unlock it."));
+   return false;
+
+errFinalTry:
+   g_set_error(error, CDK_CRYPTOKI_ERROR, ERR_PIN_FINAL_TRY,
+               _("An incorrect PIN entry will result in your "
+                 "smart card or token being locked."));
    return false;
 }
 
@@ -1228,8 +1316,8 @@ Cryptoki::Session::Logout()
  */
 
 void
-Cryptoki::Session::GetCertificates(std::list<X509 *> &certs, // IN/OUT
-                                   STACK_OF(X509_NAME) *CAs) // IN
+Cryptoki::Session::GetCertificates(std::list<X509 *> &certs,         // IN/OUT
+                                   std::list<Util::string> &issuers) // IN
 {
    CK_FUNCTION_LIST funcs = mModule->GetFunctions();
 
@@ -1316,14 +1404,22 @@ Cryptoki::Session::GetCertificates(std::list<X509 *> &certs, // IN/OUT
       }
 
       X509_NAME *issuer = X509_get_issuer_name(x509);
-      if (sk_X509_NAME_find(CAs, issuer) < 0) {
-         char *dispName = X509_NAME_oneline(issuer, NULL, 0);
+      char *dispName = X509_NAME_oneline(issuer, NULL, 0);
+      if (!dispName) {
+         X509_free(x509);
+         continue;
+      }
+      std::list<Util::string>::iterator found =
+         std::find(issuers.begin(), issuers.end(), dispName);
+
+      if (found == issuers.end()) {
          Log("Cert issuer %s not accepted by server, ignoring cert.\n",
              dispName);
          OPENSSL_free(dispName);
          X509_free(x509);
          continue;
       }
+      OPENSSL_free(dispName);
 
       // http://www.mail-archive.com/openssl-users@openssl.org/msg01662.html
       int idx = -1;
@@ -1395,7 +1491,7 @@ Cryptoki::Session::GetPrivateKey(const X509 *cert) // IN
 
    Log("Trying to get private key for id %s\n", Id2String(id).c_str());
 
-   if (!Login(cert)) {
+   if (mNeedLogin) {
       return NULL;
    }
 

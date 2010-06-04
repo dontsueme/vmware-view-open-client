@@ -47,7 +47,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#endif
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/kauth.h>
@@ -938,10 +940,15 @@ Posix_Execl(ConstUnicode pathName,   // IN:
    if (argv) {
       errno = 0;
       if (count > 0) {
-	 PosixConvertToCurrent(arg0, &argv[0]);
+         if (!PosixConvertToCurrent(arg0, &argv[0])) {
+            goto exit;
+         }
          va_start(vl, arg0);
          for (i = 1; i < count; i++) {
-	    PosixConvertToCurrent(va_arg(vl, char *), &argv[i]);
+            if (!PosixConvertToCurrent(va_arg(vl, char *), &argv[i])) {
+               va_end(vl);
+               goto exit;
+            }
          }
          va_end(vl);
       }
@@ -1010,16 +1017,21 @@ Posix_Execlp(ConstUnicode fileName,   // IN:
    if (argv) {
       errno = 0;
       if (count > 0) {
-	 PosixConvertToCurrent(arg0, &argv[0]);
+         if (!PosixConvertToCurrent(arg0, &argv[0])) {
+            goto exit;
+         }
          va_start(vl, arg0);
          for (i = 1; i < count; i++) {
-	    PosixConvertToCurrent(va_arg(vl, char *), &argv[i]);
+            if (!PosixConvertToCurrent(va_arg(vl, char *), &argv[i])) {
+               va_end(vl);
+               goto exit;
+            }
          }
          va_end(vl);
       }
       argv[count] = NULL;
       if (errno != 0) {
-	 goto exit;
+         goto exit;
       }
    }
 

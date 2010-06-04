@@ -92,7 +92,9 @@ void
 RDesktop::Start(const BrokerXml::DesktopConnection &connection,   // IN
                 const Util::string &windowId,                     // IN
                 const Util::Rect *geometry,                       // IN
-                const std::vector<Util::string>& devRedirectArgs) // IN/OPT
+                bool enableMMR,                                   // IN
+                const std::vector<Util::string>& devRedirectArgs, // IN/OPT
+                GdkScreen *screen)                                // IN/OPT
 {
    ASSERT(!connection.address.empty());
 
@@ -153,17 +155,26 @@ RDesktop::Start(const BrokerXml::DesktopConnection &connection,   // IN
       }
    }
 
+   Util::string kbdLayout = Prefs::GetPrefs()->GetKbdLayout();
+   if (!kbdLayout.empty()) {
+      args.push_back("-k");
+      args.push_back(kbdLayout);
+   }
+
    bool soundSet = false;
    // Append device redirect at the end, in case of some hinky shell args
 
-#define APPEND_REDIR_ARGS(redirArgs)                                    \
-   for (std::vector<Util::string>::const_iterator i = redirArgs.begin(); \
-        i != redirArgs.end(); i++) {                                    \
-      args.push_back("-r"); args.push_back(*i);                         \
-      if (!soundSet && i->compare(0, 6, "sound:") == 0) {               \
-         soundSet = true;                                               \
-      }                                                                 \
-   }
+#define APPEND_REDIR_ARGS(_redirArgs)                                       \
+   G_STMT_START {                                                           \
+      std::vector<Util::string> redirArgs = _redirArgs;                     \
+      for (std::vector<Util::string>::const_iterator i = redirArgs.begin(); \
+           i != redirArgs.end(); i++) {                                     \
+         args.push_back("-r"); args.push_back(*i);                          \
+         if (!soundSet && i->compare(0, 6, "sound:") == 0) {                \
+            soundSet = true;                                                \
+         }                                                                  \
+      }                                                                     \
+   } G_STMT_END
 
    // Once for passed-in args
    APPEND_REDIR_ARGS(devRedirectArgs);
@@ -173,13 +184,16 @@ RDesktop::Start(const BrokerXml::DesktopConnection &connection,   // IN
    if (!soundSet) {
       args.push_back("-r"); args.push_back("sound:local");
    }
+   if (enableMMR) {
+      args.push_back("-r"); args.push_back("rdp_mmr.so:MMRVDX");
+   }
 
    // And I'll form the head.
    args.push_back(Util::Format("%s:%d",
                                connection.address.c_str(),
                                connection.port).c_str());
 
-   ProcHelper::Start(RDesktopBinary, RDesktopBinary, args, 0, connection.password + "\n");
+   ProcHelper::Start(RDesktopBinary, RDesktopBinary, args, 0, screen, connection.password + "\n");
 }
 
 
@@ -213,12 +227,13 @@ RDesktop::OnError(Util::string errorString) // IN
 
       switch (errNum) {
       case MMR_ERROR_GSTREAMER:
-         App::ShowDialog(GTK_MESSAGE_WARNING, _("Required GStreamer plugins "
-            "could not be found.  Please check that your path is set "
-            "properly."));
+         BaseApp::ShowWarning(_("Gstreamer plugins not found"),
+                              _("The required GStreamer plugins could not be "
+                                "found. Please check that your path is set "
+                                "properly."));
          break;
       default:
-         App::ShowDialog(GTK_MESSAGE_WARNING, "%s", errorString.c_str());
+         BaseApp::ShowWarning(_("Warning"), "%s", errorString.c_str());
          break;
       }
    }

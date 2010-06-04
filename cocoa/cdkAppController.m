@@ -28,6 +28,10 @@
  *     Implementation of CdkAppController
  */
 
+#import <glib.h>
+#import <mach-o/dyld.h>
+
+
 #import "cdkAppController.h"
 #import "cdkRdc.h"
 #import "cdkString.h"
@@ -39,8 +43,7 @@
 @end // @interface CdkAppController ()
 
 
-static NSString *const RDC_URL =
-   @"http://www.microsoft.com/downloads/details.aspx?FamilyID=cd9ec77e-5b07-4332-849f-046611458871";
+static NSString *const RDC_URL = @"http://vmware.com/go/downloadmsrdc";
 
 
 @implementation CdkAppController
@@ -133,6 +136,59 @@ static NSString *const RDC_URL =
 -(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApp // IN
 {
    return YES;
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkAppController applicationWillTerminate:] --
+ *
+ *      NSApplication delegate method; called when the app is about to
+ *      terminate.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      Resets the window, closing any remote sessions and killing the
+ *      tunnel.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)applicationWillTerminate:(NSNotification *)notification // IN
+{
+   [windowController brokerDidRequestBroker:[windowController broker]];
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * -[CdkAppController newDocument:] --
+ *
+ *      Launch a new instance of the client.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      New client is started.
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+-(void)newDocument:(id)sender // IN/UNUSED
+{
+   char *argv[2] = { NULL };
+   char path[PATH_MAX];
+   uint32_t pathSize = PATH_MAX;
+   argv[0] = path;
+   int rv = _NSGetExecutablePath(path, &pathSize);
+   if (rv == 0) {
+      g_spawn_async(NULL, argv, NULL, (GSpawnFlags)0, NULL, NULL, NULL, NULL);
+   }
 }
 
 

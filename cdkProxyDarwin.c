@@ -28,18 +28,12 @@
  *      Implementaiton of CdkProxy for Mac OS X.
  */
 
-#include "vm_basic_types.h"
-#define _UINT64
-
-
 #include <CoreServices/CoreServices.h>
+#include <glib.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 
 
 #include "cdkProxy.h"
-
-#include "str.h"
-#include "util.h"
 
 
 /* TODO: Move this to libMisc instead of libUser? */
@@ -66,14 +60,14 @@
  *-----------------------------------------------------------------------------
  */
 
-static char *
-CFStringToUTF8CString(CFStringRef s) /* IN */
+char *
+CdkProxy_CFStringToUTF8CString(CFStringRef s) /* IN */
 {
    static CFStringEncoding const encoding = kCFStringEncodingUTF8;
    char const *fast;
    char *result;
 
-   ASSERT(s);
+   g_assert(s);
 
    fast = CFStringGetCStringPtr(s, encoding);
    if (fast) {
@@ -99,7 +93,7 @@ CFStringToUTF8CString(CFStringRef s) /* IN */
    }
 
    if (!result) {
-      Log("Failed to get C string from CFString.\n");
+      g_debug("Failed to get C string from CFString.");
    }
    return result;
 }
@@ -126,15 +120,15 @@ GetDictionaryStringValue (CFDictionaryRef dict, /* IN */
    CFStringRef valueStr;
    char *ret = NULL;
 
-   ASSERT(dict);
-   ASSERT(key);
+   g_assert(dict);
+   g_assert(key);
 
    if (CFDictionaryContainsKey(dict, key)) {
       value = CFDictionaryGetValue(dict, key);
-      ASSERT(CFStringGetTypeID() == CFGetTypeID(value));
+      g_assert(CFStringGetTypeID() == CFGetTypeID(value));
 
       valueStr = CFStringCreateWithFormat(NULL, NULL, CFSTR("%@"), value);
-      ret = CFStringToUTF8CString(valueStr);
+      ret = CdkProxy_CFStringToUTF8CString(valueStr);
    }
 
    return ret;
@@ -162,15 +156,15 @@ GetDictionaryNumberValue (CFDictionaryRef dict, /* IN */
    Boolean ok;
    int ret = -1;
 
-   ASSERT(dict);
-   ASSERT(key);
+   g_assert(dict);
+   g_assert(key);
 
    if (CFDictionaryContainsKey(dict, key)) {
       value = CFDictionaryGetValue(dict, key);
-      ASSERT(CFNumberGetTypeID() == CFGetTypeID(value));
+      g_assert(CFNumberGetTypeID() == CFGetTypeID(value));
 
       ok = CFNumberGetValue((CFNumberRef)value, kCFNumberIntType, &ret);
-      ASSERT(ok);
+      g_assert(ok);
    }
 
    return ret;
@@ -211,8 +205,8 @@ CdkProxy_GetProxyForUrl(const char *aUrl,        /* IN */
    int i;
    char *ret = NULL;
 
-   ASSERT(aUrl);
-   ASSERT(proxyType);
+   g_assert(aUrl);
+   g_assert(proxyType);
 
    *proxyType = CDK_PROXY_NONE;
 
@@ -250,13 +244,13 @@ CdkProxy_GetProxyForUrl(const char *aUrl,        /* IN */
          int port = GetDictionaryNumberValue(proxy, kCFProxyPortNumberKey);
          char *host = GetDictionaryStringValue(proxy, kCFProxyHostNameKey);
 
-         ASSERT(!(isHTTP && isSOCKS));
+         g_assert(!(isHTTP && isSOCKS));
 
          if (port != -1 && host != NULL) {
             /* XXX: we should support more proxy types in general */
             /* Note that we still use http to connect to https proxies. */
-            ret = Str_Asprintf(NULL, "%s%s:%d", isHTTP ? "http://" : "",
-                               host, port);
+            ret = g_strdup_printf("%s%s:%d", isHTTP ? "http://" : "", host,
+                                  port);
             if (ret) {
                free(host);
                *proxyType = isHTTP ? CDK_PROXY_HTTP : CDK_PROXY_SOCKS4;

@@ -252,7 +252,7 @@
 											<int key="NSTCFlags">1</int>
 										</object>
 										<object class="NSTextViewSharedData" key="NSSharedData">
-											<int key="NSFlags">11233</int>
+											<int key="NSFlags">11232</int>
 											<object class="NSColor" key="NSBackgroundColor" id="383382354">
 												<int key="NSColorSpace">3</int>
 												<bytes key="NSWhite">MQA</bytes>
@@ -318,8 +318,8 @@
 								<reference key="NSDocView" ref="448670026"/>
 								<reference key="NSBGColor" ref="383382354"/>
 								<object class="NSCursor" key="NSCursor">
-									<string key="NSHotSpot">{4, -5}</string>
-									<int key="NSCursorType">1</int>
+									<string key="NSHotSpot">{1, -1}</string>
+									<int key="NSCursorType">0</int>
 								</object>
 								<int key="NScvFlags">4</int>
 							</object>

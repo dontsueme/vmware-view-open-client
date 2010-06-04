@@ -68,7 +68,9 @@
       #define freelocale __freelocale
       #define nl_langinfo_l __nl_langinfo_l
    #endif
-   #include <dlfcn.h>
+   #ifdef HAVE_DLFCN_H
+      #include <dlfcn.h>
+   #endif
    #include <iconv.h>
    #include <langinfo.h>
 #endif

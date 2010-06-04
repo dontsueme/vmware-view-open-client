@@ -21,26 +21,41 @@
 bin_PROGRAMS += vmware-view-tunnel
 
 vmware_view_tunnel_SOURCES :=
-vmware_view_tunnel_SOURCES += tunnel/stubs.c
+if VIEW_COCOA
+vmware_view_tunnel_OBJCFLAGS =
+# Automake does not support .mm files, so we need to turn
+# Objective-C++ on manually.
+vmware_view_tunnel_OBJCFLAGS += -x objective-c++
+vmware_view_tunnel_SOURCES += tunnel/tunnelCocoa.m
+else
+vmware_view_tunnel_SOURCES += tunnel/tunnel.cc
+endif
 vmware_view_tunnel_SOURCES += tunnel/tunnelMain.c
 vmware_view_tunnel_SOURCES += tunnel/tunnelProxy.c
 vmware_view_tunnel_SOURCES += tunnel/tunnelProxy.h
 vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/base64.c
-vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/dynbuf.c
-vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/idLinux.c
-vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/strutil.c
-vmware_view_tunnel_SOURCES += lib/open-vm-tools/misc/utilMem.c
+nodist_vmware_view_tunnel_SOURCES :=
+if STATIC_ICU
+nodist_vmware_view_tunnel_SOURCES += $(ICUDATA_ENTRY_POINT)l_dat.s
+endif
 
-vmware_view_tunnel_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS)
+vmware_view_tunnel_CPPFLAGS := $(AM_CPPFLAGS) $(SSL_CFLAGS)
 
 vmware_view_tunnel_LDADD :=
-vmware_view_tunnel_LDADD += libAsyncSocket.a
-vmware_view_tunnel_LDADD += libPollDefault.a
-vmware_view_tunnel_LDADD += libPoll.a
-vmware_view_tunnel_LDADD += libProxy.a
-vmware_view_tunnel_LDADD += libSsl.a
-vmware_view_tunnel_LDADD += libString.a
+vmware_view_tunnel_LDADD += libCdk.a
+vmware_view_tunnel_LDADD += $(ICU_LIBS)
 vmware_view_tunnel_LDADD += $(SSL_LIBS)
-if VIEW_COCOA
-vmware_view_tunnel_LDADD += $(TUNNEL_FRAMEWORKS)
+vmware_view_tunnel_LDADD += libPoll.a
+vmware_view_tunnel_LDADD += libPollDefault.a
+if VIEW_GTK
+vmware_view_tunnel_LDADD += libPollGtk.a
 endif
+vmware_view_tunnel_LDADD += $(GLIB_LIBS)
+if VIEW_COCOA
+vmware_view_tunnel_LDADD += libDui.a
+vmware_view_tunnel_LDFLAGS = -framework Foundation
+endif
+if VIEW_WIN32
+vmware_view_tunnel_LDADD += -lws2_32
+endif
+vmware_view_tunnel_LDADD += $(TUNNEL_FRAMEWORKS)

@@ -614,18 +614,22 @@ LogComputeFileName(LogState *log,       // IN: log state
       char *tmpDir;
 
       if ((tmpDir = log->dir) != NULL) {
-	 *isTemp = FALSE;
+         *isTemp = FALSE;
          buffer = Str_SafeAsprintf(NULL, "%s%s%s%s.log",
                      tmpDir,
                      DIRSEPS PRODUCT_GENERIC_NAME_LOWER,
                      *log->suffix ? "-" : "",
                      log->suffix);
       } else {
+#ifndef __MINGW32__
          tmpDir = Util_GetSafeTmpDir(TRUE);
-	 if (tmpDir == NULL) {
-	    Panic("Cannot get temporary directory for log file.\n");
-	 }
-	 *isTemp = TRUE;
+#else
+         tmpDir = File_GetTmpDir(TRUE);
+#endif
+         if (tmpDir == NULL) {
+            Panic("Cannot get temporary directory for log file.\n");
+         }
+         *isTemp = TRUE;
 #ifdef __linux__
          buffer = Str_SafeAsprintf(NULL, "%s/%s%s$PID.log",
                      tmpDir,
@@ -638,21 +642,21 @@ LogComputeFileName(LogState *log,       // IN: log state
                      *log->suffix ? "-" : "",
                      log->suffix);
 #endif
-	 free(tmpDir);
+         free(tmpDir);
       }
 
       fileName = Util_ExpandString(buffer);
       free(buffer);
 #ifdef _WIN32
       if (fileName != NULL) {
-	 char *tmp = W32Util_RobustGetLongPath(fileName);
-	 free(fileName);
-	 fileName = tmp;
+         char *tmp = W32Util_RobustGetLongPath(fileName);
+         free(fileName);
+         fileName = tmp;
       }
 #endif
       if (fileName == NULL) {
-	 Msg_Reset(TRUE);
-	 Panic("Cannot get log file name.\n");
+         Msg_Reset(TRUE);
+         Panic("Cannot get log file name.\n");
       }
    }
 
