@@ -43,6 +43,9 @@
 #include "util.hh"
 
 
+#include <gdk/gdkkeysyms.h>
+
+
 namespace cdk {
 
 
@@ -96,7 +99,7 @@ private:
    bool GetDisableMetacityKeybindings();
    void ClearMetaKeys();
 
-   static guint LookupKeyval(guint keyval);
+   static guint LookupKeyval(guint keyval, guint fallback = GDK_VoidSymbol);
 
    GtkSocket *mSocket;
    guint mGrabTimeoutId;

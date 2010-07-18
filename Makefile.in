@@ -795,9 +795,10 @@ DIST_COMMON = $(am__configure_deps) $(am__dist_bin_SCRIPTS_DIST) \
 @VIEW_COCOA_TRUE@am__append_28 = $(GLIB_LIBS)
 @VIEW_GTK_TRUE@am__append_29 = $(GTK_LIBS)
 @STATIC_ICU_TRUE@am__append_30 = $(ICUDATA_ENTRY_POINT)l_dat.s
-@VIEW_GTK_TRUE@am__append_31 = bindist rpms debs
-@VIEW_COCOA_TRUE@am__append_32 = dmg
-@VIEW_COCOA_TRUE@am__append_33 = cocoa/app.hh cocoa/app.m \
+@VIEW_GTK_TRUE@@VIEW_WIN32_TRUE@am__append_31 = $(bin_PROGRAMS)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@am__append_32 = bindist rpms debs
+@VIEW_COCOA_TRUE@am__append_33 = dmg
+@VIEW_COCOA_TRUE@am__append_34 = cocoa/app.hh cocoa/app.m \
 @VIEW_COCOA_TRUE@	cocoa/brokerAdapter.hh cocoa/brokerAdapter.m \
 @VIEW_COCOA_TRUE@	cocoa/cdkAppController.h \
 @VIEW_COCOA_TRUE@	cocoa/cdkAppController.m cocoa/cdkBroker.h \
@@ -848,32 +849,31 @@ DIST_COMMON = $(am__configure_deps) $(am__dist_bin_SCRIPTS_DIST) \
 @VIEW_COCOA_TRUE@	cocoa/cdkWinCredsViewController.m \
 @VIEW_COCOA_TRUE@	cocoa/cdkWindowController.h \
 @VIEW_COCOA_TRUE@	cocoa/cdkWindowController.m cocoa/main.m
-@VIEW_COCOA_TRUE@am__append_34 = app
-@VIEW_EULAS_TRUE@am__append_35 = doc/$(PACKAGING_NAME)-EULA-en.txt \
-@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-de.txt \
-@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-fr.txt \
-@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-ja.txt \
-@VIEW_EULAS_TRUE@	doc/$(PACKAGING_NAME)-EULA-zh_CN.txt
-@VIEW_GTK_TRUE@am__append_36 = gtk/app.cc gtk/app.hh gtk/brokerDlg.cc \
+@VIEW_COCOA_TRUE@am__append_35 = app
+@VIEW_EULAS_TRUE@am__append_36 = $(foreach lang,en \
+@VIEW_EULAS_TRUE@	$(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).rtf) \
+@VIEW_EULAS_TRUE@	$(foreach lang,en \
+@VIEW_EULAS_TRUE@	$(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).txt)
+@VIEW_GTK_TRUE@am__append_37 = gtk/app.cc gtk/app.hh gtk/brokerDlg.cc \
 @VIEW_GTK_TRUE@	gtk/brokerDlg.hh gtk/certViewer.hh \
 @VIEW_GTK_TRUE@	gtk/cryptoki.cc gtk/cryptoki.hh
-@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@am__append_37 = gtk/desktopDlg.cc \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@am__append_38 = gtk/desktopDlg.cc \
 @VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	gtk/desktopDlg.hh
-@VIEW_GTK_TRUE@am__append_38 = gtk/desktopSelectDlg.cc \
+@VIEW_GTK_TRUE@am__append_39 = gtk/desktopSelectDlg.cc \
 @VIEW_GTK_TRUE@	gtk/desktopSelectDlg.hh gtk/disclaimerDlg.cc \
 @VIEW_GTK_TRUE@	gtk/disclaimerDlg.hh gtk/dlg.cc gtk/dlg.hh \
 @VIEW_GTK_TRUE@	gtk/helpSupportDlg.cc gtk/helpSupportDlg.hh \
 @VIEW_GTK_TRUE@	gtk/kioskWindow.cc gtk/kioskWindow.hh \
 @VIEW_GTK_TRUE@	gtk/loginDlg.cc gtk/loginDlg.hh
-@VIEW_CVP_FALSE@@VIEW_GTK_TRUE@am__append_39 = gtk/main.cc
-@VIEW_GTK_TRUE@@VIEW_WIN32_TRUE@am__append_40 = gtk/mstsc.cc \
+@VIEW_CVP_FALSE@@VIEW_GTK_TRUE@am__append_40 = gtk/main.cc
+@VIEW_GTK_TRUE@@VIEW_WIN32_TRUE@am__append_41 = gtk/mstsc.cc \
 @VIEW_GTK_TRUE@@VIEW_WIN32_TRUE@	gtk/mstsc.hh
-@VIEW_GTK_TRUE@am__append_41 = gtk/passwordDlg.cc gtk/passwordDlg.hh \
+@VIEW_GTK_TRUE@am__append_42 = gtk/passwordDlg.cc gtk/passwordDlg.hh \
 @VIEW_GTK_TRUE@	gtk/prefs.cc gtk/prefs.hh
-@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@am__append_42 = gtk/rdesktop.cc \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@am__append_43 = gtk/rdesktop.cc \
 @VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	gtk/rdesktop.hh gtk/rmks.cc \
 @VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	gtk/rmks.hh
-@VIEW_GTK_TRUE@am__append_43 = gtk/scCertDetailsDlg.cc \
+@VIEW_GTK_TRUE@am__append_44 = gtk/scCertDetailsDlg.cc \
 @VIEW_GTK_TRUE@	gtk/scCertDetailsDlg.hh gtk/scCertDlg.cc \
 @VIEW_GTK_TRUE@	gtk/scCertDlg.hh gtk/scInsertPromptDlg.cc \
 @VIEW_GTK_TRUE@	gtk/scInsertPromptDlg.hh gtk/scPinDlg.cc \
@@ -882,14 +882,14 @@ DIST_COMMON = $(am__configure_deps) $(am__dist_bin_SCRIPTS_DIST) \
 @VIEW_GTK_TRUE@	gtk/transitionDlg.hh gtk/window.cc \
 @VIEW_GTK_TRUE@	gtk/window.hh gtk/windowSizeDlg.cc \
 @VIEW_GTK_TRUE@	gtk/windowSizeDlg.hh
-@VIEW_COCOA_TRUE@am__append_44 = tunnel/tunnelCocoa.m
-@VIEW_COCOA_FALSE@am__append_45 = tunnel/tunnel.cc
-@STATIC_ICU_TRUE@am__append_46 = $(ICUDATA_ENTRY_POINT)l_dat.s
-@VIEW_GTK_TRUE@am__append_47 = libPollGtk.a
-@VIEW_COCOA_TRUE@am__append_48 = libDui.a
-@VIEW_WIN32_TRUE@am__append_49 = -lws2_32
-@VIEW_CVP_TRUE@am__append_50 = -I$(srcdir)/cvp
-@VIEW_CVP_TRUE@am__append_51 = cvp/cvpApp.cc cvp/cvpApp.hh \
+@VIEW_COCOA_TRUE@am__append_45 = tunnel/tunnelCocoa.m
+@VIEW_COCOA_FALSE@am__append_46 = tunnel/tunnel.cc
+@STATIC_ICU_TRUE@am__append_47 = $(ICUDATA_ENTRY_POINT)l_dat.s
+@VIEW_GTK_TRUE@am__append_48 = libPollGtk.a
+@VIEW_COCOA_TRUE@am__append_49 = libDui.a
+@VIEW_WIN32_TRUE@am__append_50 = -lws2_32
+@VIEW_CVP_TRUE@am__append_51 = -I$(srcdir)/cvp
+@VIEW_CVP_TRUE@am__append_52 = cvp/cvpApp.cc cvp/cvpApp.hh \
 @VIEW_CVP_TRUE@	cvp/cvpChangeServerDlg.cc \
 @VIEW_CVP_TRUE@	cvp/cvpChangeServerDlg.hh \
 @VIEW_CVP_TRUE@	cvp/cvpHelpSupportDlg.cc \
@@ -904,7 +904,7 @@ DIST_COMMON = $(am__configure_deps) $(am__dist_bin_SCRIPTS_DIST) \
 @VIEW_CVP_TRUE@	cvp/lockoutOverrideDlg.hh \
 @VIEW_CVP_TRUE@	cvp/cvpResponseEntry.c cvp/cvpResponseEntry.h \
 @VIEW_CVP_TRUE@	cvp/fieldEntry.c cvp/fieldEntry.h cvp/main.cc
-@VIEW_CVP_TRUE@am__append_52 = icons/endpoint_shutdown.png \
+@VIEW_CVP_TRUE@am__append_53 = icons/endpoint_shutdown.png \
 @VIEW_CVP_TRUE@	icons/endpoint_restart.png \
 @VIEW_CVP_TRUE@	icons/endpoint_sleep.png
 subdir = .
@@ -1325,7 +1325,7 @@ vmware_view_tunnel_OBJECTS = $(am_vmware_view_tunnel_OBJECTS) \
 	$(nodist_vmware_view_tunnel_OBJECTS)
 vmware_view_tunnel_DEPENDENCIES = libCdk.a $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) libPoll.a libPollDefault.a \
-	$(am__append_47) $(am__DEPENDENCIES_1) $(am__append_48) \
+	$(am__append_48) $(am__DEPENDENCIES_1) $(am__append_49) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 vmware_view_tunnel_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(vmware_view_tunnel_LDFLAGS) $(LDFLAGS) -o $@
@@ -1419,7 +1419,8 @@ am__dist_noinst_DATA_DIST = lib/bora/user/dictType.c \
 	INSTALL mkinstalldirs $(addprefix cocoa/,$(lang_files)) \
 	fix-toolchain-paths.sh.in $(ICONS_DIR)/view.icns \
 	$(ICONS_DIR)/view_client_banner.png cocoa/vmware-view.rdp \
-	cocoa/rdc.webloc cocoa/viewclient_mac_help_en.zip \
+	cocoa/rdc.webloc $(foreach lang,en \
+	$(ALL_LINGUAS),cocoa/viewclient_mac_help_$(lang).zip) \
 	doc/copyright.Debian icons/endpoint_shutdown.png \
 	icons/endpoint_restart.png icons/endpoint_sleep.png
 dist_patchDATA_INSTALL = $(INSTALL_DATA)
@@ -1448,6 +1449,7 @@ GZIP_ENV = --best
 distuninstallcheck_listfiles = find . -type f -print
 distcleancheck_listfiles = find . -type f -print
 ACLOCAL = @ACLOCAL@
+ADD_LICENSE = @ADD_LICENSE@
 ALL_LINGUAS = @ALL_LINGUAS@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -1485,7 +1487,6 @@ DEB_PACKAGING_NAME = @DEB_PACKAGING_NAME@
 DEB_REPLACES = @DEB_REPLACES@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
-DISTCHECK_CONFIGURE_FLAGS = @DISTCHECK_CONFIGURE_FLAGS@
 DPKG_DEB = @DPKG_DEB@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
@@ -1508,6 +1509,7 @@ GREP = @GREP@
 GTK_CFLAGS = @GTK_CFLAGS@
 GTK_LIBS = @GTK_LIBS@
 GZIP = @GZIP@
+HDIUTIL = @HDIUTIL@
 ICONS_DIR = @ICONS_DIR@
 ICUDATA_ENTRY_POINT = @ICUDATA_ENTRY_POINT@
 ICUPKG = @ICUPKG@
@@ -1685,7 +1687,7 @@ application_DATA = $(desktop_in_files:.desktop.in=.desktop)
 bin_SCRIPTS := 
 desktop_in_files := vmware-view.desktop.in
 dist_bin_SCRIPTS := $(am__append_18)
-doc_DATA := $(am__append_35)
+doc_DATA := $(am__append_36)
 dist_doc_DATA := README.txt doc/open_source_licenses.txt
 dist_help_DATA := 
 dist_helpde_DATA := doc/help/de/connect.txt doc/help/de/list.txt \
@@ -1720,7 +1722,7 @@ dist_noinst_DATA = lib/bora/user/dictType.c lib/libp11/COPYING \
 	fix-toolchain-paths.sh.in $(ICONS_DIR)/view.icns \
 	$(ICONS_DIR)/view_client_banner.png cocoa/vmware-view.rdp \
 	cocoa/rdc.webloc $(help_zips) doc/copyright.Debian \
-	$(am__append_52)
+	$(am__append_53)
 dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/open-vm-tools/include/base64.h \
 	lib/open-vm-tools/include/bsd_output.h \
@@ -1830,7 +1832,7 @@ pixmaps_DATA := vmware-view.png
 include_subdirs := 
 SUBDIRS := . po
 DIST_SUBDIRS := $(SUBDIRS) $(include_subdirs)
-ALL = $(am__append_34)
+ALL = $(am__append_35)
 libDict_a_SOURCES = lib/open-vm-tools/dict/dictll.c
 libErr_a_SOURCES = lib/open-vm-tools/err/err.c \
 	lib/open-vm-tools/err/errInt.h \
@@ -1841,7 +1843,7 @@ libFile_a_SOURCES = lib/open-vm-tools/file/file.c \
 	lib/open-vm-tools/file/fileLockPrimitive.c $(am__append_3) \
 	$(am__append_8)
 libFile_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIB_FILE_CPPFLAGS) \
-	$(am__append_9)
+	$(GLIB_CFLAGS) $(am__append_9)
 libMisc_a_SOURCES = lib/open-vm-tools/misc/atomic.c \
 	lib/open-vm-tools/misc/base64.c \
 	lib/open-vm-tools/misc/codeset.c \
@@ -1868,7 +1870,7 @@ libMisc_a_SOURCES = lib/open-vm-tools/misc/atomic.c \
 	$(am__append_5) lib/bora/misc/loglevel_tools.c \
 	lib/bora/misc/msgfmt.c lib/bora/misc/url.c $(am__append_10)
 libMisc_a_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS) \
-	$(ICU_CPPFLAGS) $(am__append_12)
+	$(GLIB_CFLAGS) $(ICU_CPPFLAGS) $(am__append_12)
 libPanic_a_SOURCES = lib/open-vm-tools/panic/panic.c
 libPanicDefault_a_SOURCES =  \
 	lib/open-vm-tools/panicDefault/panicDefault.c
@@ -1893,7 +1895,7 @@ libUnicode_a_SOURCES = lib/open-vm-tools/unicode/unicodeCommon.c \
 libUser_a_SOURCES = lib/open-vm-tools/user/util.c $(am__append_6) \
 	lib/bora/user/dictionary.c $(am__append_14) \
 	lib/bora/user/msg.c $(am__append_15)
-libUser_a_CFLAGS = @LIB_USER_CPPFLAGS@
+libUser_a_CFLAGS = $(LIB_USER_CPPFLAGS) $(GLIB_CFLAGS)
 libBasicHttp_a_SOURCES = lib/bora/basicHttp/bandwidth.c \
 	lib/bora/basicHttp/http.c lib/bora/basicHttp/basicHttpInt.h \
 	lib/bora/basicHttp/requestQueue.h
@@ -1915,17 +1917,17 @@ libProductState_a_SOURCES = lib/bora/productState/productState.c
 libGtm_a_SOURCES := lib/gtm/gtm.c lib/gtm/include/gtm.h
 libGtm_a_CPPFLAGS = $(AM_CPPFLAGS) $(GTK_CFLAGS) \
 	-I$(top_srcdir)/lib/gtm/include
-nodist_vmware_view_SOURCES := $(am__append_22) $(am__append_51)
+nodist_vmware_view_SOURCES := $(am__append_22) $(am__append_52)
 # Files that are in all versions
 vmware_view_SOURCES := baseApp.cc baseApp.hh baseXml.cc baseXml.hh \
 	broker.cc broker.hh brokerXml.cc brokerXml.hh cdkErrors.h \
 	cdkUrl.c cdkUrl.h desktop.cc desktop.hh procHelper.cc \
 	procHelper.hh protocols.cc protocols.hh restartMonitor.cc \
 	restartMonitor.hh stubs.c tunnel.cc tunnel.hh usb.cc usb.hh \
-	util.cc util.hh $(am__append_33) $(am__append_36) \
-	$(am__append_37) $(am__append_38) $(am__append_39) \
-	$(am__append_40) $(am__append_41) $(am__append_42) \
-	$(am__append_43)
+	util.cc util.hh $(am__append_34) $(am__append_37) \
+	$(am__append_38) $(am__append_39) $(am__append_40) \
+	$(am__append_41) $(am__append_42) $(am__append_43) \
+	$(am__append_44)
 libCdk_a_SOURCES := cdkProxy.h $(am__append_20) $(am__append_21) \
 	cdkUrl.c cdkUrl.h
 libCdk_a_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(ICU_CPPFLAGS)
@@ -1938,7 +1940,7 @@ vmware_view_CPPFLAGS = $(AM_CPPFLAGS) -DCRYPTOKI_COMPAT \
 	-I$(top_srcdir)/lib/libp11/include \
 	-I$(top_srcdir)/lib/gtm/include $(BOOST_CPPFLAGS) \
 	$(am__append_24) $(am__append_25) $(ICU_CPPFLAGS) \
-	$(SSL_CFLAGS) $(XML_CFLAGS) $(am__append_50)
+	$(SSL_CFLAGS) $(XML_CFLAGS) $(am__append_51)
 # Automake does not support .mm files, so we need to turn
 # Objective-C++ on manually.
 vmware_view_OBJCFLAGS = -x objective-c++
@@ -1957,7 +1959,7 @@ testUrl_LDADD := libCdk.a $(GLIB_LIBS) $(ICU_LIBS) \
 	$(TUNNEL_FRAMEWORKS)
 DEB_STAGE_ROOT = $(shell pwd)/deb-stage
 TAR_STAGE_DIR := $(PACKAGING_NAME)-$(VERSION).$(RPM_ARCH)
-DELIVERABLES := $(am__append_31) $(am__append_32)
+DELIVERABLES := $(am__append_31) $(am__append_32) $(am__append_33)
 nibs := BrokerView.nib ChangePinCredsView.nib ChangeWinCredsView.nib \
 	ConfirmPinCredsView.nib DesktopSizesWindow.nib \
 	DesktopsView.nib DisclaimerView.nib MainMenu.nib \
@@ -1977,7 +1979,8 @@ lang_dirs := $(addprefix English.lproj/,$(base_lang_dirs)) $(addprefix \
 	German.lproj/,$(base_lang_dirs)) $(addprefix \
 	Japanese.lproj/,$(base_lang_dirs)) $(addprefix \
 	zh-Hans.lproj/,$(base_lang_dirs))
-help_zips := cocoa/viewclient_mac_help_en.zip
+help_zips := $(foreach lang,en \
+	$(ALL_LINGUAS),cocoa/viewclient_mac_help_$(lang).zip)
 desktop_icons := desktop_checkin_32x.png desktop_checkin_pause32x.png \
 	desktop_checkout_32x.png desktop_checkout_pause32x.png \
 	desktop_local32xdisabled.png desktop_local32x.png \
@@ -1987,18 +1990,17 @@ appname := "$(PRODUCT_VIEW_CLIENT_NAME)"
 appdir := $(appname).app
 appdmg := $(subst $(space),$(dash),$(appname))-$(VERSION).dmg
 stagedir := $(top_builddir)/dmg-stage
-@VIEW_EULAS_TRUE@dmgeula := "--license $(stagedir)/$(PACKAGING_NAME)-EULA-en.txt"
-vmware_view_tunnel_SOURCES := $(am__append_44) $(am__append_45) \
+vmware_view_tunnel_SOURCES := $(am__append_45) $(am__append_46) \
 	tunnel/tunnelMain.c tunnel/tunnelProxy.c tunnel/tunnelProxy.h \
 	lib/open-vm-tools/misc/base64.c
 # Automake does not support .mm files, so we need to turn
 # Objective-C++ on manually.
 @VIEW_COCOA_TRUE@vmware_view_tunnel_OBJCFLAGS = -x objective-c++
-nodist_vmware_view_tunnel_SOURCES := $(am__append_46)
+nodist_vmware_view_tunnel_SOURCES := $(am__append_47)
 vmware_view_tunnel_CPPFLAGS := $(AM_CPPFLAGS) $(SSL_CFLAGS)
 vmware_view_tunnel_LDADD := libCdk.a $(ICU_LIBS) $(SSL_LIBS) libPoll.a \
-	libPollDefault.a $(am__append_47) $(GLIB_LIBS) \
-	$(am__append_48) $(am__append_49) $(TUNNEL_FRAMEWORKS)
+	libPollDefault.a $(am__append_48) $(GLIB_LIBS) \
+	$(am__append_49) $(am__append_50) $(TUNNEL_FRAMEWORKS)
 @VIEW_COCOA_TRUE@vmware_view_tunnel_LDFLAGS = -framework Foundation
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
@@ -6144,9 +6146,9 @@ bindist: all-am
 	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/ja
 	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/zh_CN
 	$(MKDIR_P) $(TAR_STAGE_DIR)/patches
-	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view \
+	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view$(EXEEXT) \
 		$(TAR_STAGE_DIR)/bin
-	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view-tunnel \
+	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view-tunnel$(EXEEXT) \
 		$(TAR_STAGE_DIR)/bin
 	$(INSTALL_DATA) README.txt $(TAR_STAGE_DIR)
 	$(INSTALL_DATA) doc/open_source_licenses.txt \
@@ -6180,30 +6182,31 @@ bindist: all-am
 		>$(TAR_STAGE_DIR).tar.gz
 	-rm -rf $(TAR_STAGE_DIR)
 
-@VIEW_GTK_TRUE@ifneq ($(RPMBUILD),)
-@VIEW_GTK_TRUE@@ENDIF@
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@ifneq ($(RPMBUILD),)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@@ENDIF@
 
-@VIEW_GTK_TRUE@ifneq ($(DPKG_DEB),)
-@VIEW_GTK_TRUE@@ENDIF@
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@ifneq ($(DPKG_DEB),)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@@ENDIF@
 
 deliverables: $(DELIVERABLES)
 ifneq ($(PUBLISH_DIR),)
 	$(MKDIR_P) $(PUBLISH_DIR)
-@VIEW_GTK_TRUE@	$(INSTALL_DATA) $(TAR_STAGE_DIR).tar.gz $(PUBLISH_DIR)
-@VIEW_GTK_TRUE@ifneq ($(RPMBUILD),)
-@VIEW_GTK_TRUE@	$(INSTALL_DATA) \
-@VIEW_GTK_TRUE@		$(PACKAGING_NAME)-$(PACKAGE_VERSION).$(RPM_ARCH).rpm \
-@VIEW_GTK_TRUE@		$(PUBLISH_DIR)
-@VIEW_GTK_TRUE@ifneq ($(MKSQUASHFS),)
-@VIEW_GTK_TRUE@	$(INSTALL_DATA) \
-@VIEW_GTK_TRUE@		$(PACKAGING_NAME)-lite-$(PACKAGE_VERSION).$(RPM_ARCH).rpm \
-@VIEW_GTK_TRUE@		$(PUBLISH_DIR)
-@VIEW_GTK_TRUE@@ENDIF@ # MKSQUASHFS
-@VIEW_GTK_TRUE@@ENDIF@ # RPMBUILD
-@VIEW_GTK_TRUE@ifneq ($(DPKG_DEB),)
-@VIEW_GTK_TRUE@	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb \
-@VIEW_GTK_TRUE@		$(PUBLISH_DIR)
-@VIEW_GTK_TRUE@@ENDIF@ # DPKG_DEB
+# nothing to do for win32/mingw32 as yet.
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	$(INSTALL_DATA) $(TAR_STAGE_DIR).tar.gz $(PUBLISH_DIR)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@ifneq ($(RPMBUILD),)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	$(INSTALL_DATA) \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@		$(PACKAGING_NAME)-$(PACKAGE_VERSION).$(RPM_ARCH).rpm \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@		$(PUBLISH_DIR)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@ifneq ($(MKSQUASHFS),)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	$(INSTALL_DATA) \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@		$(PACKAGING_NAME)-lite-$(PACKAGE_VERSION).$(RPM_ARCH).rpm \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@		$(PUBLISH_DIR)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@@ENDIF@ # MKSQUASHFS
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@@ENDIF@ # RPMBUILD
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@ifneq ($(DPKG_DEB),)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb \
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@		$(PUBLISH_DIR)
+@VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@@ENDIF@ # DPKG_DEB
 @VIEW_COCOA_TRUE@ifeq ($(findstring darwin,$(build_os)),darwin)
 @VIEW_COCOA_TRUE@	$(INSTALL_DATA) $(appdmg) $(PUBLISH_DIR)
 @VIEW_COCOA_TRUE@@ENDIF@
@@ -6238,10 +6241,6 @@ ifeq ($(PUBLISH_DIR),)
 	done
 	$(INSTALL_DATA) $(srcdir)/cocoa/vmware-view.rdp \
 		$(appdir)/Contents/Resources
-	$(INSTALL_DATA) $(srcdir)/cocoa/English.lproj/Credits.html \
-		$(appdir)/Contents/Resources/English.lproj
-	$(INSTALL_DATA) $(srcdir)/cocoa/English.lproj/InfoPlist.strings  \
-		$(appdir)/Contents/Resources/English.lproj
 	@for i in $(lang_files) ; do \
 		echo $(INSTALL_DATA) $(srcdir)/cocoa/$$i \
 			$(appdir)/Contents/Resources/$$i ; \
@@ -6263,6 +6262,7 @@ ifeq ($(PUBLISH_DIR),)
 		$(appdir)/Contents/Frameworks
 	/bin/bash ./fix-toolchain-paths.sh $(appdir)/Contents/MacOS/vmware-view-tunnel \
 		$(appdir)/Contents/Frameworks
+
 dmg: app
 	-rm -rf $(stagedir)
 	mkdir -p $(stagedir)/$(appname)
@@ -6270,14 +6270,23 @@ dmg: app
 	cp $(top_srcdir)/cocoa/rdc.webloc $(stagedir)/$(appname)/"Download Microsoft RDC.webloc"
 	cp doc/open_source_licenses.txt $(stagedir)/$(appname)
 	cp $(ICONS_DIR)/view.icns $(stagedir)
-# XXX: Need to support multiple EULA languages...
-@VIEW_EULAS_TRUE@	cp $(top_builddir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir) || \
-@VIEW_EULAS_TRUE@		cp $(top_srcdir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir)
 ifeq ($(findstring darwin,$(build_os)),darwin)
 	perl $(top_srcdir)/cocoa/pkg-dmg $(dmgeula) \
 		--source $(stagedir)/$(appname) \
 		--target $(top_builddir)/$(appdmg) \
 		--icon $(stagedir)/view.icns
+@VIEW_EULAS_TRUE@	$(HDIUTIL) unflatten $(top_builddir)/$(appdmg)
+@VIEW_EULAS_TRUE@	@for lang in en $(ALL_LINGUAS) ; do \
+@VIEW_EULAS_TRUE@		for dir in "$(srcdir)/doc" "$(builddir)/doc" ; do \
+@VIEW_EULAS_TRUE@			eula=$$dir/$(PACKAGING_NAME)-EULA-$$lang.rtf ; \
+@VIEW_EULAS_TRUE@			if test -f $$eula ; then \
+@VIEW_EULAS_TRUE@				echo $(ADD_LICENSE) "$(appdmg)" $$lang $$eula ; \
+@VIEW_EULAS_TRUE@				$(ADD_LICENSE) "$(appdmg)" $$lang $$eula ; \
+@VIEW_EULAS_TRUE@				break ; \
+@VIEW_EULAS_TRUE@			fi \
+@VIEW_EULAS_TRUE@		done \
+@VIEW_EULAS_TRUE@	done
+@VIEW_EULAS_TRUE@	$(HDIUTIL) flatten $(top_builddir)/$(appdmg)
 @ELSE@
 	cp $(top_srcdir)/cocoa/pkg-dmg $(stagedir)
 @ENDIF@

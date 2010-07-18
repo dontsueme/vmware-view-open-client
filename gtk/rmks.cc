@@ -229,6 +229,11 @@ RMks::GetIsErrorExitStatus(int exitCode) // IN
    case VDPCONNECT_SERVER_DISCONNECTED_MANUAL_LOGOUT:
    case VDPCONNECT_SERVER_DISCONNECTED_ADMIN_MANUAL:
    case VDPCONNECT_SERVER_DISCONNECTED_RECONNECT:
+   /*
+    * There is no point in linux client trying to reconnect
+    * in case of encryption mismatch hence return this as not an error.
+    */
+   case VDPCONNECT_ENCRYPTION_MISMATCH:
       return false;
    default:
       return true;

@@ -81,6 +81,12 @@ protected:
                             const Util::string &message,
                             const Util::string &details,
                             va_list args);
+#ifdef VIEW_POSIX
+   static void SigTermHandlerHelper(int s, siginfo_t *info, void *clientData);
+
+   virtual void SigTermHandler(int s, siginfo_t *info);
+#endif
+
 private:
    virtual void ShowErrorDialog(const Util::string &message,
                                 const Util::string &details,
@@ -92,10 +98,6 @@ private:
                                   const Util::string &details,
                                   va_list args);
    virtual Util::string GetWindowManagerName();
-
-#ifdef VIEW_POSIX
-   static void SigTermHandler(int s, siginfo_t *info, void *clientData);
-#endif
 
    Window *mWindow;
 };

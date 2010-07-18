@@ -1294,7 +1294,7 @@ msgstr "Saisissez votre nom d'utilisateur et votre code de passe RSA SecurID."
 
 #: ../gtk/securIDDlg.cc:150
 msgid "_Passcode:"
-msgstr "C_ode secret :"
+msgstr "C_ode de passe :"
 
 #: ../gtk/securIDDlg.cc:159
 msgid "Wait until the next tokencode appears on your RSA SecurID token, then enter "

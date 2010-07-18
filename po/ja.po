@@ -97,7 +97,7 @@ msgstr "不明エラー"
 
 #: ../baseXml.cc:560
 msgid "The View Connection Server connection failed."
-msgstr "View Connection Server 接続に失敗しました。"
+msgstr "View Connection Server の接続に失敗しました。"
 
 #: ../baseXml.cc:561
 #, c-format
@@ -440,7 +440,7 @@ msgstr "メンテナンス（使用できない可能性があります）"
 
 #: ../desktop.cc:890
 msgid "Logged on"
-msgstr "ログオンしています"
+msgstr "ログオン済みです"
 
 #: ../desktop.cc:893
 #, c-format

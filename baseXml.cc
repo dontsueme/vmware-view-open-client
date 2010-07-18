@@ -800,6 +800,7 @@ BaseXml::ProcessResponse(RequestState *state) // IN
       curState->response = response;
 
       if (curState->isRaw) {
+#if LIBXML_VERSION >= 20623
          xmlBuffer *xmlBuf = xmlBufferCreate();
          xmlSaveCtxt *ctxt = xmlSaveToBuffer(xmlBuf, "UTF-8", (xmlSaveOption)0);
          if (-1 == xmlSaveTree(ctxt, operationNode)) {
@@ -817,6 +818,9 @@ BaseXml::ProcessResponse(RequestState *state) // IN
          }
          xmlSaveClose(ctxt);
          xmlBufferFree(xmlBuf);
+#else
+         NOT_IMPLEMENTED();
+#endif
       } else if (!that->ResponseDispatch(operationNode, *curState, result) &&
                  !*resetWatch) {
          Util::string msg = Util::Format(

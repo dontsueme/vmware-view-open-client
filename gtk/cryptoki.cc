@@ -743,7 +743,9 @@ Cryptoki::Module::Load(const Util::string &filePath) // IN
    mLabel = g_strchomp(label);
    g_free(label);
 
-   Log("Loaded [%s] from %s\n", mLabel.c_str(), filePath.c_str());
+   Log("Loaded [%s] v%hhu.%hhu from %s\n", mLabel.c_str(),
+       info.libraryVersion.major, info.libraryVersion.minor,
+       filePath.c_str());
    return true;
 
   finalize_module:
@@ -1147,7 +1149,10 @@ Cryptoki::Session::Open(CK_SLOT_ID slot) // IN
    mNeedLogin = info.flags & CKF_LOGIN_REQUIRED;
    mSlot = slot;
 
-   Log("Opened a new session for token [%s]\n", mLabel.c_str());
+   Log("Opened a new session for token [%s] hw v%hhu.%hhu fw v%hhu.%hhu\n",
+       mLabel.c_str(),
+       info.hardwareVersion.major, info.hardwareVersion.minor,
+       info.firmwareVersion.major, info.firmwareVersion.minor);
    return CKR_OK;
 
   invalid_session:

@@ -30,7 +30,6 @@
 
 
 #include <boost/bind.hpp>
-#include <gdk/gdkkeysyms.h>
 #include <gtk/gtkmain.h>
 #include <stdlib.h>
 
@@ -51,6 +50,8 @@
 
 #define VMW_EXEC_CTRL_ALT_DEL   "_VMW_EXEC_CTRL_ALT_DEL"
 #define VMW_PROMPT_CTRL_ALT_DEL "_VMW_PROMPT_CTRL_ALT_DEL"
+
+#define LOOKUP_KEYVAL_LR(key) LookupKeyval(key##_L, key##_R)
 
 
 namespace cdk {
@@ -451,9 +452,13 @@ void
 DesktopDlg::SendCtrlAltDel()
 {
    // X needs keycodes, Gdk only provides keyvals.
-   guint control = LookupKeyval(GDK_Control_L);
-   guint alt = LookupKeyval(GDK_Alt_L);
+   guint control = LOOKUP_KEYVAL_LR(GDK_Control);
+   guint alt = LOOKUP_KEYVAL_LR(GDK_Alt);
    guint del = LookupKeyval(GDK_Delete);
+
+   if (!control || !alt || !del) {
+      return;
+   }
 
    Log("Synthesizing Ctrl-Alt-Del keypresses.\n");
    gdk_error_trap_push();
@@ -492,8 +497,12 @@ void
 DesktopDlg::ReleaseCtrlAlt()
 {
    // X needs keycodes, Gdk only provides keyvals.
-   guint control = LookupKeyval(GDK_Control_L);
-   guint alt = LookupKeyval(GDK_Alt_L);
+   guint control = LOOKUP_KEYVAL_LR(GDK_Control);
+   guint alt = LOOKUP_KEYVAL_LR(GDK_Alt);
+
+   if (!control || !alt) {
+      return;
+   }
 
    Log("Synthesizing Ctrl-Alt key releases.\n");
    gdk_error_trap_push();
@@ -515,7 +524,7 @@ DesktopDlg::ReleaseCtrlAlt()
  *      Lookup the keycode for a given Gdk keyval.
  *
  * Results:
- *      Keycode corresponding to keyval.
+ *      Keycode corresponding to keyval or 0 if unable to lookup the key.
  *
  * Side effects:
  *      None
@@ -524,13 +533,18 @@ DesktopDlg::ReleaseCtrlAlt()
  */
 
 guint
-DesktopDlg::LookupKeyval(guint keyval) // IN
+DesktopDlg::LookupKeyval(guint keyval,   // IN
+                         guint fallback) // IN/OPT
 {
    GdkKeymapKey *keys;
    int n_keys;
-   if (!gdk_keymap_get_entries_for_keyval(NULL, keyval, &keys, &n_keys)) {
-      NOT_IMPLEMENTED();
+   if (!gdk_keymap_get_entries_for_keyval(NULL, keyval, &keys, &n_keys) &&
+       (fallback == GDK_VoidSymbol ||
+          !gdk_keymap_get_entries_for_keyval(NULL, fallback, &keys, &n_keys))) {
+      Log("Unable to lookup key %s.\n", gdk_keyval_name(fallback));
+      return 0;
    }
+
    ASSERT(n_keys > 0);
    guint ret = keys[0].keycode;
    g_free(keys);
@@ -963,15 +977,17 @@ DesktopDlg::ClearMetaKeys()
     * and released in the following order, so that any app on the guest
     * with focus will not have its menu bar or control action stuck on.
     */
-   Press(LookupKeyval(GDK_Control_L));
-   Press(LookupKeyval(GDK_Alt_L));
-   Release(LookupKeyval(GDK_Alt_L));
-   Release(LookupKeyval(GDK_Control_L));
+   guint control = LOOKUP_KEYVAL_LR(GDK_Control);
+   guint alt = LOOKUP_KEYVAL_LR(GDK_Alt);
 
-   Press(LookupKeyval(GDK_Control_R));
-   Press(LookupKeyval(GDK_Alt_R));
-   Release(LookupKeyval(GDK_Alt_R));
-   Release(LookupKeyval(GDK_Control_R));
+   if (!control || !alt) {
+      return;
+   }
+
+   Press(control);
+   Press(alt);
+   Release(alt);
+   Release(control);
 }
 
 

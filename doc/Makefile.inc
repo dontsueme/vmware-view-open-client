@@ -21,11 +21,8 @@
 dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
 
 if VIEW_EULAS
-doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
-doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt
-doc_DATA += doc/$(PACKAGING_NAME)-EULA-fr.txt
-doc_DATA += doc/$(PACKAGING_NAME)-EULA-ja.txt
-doc_DATA += doc/$(PACKAGING_NAME)-EULA-zh_CN.txt
+doc_DATA += $(foreach lang,en $(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).rtf)
+doc_DATA += $(foreach lang,en $(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).txt)
 endif
 
 dist_doc_DATA += doc/open_source_licenses.txt

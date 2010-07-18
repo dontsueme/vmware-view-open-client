@@ -29,4 +29,4 @@ libFile_a_SOURCES += lib/open-vm-tools/file/fileIOPosix.c
 libFile_a_SOURCES += lib/open-vm-tools/file/fileLockPosix.c
 endif # VIEW_POSIX
 
-libFile_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIB_FILE_CPPFLAGS)
+libFile_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIB_FILE_CPPFLAGS) $(GLIB_CFLAGS)

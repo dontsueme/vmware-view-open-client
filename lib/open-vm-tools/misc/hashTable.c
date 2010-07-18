@@ -180,7 +180,9 @@ strcasecmp(const char *s1,  // IN:
    
    return tolower(*s1) - tolower(*s2);
 }
+#endif
 
+#if defined(N_PLAT_NLM) || defined(__MINGW32__)
 static int
 ffs(uint32 bits)
 {
