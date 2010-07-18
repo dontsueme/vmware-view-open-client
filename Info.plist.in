@@ -28,7 +28,5 @@
 	<string>NSApplication</string>
 	<key>CFBundleHelpBookFolder</key>
 	<string>onlinehelp</string>
-	<key>CFBundleHelpBookName</key>
-	<string>View Client for Mac Help</string>
 </dict>
 </plist>

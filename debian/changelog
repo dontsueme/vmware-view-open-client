@@ -1,3 +1,10 @@
+vmware-view-open-client (4.5.0-271013+dfsg-1) unstable; urgency=low
+
+  * Updating standards version to 3.9.0.
+  * Merging upstream version 4.5.0-271013+dfsg.
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 18 Jul 2010 20:26:57 +0200
+
 vmware-view-open-client (4.5.0-264434+dfsg-1) unstable; urgency=low
 
   * Merging upstream version 4.5.0-264434+dfsg.

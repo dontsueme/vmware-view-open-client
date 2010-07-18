@@ -1,5 +1,5 @@
 VMware View Open Client e.x.p
-Build 264434, 2010-06-02
+Build 271013, 2010-06-25
 
 VMware is a registered trademark or trademark (the "Marks") of VMware, Inc.
 in the United States and/or other jurisdictions and is not licensed to you

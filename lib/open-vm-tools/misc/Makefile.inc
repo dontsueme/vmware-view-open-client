@@ -53,4 +53,4 @@ if VIEW_WIN32
 libMisc_a_SOURCES += lib/open-vm-tools/misc/hostinfoWin32.c
 endif # VIEW_WIN32
 
-libMisc_a_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS)
+libMisc_a_CPPFLAGS := $(AM_CPPFLAGS) $(LIB_MISC_CPPFLAGS) $(GLIB_CFLAGS)

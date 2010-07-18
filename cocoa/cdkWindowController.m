@@ -1118,9 +1118,18 @@ didDisconnectTunnelWithReason:(NSString *)reason // IN
       message = _("The connection to the View Server has"
                   " unexpectedly disconnected.");
    }
+   /*
+    * We can hit this "error" message if the tunnel "hits" Apple bug
+    * #5202831, but it's the wrong error and doesn't mean anything, so
+    * we shouldn't show it to the user.
+    */
+   if ([reason hasPrefix:@"creating new listening socket on port"]) {
+      reason = nil;
+   }
 
    cdk::BaseApp::ShowError(CDK_ERR_TUNNEL_DISCONNECTED, message,
-                           "%s", [reason UTF8String]);
+                           [reason length] ? "%s." : "",
+                           _([reason UTF8String]));
 
    /*
     * If the tunnel really exited, it's probably not going to let us

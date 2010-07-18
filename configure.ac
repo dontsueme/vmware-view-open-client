@@ -46,17 +46,6 @@ case "$host_cpu" in
       ;;
 esac
 
-AC_ARG_WITH([toolchain],
-   [AS_HELP_STRING([--with-toolchain@<:@=DIR@:>@],
-      [search for dependencies in the toolchain root DIR])],
-   [TCROOT=$with_toolchain],[TCROOT="no"])
-AC_SUBST(DISTCHECK_CONFIGURE_FLAGS,["--with-toolchain=$with_toolchain"])
-
-AC_ARG_WITH([buildtype],
-   [AS_HELP_STRING([--with-buildtype=obj|beta|release],
-      [configures debugging and optimization flags])],
-   [],[with_buildtype="obj"])
-
 AC_ARG_ENABLE([eulas],
    [AS_HELP_STRING([--enable-eulas],
       [include EULAs with binaries and source])],
@@ -68,11 +57,6 @@ else
    VIEW_RPM_LICENSE="LGPLv2.1 only"
 fi
 AC_SUBST(VIEW_RPM_LICENSE)
-
-AC_ARG_ENABLE([static-ssl],
-   [AS_HELP_STRING([--enable-static-ssl],
-      [statically link against libssl])],
-   [],[enable_static_ssl="no"])
 
 AC_ARG_ENABLE([cvp],
    [AS_HELP_STRING([--enable-cvp],
@@ -128,356 +112,11 @@ AM_CONDITIONAL([VIEW_CVP], [test "$enable_cvp" = "yes"])
 AM_CONDITIONAL([VIEW_WIN32], [test "$mingw32" = "yes"])
 AM_CONDITIONAL([VIEW_POSIX], [test "$use_posix" = "yes"])
 
-AC_MSG_CHECKING([for toolchain])
-if test "$TCROOT" != "no" ; then
-   CFLAGS="-gstabs+ -Wall -Wno-unused-value -fno-strict-aliasing"
-   if test "$host_os" != "mingw32" ; then
-      # XXX: Move -Werror into CFLAGS (above) when all ming32 warnings have been cleaned up.
-      CFLAGS="$CFLAGS -Werror"
-   fi
-
-   CPPFLAGS=
-   CXXFLAGS=
-   LDFLAGS=
-   LIBS=
-   OBJCFLAGS=
-
-   if test "$TCROOT" = "yes"; then
-      TCROOT="/build/toolchain"
-   fi
-   case "$build_cpu-$build_os" in
-      [i[3456]86-linux*])
-         BUILD_TCROOT="$TCROOT/lin32"
-	 buildgtkversion="2.4.14"
-	 ;;
-      [x86_64-linux*])
-         # 32-bit binaries will run on 64-bit machines, so just use
-         # them
-         BUILD_TCROOT="$TCROOT/lin32"
-	 buildgtkversion="2.4.14"
-	 ;;
-      [i[3456]86-darwin*])
-         BUILD_TCROOT="$TCROOT/mac32"
-         ;;
-      [i686-mingw32*])
-         BUILD_TCROOT="$TCROOT/mingw32"
-         ;;
-      [*])
-         AC_MSG_RESULT([not supported])
-         AC_MSG_ERROR([$build_cpu-$build_os is not yet supported for a toolchain build.])
-	 ;;
-   esac
-   opensslversion="m4_esyscmd([echo ${OPENSSL_VERSION:-0.9.8n} | tr -d '\n'])"
-   curllib="curl"
-   case "$host_cpu-$host_os" in
-      [i[3456]86-linux*])
-	 binutilsversion="2.17.50.0.15-1"
-	 boostlib="gcc41-mt-1_34_1"
-	 boostversion="1.34.1"
-	 cairoversion="1.2.4"
-         ccflavor="i686-linux"
-	 ccversion="4.1.2-7"
-         # -march=i586 is required to run on some VIA C3 chips
-         CFLAGS="$CFLAGS -march=i586"
-	 curlversion="7.18.0"
-	 fontconfigversion="2.2.3"
-	 freetypeversion="2.1.9"
-	 glibversion="2.6.6"
-	 gtkversion="2.4.14"
-	 pangoversion="1.4.1"
-	 xmlversion="2.6.30"
-	 xorgversion="7.1"
-         HOST_TCROOT="$TCROOT/lin32"
-	 ;;
-      [i686-mingw32*])
-	 binutilsversion="2.17.50.0.15-1"
-	 boostlib="mt"
-	 boostversion="1.34.1"
-	 cairoversion="1.8.8"
-	 ccflavor="i686-mingw32"
-	 ccversion="3.5.4"
-	 # -march=i586 is required to run on some VIA C3 chips
-	 CFLAGS="$CFLAGS -march=i586"
-	 curllib="curldll"
-	 curlversion="7.18.0"
-	 fontconfigversion="2.7.3"
-	 freetypeversion="2.3.9"
-	 glibversion="2.22.2"
-	 gtkversion="2.16.6"
-	 opensslversion="0.9.8h"
-	 pangoversion="1.26.0"
-	 xmlversion="2.6.27"
-         HOST_TCROOT="$TCROOT/mingw32"
-	 ;;
-      [x86_64-linux*])
-	 binutilsversion="2.17.50.0.15-1"
-	 boostlib="gcc41-mt-1_34_1"
-	 boostversion="1.34.1"
-	 cairoversion="1.2.4"
-         ccflavor="x86_64-linux"
-	 ccversion="4.1.2-7"
-	 curlversion="7.18.0"
-	 glibversion="2.16.4"
-	 gtkversion="2.12.11"
-	 fontconfigversion="2.2.3"
-	 freetypeversion="2.1.9"
-	 pangoversion="1.20.5"
-	 xmlversion="2.6.30"
-	 xorgversion="7.1"
-	 HOST_TCROOT="$TCROOT/lin64"
-	 ;;
-      [arm-linux*])
-         binutilsversion="2007q3-51"
-	 boostlib="gcc-mt-1_39"
-	 boostversion="1.39.0"
-	 cairoversion="1.6.4"
-         ccflavor="arm-none-linux-gnueabi"
-         ccversion="$binutilsversion"
-	 curlversion="7.19.5-1"
-	 glibversion="2.16.4"
-	 gtkversion="2.12.11"
-	 fontconfigversion="2.6.0"
-	 freetypeversion="2.3.7"
-	 opensslversion="0.9.8k"
-	 pangoversion="1.20.5"
-	 xmlversion="2.6.32"
-	 xorgversion="7.3"
-         HOST_TCROOT="$TCROOT/arm-linux"
-         ;;
-      [i[3456]86-darwin*])
-         binutilsversion="2.17.50.0.15"
-	 boostlib="mt-1_34_1"
-	 boostversion="1.34.1"
-         ccflavor="i686-apple-darwin9"
-         ccversion="5465"
-	 curlversion="7.19.5-3"
-	 glibversion="2.6.6"
-	 xmlversion="2.6.30"
-         HOST_TCROOT="$TCROOT/mac32"
-         ;;
-      [*])
-         AC_MSG_RESULT([not supported])
-         AC_MSG_ERROR([$host_cpu-$host_os is not yet supported for a toolchain host.])
-	 ;;
-   esac
-   AC_MSG_RESULT([build: $BUILD_TCROOT host: $HOST_TCROOT])
-
-   case "$with_buildtype" in
-      [obj])
-         CFLAGS="$CFLAGS -O0 -g3"
-         ;;
-      [release|beta|*])
-         case "$host_cpu-$host_os" in
-            [arm-linux*])
-               # ARM 2007 compiler seems to have a buggy -Os
-               CFLAGS="$CFLAGS -O2 -g3"
-               ;;
-            [*])
-               CFLAGS="$CFLAGS -Os -g3"
-               ;;
-         esac
-         ;;
-   esac
-   case "$host_os" in
-      [mingw32*])
-         CXXFLAGS="$CFLAGS -mms-bitfields"
-         CFLAGS="$CFLAGS -Wno-strict-prototypes -mms-bitfields"
-         ;;
-      [*])
-         CXXFLAGS="$CFLAGS"
-         CFLAGS="$CFLAGS -Wno-pointer-sign -Wno-strict-prototypes"
-         ;;
-   esac
-   OBJCFLAGS="$CXXFLAGS"
-
-   icuversion="3.8"
-
-   AMTAR="$BUILD_TCROOT/tar-1.20/bin/tar"
-   AWK="$BUILD_TCROOT/gawk-3.1.5/bin/awk"
-   CC="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-gcc"
-   CXX="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-g++"
-   DPKG_DEB="$BUILD_TCROOT/dpkg-1.13.24/bin/dpkg-deb"
-   GENCCODE="$BUILD_TCROOT/icu4c-$icuversion/sbin/genccode"
-   GENSPREP="$BUILD_TCROOT/icu4c-$icuversion/sbin/gensprep"
-   GZIP="$BUILD_TCROOT/gzip-1.3.5/bin/gzip"
-   FAKEROOT="$BUILD_TCROOT/fakeroot-1.5.9ubuntu1-1/bin/fakeroot"
-   ICUPKG="$BUILD_TCROOT/icu4c-$icuversion/sbin/icupkg"
-   INSTALL_NAME_TOOL="$BUILD_TCROOT/gcc-$ccversion/libexec/gcc/i686-apple-darwin9/4.0.1/install_name_tool"
-   LD="$BUILD_TCROOT/gcc-$ccversion/bin/$ccflavor-gcc"
-   LN="$BUILD_TCROOT/coreutils-5.97/bin/ln"
-   LN_S="$BUILD_TCROOT/coreutils-5.97/bin/ln -s"
-   MKSQUASHFS="$BUILD_TCROOT/squashfs-tools-3.1-r2/bin/mksquashfs"
-   OBJC="$CXX"
-   OTOOL="$BUILD_TCROOT/gcc-$ccversion/libexec/gcc/i686-apple-darwin9/4.0.1/otool"
-   RPMBUILD="$BUILD_TCROOT/rpm-4.0.5/bin/rpmbuild"
-   SED="$BUILD_TCROOT/sed-4.1.5/bin/sed"
-
-   PATH="$BUILD_TCROOT/coreutils-5.97/bin:$BUILD_TCROOT/gawk-3.1.6/bin:$PATH"
-
-   ICU_CPPFLAGS="-I$HOST_TCROOT/icu4c-$icuversion/include"
-   ICU_LIBS="-L$HOST_TCROOT/icu4c-$icuversion/lib"
-
-   case "$host_os" in
-      [mingw32*])
-         XML_CFLAGS="-I$HOST_TCROOT/libxml2-$xmlversion/include"
-      ;;
-      [*])
-      XML_CFLAGS="-I$HOST_TCROOT/libxml2-$xmlversion/include/libxml2"
-      ;;
-   esac
-   XML_LIBS="-L$HOST_TCROOT/libxml2-$xmlversion/lib -lxml2"
-
-   BOOST_CPPFLAGS="-I$HOST_TCROOT/boost-$boostversion/include"
-
-   GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/include/glib-2.0"
-   GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/glib-$glibversion/lib/glib-2.0/include"
-   GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/glib-$glibversion/lib -lglib-2.0 -lgobject-2.0 -lgmodule-2.0"
-   if test "$enable_cvp" = "yes" ; then
-      GLIB_LIBS="$GLIB_LIBS -lgio-2.0"
-   fi
-
-   case "$host_os" in
-      [mingw32*|linux*])
-	 AR="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ar"
-	 for csource in /usr/bin/gdk-pixbuf-csource $BUILD_TCROOT/gtk+-$buildgtkversion/bin/gdk-pixbuf-csource ; do
-	    if test -x  $csource; then
-	       GDK_PIXBUF_CSOURCE="$csource"
-               break
-	    fi
-         done
-	 LDFLAGS="$LDFLAGS -Wl,-rpath-link -Wl,$HOST_TCROOT/gcc-$ccversion/lib"
-	 RANLIB="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-ranlib"
-	 STRIP="$BUILD_TCROOT/binutils-$binutilsversion/bin/$ccflavor-strip"
-	 SSL_CFLAGS="-I$HOST_TCROOT/openssl-$opensslversion/include"
-	 if test "$enable_static_ssl" = "no" ; then
-            ssl_link_prefix=
-	    ssl_link_postfix=
-	 else
-	    ssl_link_prefix="-Wl,-Bstatic"
-	    ssl_link_postfix="-Wl,-Bdynamic"
-         fi
-         SSL_LIBS="-L$HOST_TCROOT/openssl-$opensslversion/lib $ssl_link_prefix -lssl -lcrypto $ssl_link_postfix"
-	      CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
-	 if test "$host_cpu" = "arm" ; then
-	    # for clock_gettime
-	    CURL_LIBS="$CURL_LIBS -lrt"
-	 fi
-	      GTK_LIBS="$GTK_LIBS $GLIB_LIBS"
-	      GTK_CFLAGS="$GTK_CFLAGS $GLIB_CFLAGS"
-	      ;;
-      [*])
-         ;;
-   esac
-
-   BOOST_LDFLAGS="-Wl,-rpath-link -Wl,$HOST_TCROOT/boost-$boostversion/lib -L$HOST_TCROOT/boost-$boostversion/lib"
-   BOOST_LDFLAGS="$BOOST_LDFLAGS -Wl,-Bstatic -lboost_signals-$boostlib -Wl,-Bdynamic"
-   CURL_LIBS="-L$HOST_TCROOT/curl-$curlversion/lib -Wl,-Bstatic -l$curllib -Wl,-Bdynamic"
-
-   case "$host_os" in
-      [mingw32*])
-         for dir in \
-            zlib-1.2.3/include \
-            libpng-1.2.39/include \
-            fontconfig-$fontconfigversion/include \
-            freetype-$freetypeversion/include/freetype2 \
-            cairo-$cairoversion/include/cairo \
-            pango-$pangoversion/include/pango-1.0 \
-            atk-1.26.0/include/atk-1.0 \
-            gtk+-$gtkversion/include/gtk-2.0 \
-            gtk+-$gtkversion/lib/gtk-2.0/include \
-            gettext-0.17/include \
-            libiconv-1.9.1/include \
-            openssl-0.9.8h/include \
-         ; do
-            GTK_CFLAGS="$GTK_CFLAGS -I$HOST_TCROOT/$dir"
-         done
-
-         for dir in \
-            zlib-1.2.3/lib \
-            libpng-1.2.39/lib \
-            fontconfig-$fontconfigversion/lib \
-            freetype-$freetypeversion/lib \
-            expat-2.0.1/lib \
-            cairo-$cairoversion/lib \
-            pango-$pangoversion/lib \
-            atk-1.26.0/lib \
-            gtk+-$gtkversion/lib \
-            gettext-0.17/lib \
-            libiconv-1.9.1/lib \
-            openssl-0.9.8h/lib \
-         ; do
-	         GTK_LIBS="$GTK_LIBS -Wl,-rpath-link -Wl,$HOST_TCROOT/$dir"
-            GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/$dir"
-         done
-         GTK_LIBS="$GTK_LIBS -latk-1.0 -lgtk-win32-2.0 -lgdk-win32-2.0 -lgdk_pixbuf-2.0"
-	 if test "$host_cpu" = "arm" ; then
-	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/pixman-0.15.2/lib -lpixman-1"
-	 fi
-	 if test "$host_os" = "mingw32" ; then
-	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/lib -lintl -L$HOST_TCROOT/pango-1.26.0/lib -lpango-1.0"
-	 fi
-      ;;
-      [linux*])
-         if test "$host_cpu" = "arm" ; then
-            # for clock_gettime
-            CURL_LIBS="$CURL_LIBS -lrt"
-         fi
-         for dir in \
-            xorg-$xorgversion/include \
-            zlib-1.2.3-3/include \
-            libpng-1.2.22/include \
-            fontconfig-$fontconfigversion/include \
-            freetype-$freetypeversion/include/freetype2 \
-            cairo-$cairoversion/include/cairo \
-            pango-$pangoversion/include/pango-1.0 \
-            atk-1.9.0/include/atk-1.0 \
-            gtk+-$gtkversion/include/gtk-2.0 \
-            gtk+-$gtkversion/lib/gtk-2.0/include \
-         ; do
-            GTK_CFLAGS="$GTK_CFLAGS -I$HOST_TCROOT/$dir"
-         done
-
-         for dir in \
-            xorg-$xorgversion/lib \
-            zlib-1.2.3-3/lib \
-            libpng-1.2.22/lib \
-            fontconfig-$fontconfigversion/lib \
-            freetype-$freetypeversion/lib \
-            expat-1.95.8/lib \
-            cairo-$cairoversion/lib \
-            pango-$pangoversion/lib \
-            atk-1.9.0/lib \
-            gtk+-$gtkversion/lib \
-         ; do
-	    GTK_LIBS="$GTK_LIBS -Wl,-rpath-link -Wl,$HOST_TCROOT/$dir"
-            GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/$dir"
-         done
-         GTK_LIBS="$GTK_LIBS -latk-1.0 -lgtk-x11-2.0 -lgdk-x11-2.0 -lgdk_pixbuf-2.0"
-	 if test "$host_cpu" = "arm" ; then
-	    GTK_LIBS="$GTK_LIBS -L$HOST_TCROOT/pixman-0.15.2/lib -lpixman-1"
-	 fi
-	 ;;
-      [darwin*])
-	 AR="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ar"
-	 glibversion="2.12.12"
-	 RANLIB="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/ranlib"
-	 STRIP="$BUILD_TCROOT/gcc-$ccversion/$ccflavor/bin/strip"
-         SSL_LIBS="-lssl -lcrypto"
-         CURL_CFLAGS="-I$HOST_TCROOT/curl-$curlversion/include"
-         CURL_LIBS="$HOST_TCROOT/curl-$curlversion/lib/libcurl.a -L$HOST_TCROOT/c-ares-1.5.1-1/lib -lcares -lz"
-         BOOST_LDFLAGS="-L$HOST_TCROOT/boost-$boostversion/lib -lboost_signals-$boostlib"
-         BOOST_LDFLAGS="-L$HOST_TCROOT/boost-1.34.1/lib -lboost_signals-mt-1_34_1"
-	 GLIB_CFLAGS="$GLIB_CFLAGS -I$HOST_TCROOT/gettext-0.17/include"
-         GLIB_LIBS="$GLIB_LIBS -L$HOST_TCROOT/gettext-0.17/lib -lintl"
-         ;;
-   esac
-   LIB_FILE_CPPFLAGS="$LIB_FILE_CPPFLAGS -DGLIBC_VERSION_21"
-   LIB_SIG_CPPFLAGS="$LIB_SIG_CPPFLAGS -DGLIBC_VERSION_22"
-   LIB_STRING_CPPFLAGS="$LIB_STRING_CPPFLAGS -DGLIBC_VERSION_22"
-   LIB_MISC_CPPFLAGS="$LIB_MISC_CPPFLAGS -DGLIBC_VERSION_21"
-   LIB_MISC_CPPFLAGS="$LIB_MISC_CPPFLAGS -DGLIBC_VERSION_22"
-else
-   AC_MSG_RESULT([not requested])
+AC_ARG_WITH([pkg-config],
+   [AS_HELP_STRING([--without-pkg-config],
+      [don't use pkg-config to find flags and libs])],
+   [],[with_pkg_config="yes"])
+if test "$with_pkg_config" = "yes" ; then
    if test -z "$GENCCODE" ; then
       GENCCODE="/usr/sbin/genccode"
    fi
@@ -510,7 +149,7 @@ else
          # the -arch flags confuse automake at some point
          CURL_LIBS=`$PKG_CONFIG --libs-only-l libcurl`
          # Leopard still ships with 0.9.7.
-	 OPENSSL_MIN_VER="0.9.7"
+         OPENSSL_MIN_VER="0.9.7"
          ;;
       [*])
          OPENSSL_MIN_VER="0.9.8"
@@ -518,16 +157,6 @@ else
    esac
    PKG_CHECK_MODULES(SSL, [openssl >= $OPENSSL_MIN_VER])
 fi
-
-case "$host_os" in
-   [linux*])
-      LIBEXT="so"
-      ;;
-   [darwin*])
-      LIBEXT="dylib"
-      OBJCFLAGS="$OBJCFLAGS -mmacosx-version-min=10.5"
-      ;;
-esac
 
 # Checks for programs.
 # This needs to be after TCROOT is set to pick up the correct paths
@@ -542,6 +171,7 @@ AM_PROG_AS
 AC_PROG_LN_S
 AC_PROG_RANLIB
 AC_PROG_SED
+AC_PATH_PROG([ADD_LICENSE],[AddLicense])
 AC_PATH_PROG([AR],[ar])
 AC_PATH_PROG([DATE],[date])
 AC_PATH_PROG([DPKG_DEB],[dpkg-deb])
@@ -550,6 +180,7 @@ AC_PATH_PROG([GDK_PIXBUF_CSOURCE],[gdk-pixbuf-csource])
 AC_PATH_PROG([GENCCODE],[genccode])
 AC_PATH_PROG([GENSPREP],[gensprep])
 AC_PATH_PROG([GZIP],[gzip])
+AC_PATH_PROG([HDIUTIL],[hdiutil])
 AC_PATH_PROG([ICUPKG],[icupkg])
 AC_PATH_PROG([INSTALL_NAME_TOOL],[install_name_tool])
 AC_PATH_PROG([MKSQUASHFS],[mksquashfs])
@@ -565,6 +196,12 @@ AC_SUBST(GETTEXT_PACKAGE)
 ALL_LINGUAS="de fr ja zh_CN"
 AC_SUBST(ALL_LINGUAS)
 AM_GLIB_GNU_GETTEXT
+
+# This needs to be after AC_PROG_CC and friends
+if test "$with_pkg_config" = "yes" ; then
+   AX_BOOST_BASE([1.34.1])
+   AX_BOOST_SIGNALS
+fi
 
 AC_ARG_WITH([icons-dir],
    [AS_HELP_STRING([--with-icons-dir=DIR],
@@ -657,6 +294,11 @@ PRODUCT_BUILD_NUMBER=m4_esyscmd([echo ${PRODUCT_BUILD_NUMBER:-0} | tr -d '\n'])
 
 AC_DEFINE_UNQUOTED([VIEW_CLIENT_VERSION_NUMBER],["$VIEW_VERSION"])
 
+AC_ARG_WITH([buildtype],
+   [AS_HELP_STRING([--with-buildtype=obj|beta|release],
+      [configures debugging and optimization flags])],
+   [],[with_buildtype="obj"])
+
 AC_DEFINE(VMX86_TOOLS)
 if test "$with_buildtype" = "obj" -o "$with_buildtype" = "beta" ; then
    AC_DEFINE(VMX86_DEBUG)
@@ -688,7 +330,7 @@ case "$host_os" in
       ;;
    [mingw32*])
       GENCCODE_ASM_TARGET="gcc"
-      LIBS="$LIBS -lgdi32 -lws2_32 -L$HOST_TCROOT/lib -lintl"
+      LIBS="$LIBS -lgdi32 -lws2_32 -lintl"
       ;;
    [darwin*])
       for fw in AppKit Cocoa CoreData CoreServices Foundation \
@@ -737,111 +379,98 @@ vm_grep_value=U_ICUDATA_ENTRY_POINT])])
 fi
 AM_CONDITIONAL([STATIC_ICU],[test "$enable_static_icu" != "no"])
 
-if test "$TCROOT" = "no" ; then
-   AC_CHECK_FUNCS([lseek],[LIB_FILE_CPPFLAGS="$LIB_FILE_CPPFLAGS -DGLIBC_VERSION_21"])
-   AC_CHECK_HEADER([wchar.h],[LIB_STRING_CPPFLAGS="$LIB_STRING_CPPFLAGS -DGLIBC_VERSION_22"])
-   # Check to see if SYS_setuid32 is defined. If SYS_setuid32 is unknown, we will
-   # certainly error out.
-   case "$host_cpu-$host_os" in
-      [i[3456]86-linux*])
-         AC_MSG_CHECKING([for SYS_setuid32])
-         AC_TRY_COMPILE(
-            [#include <sys/syscall.h>
-             #include <unistd.h>],
-            [
-               syscall(SYS_setuid32, 1);
-            ],
-            [HAVE_SYS_SETUID="yes"],
-            [HAVE_SYS_SETUID="no"])
-         AC_MSG_RESULT($HAVE_SYS_SETUID)
-	 ;;
-      [x86_64-linux*])
-         HAVE_SYS_SETEUID="yes"
-         ;;
-   esac
-   if test "$HAVE_SYS_SETUID" = "yes"; then
-      LIB_MISC_CPPFLAGS="$LIB_MISC_CPPFLAGS -DGLIBC_VERSION_21"
+AC_CHECK_FUNCS([lseek],[LIB_FILE_CPPFLAGS="$LIB_FILE_CPPFLAGS -DGLIBC_VERSION_21"])
+AC_CHECK_HEADER([wchar.h],[LIB_STRING_CPPFLAGS="$LIB_STRING_CPPFLAGS -DGLIBC_VERSION_22"])
+# Check to see if SYS_setuid32 is defined. If SYS_setuid32 is unknown, we will
+# certainly error out.
+AC_MSG_CHECKING([for SYS_setuid32])
+AC_TRY_COMPILE(
+   [#include <sys/syscall.h>
+    #include <unistd.h>],
+   [#ifndef __LP64__
+    syscall(SYS_setuid32, 1);
+    #endif],
+   [HAVE_SYS_SETUID="yes"],
+   [HAVE_SYS_SETUID="no"])
+AC_MSG_RESULT($HAVE_SYS_SETUID)
+if test "$HAVE_SYS_SETUID" = "yes"; then
+   LIB_MISC_CPPFLAGS="$LIB_MISC_CPPFLAGS -DGLIBC_VERSION_21"
+fi
+
+# Newer iconv (from glibc 2.2 and later on Linux) takes a char ** as the second
+# argument. Here, we test for the older form and expect a compiler warning/error
+# if the newer form is defined (because, in that case, we would be attempting to
+# remove const'ness without an explicit cast).
+AC_MSG_CHECKING([for the new format of iconv])
+ORIGINAL_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror"
+AC_TRY_COMPILE(
+   [#include <iconv.h>],
+   [
+      iconv_t cd;
+      char const *inbuf;
+      size_t inbytesleft;
+      char *outbuf;
+      size_t outbytesleft;
+
+      iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+   ],
+   [HAVE_NEW_ICONV="no"],
+   [HAVE_NEW_ICONV="yes"])
+CFLAGS="$ORIGINAL_CFLAGS"
+AC_MSG_RESULT($HAVE_NEW_ICONV)
+if test "$HAVE_NEW_ICONV" = "yes" ; then
+   LIB_MISC_CPPFLAGS="$LIB_MISC_CPPFLAGS -DGLIBC_VERSION_22"
+fi
+
+AC_MSG_CHECKING([whether sys/ucontext.h defines REG_EAX])
+AC_COMPILE_IFELSE(
+   [AC_LANG_PROGRAM(
+      [[#define _GNU_SOURCE
+        #include <signal.h>
+        #include <sys/ucontext.h>]],
+      [[int foo = REG_EAX; return foo;]])],
+   [
+      LIB_SIG_CPPFLAGS="$LIB_SIG_CPPFLAGS -DGLIBC_VERSION_22"
+      AC_MSG_RESULT([yes])
+   ],
+   [
+      AC_MSG_RESULT([no])
+   ])
+
+CPPFLAGS_save="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $ICU_CPPFLAGS"
+AC_CHECK_HEADER([unicode/uidna.h],,
+   [AC_MSG_ERROR([libicu is required, but not found.  Check config.log for details.])])
+
+# Due to icu symbol version renaming, we can't do a simple
+# AC_CHECK_LIB here...
+AC_MSG_CHECKING([for uidna_IDNToASCII in -licuuc])
+LIBS_save="$LIBS"
+LIBS="$LIBS $ICU_LIBS"
+if test "$enable_static_icu" != "no" -a "$mingw32" != "yes" ; then
+   LIBS="$LIBS -lsicudata"
+fi
+AC_LANG_PUSH([C++])
+AC_LINK_IFELSE([AC_LANG_CALL([#include <unicode/urename.h>],[uidna_IDNToASCII])],
+   [AC_MSG_RESULT([yes])],
+   [AC_MSG_RESULT([no])
+    AC_MSG_ERROR([libicu is required, but not found.  Check config.log for details.])])
+AC_LANG_POP([C++])
+LIBS="$LIBS_save"
+if test "$enable_static_icu" != "no" ; then
+   if test -z "$GENCCODE" ; then
+      AC_MSG_ERROR([genccode is required when linking ICU statically.])
    fi
-
-   # Newer iconv (from glibc 2.2 and later on Linux) takes a char ** as the second
-   # argument. Here, we test for the older form and expect a compiler warning/error
-   # if the newer form is defined (because, in that case, we would be attempting to
-   # remove const'ness without an explicit cast).
-   AC_MSG_CHECKING([for the new format of iconv])
-   ORIGINAL_CFLAGS="$CFLAGS"
-   CFLAGS="$CFLAGS -Werror"
-   AC_TRY_COMPILE(
-      [#include <iconv.h>],
-      [
-         iconv_t cd;
-         char const *inbuf;
-         size_t inbytesleft;
-         char *outbuf;
-         size_t outbytesleft;
-
-         iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-      ],
-      [HAVE_NEW_ICONV="no"],
-      [HAVE_NEW_ICONV="yes"])
-   CFLAGS="$ORIGINAL_CFLAGS"
-   AC_MSG_RESULT($HAVE_NEW_ICONV)
-
-   case "$host_os" in
-      [linux*])
-         AC_MSG_CHECKING([whether sys/ucontext.h defines REG_EAX])
-         AC_COMPILE_IFELSE(
-           [AC_LANG_PROGRAM(
-               [[#define _GNU_SOURCE
-                 #include <signal.h>
-	         #include <sys/ucontext.h>]],
-	       [[int foo = REG_EAX;]])],
-            [
-               LIB_SIG_CPPFLAGS="$LIB_SIG_CPPFLAGS -DGLIBC_VERSION_22"
-	       AC_MSG_RESULT([yes])
-            ],
-            [
-               AC_MSG_RESULT([no])
-            ])
-	 ;;
-      [darwin*])
-         CURL_LIBS="`$PKG_CONFIG --libs-only-l libcurl`"
-         ;;
-   esac
-
-   AX_BOOST_BASE([1.34.1])
-   AX_BOOST_SIGNALS
-
-   AC_CHECK_HEADER([unicode/uidna.h],,
-	[AC_MSG_ERROR([libicu is required, but not found.  Check config.log for details.])])
-
-   # Due to icu symbol version renaming, we can't do a simple
-   # AC_CHECK_LIB here...
-   AC_MSG_CHECKING([for uidna_IDNToASCII in -licuuc])
-   LIBS_save="$LIBS"
-   LIBS="$LIBS $ICU_LIBS"
-   if test "$enable_static_icu" != "no" ; then
-      LIBS="$LIBS -lsicudata"
+   if test -z "$GENSPREP" ; then
+      AC_MSG_ERROR([gensprep is required when linking ICU statically.])
    fi
-   AC_LANG_PUSH([C++])
-   AC_LINK_IFELSE([AC_LANG_CALL([#include <unicode/urename.h>],[uidna_IDNToASCII])],
-      [AC_MSG_RESULT([yes])],
-      [AC_MSG_RESULT([no])
-       AC_MSG_ERROR([libicu is required, but not found.  Check config.log for details.])])
-   AC_LANG_POP([C++])
-   LIBS="$LIBS_save"
-   if test "$enable_static_icu" != "no" ; then
-    if test -z "$GENCCODE" ; then
-       AC_MSG_ERROR([genccode is required when linking ICU statically.])
-    fi
-    if test -z "$GENSPREP" ; then
-       AC_MSG_ERROR([gensprep is required when linking ICU statically.])
-    fi
-    if test -z "$ICUPKG" ; then
-       AC_MSG_ERROR([icupkg is required when linking ICU statically.])
-    fi
-  fi
+   if test -z "$ICUPKG" ; then
+      AC_MSG_ERROR([icupkg is required when linking ICU statically.])
+   fi
 fi
 AC_DEFINE(HAVE_UIDNA_IDNTOASCII)
+CPPFLAGS="$CPPFLAGS_save"
 
 AC_CHECK_HEADERS([dlfcn.h arpa/inet.h])
 AC_CHECK_FUNCS([localtime_r])

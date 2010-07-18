@@ -130,7 +130,7 @@ lang_dirs += $(addprefix Japanese.lproj/,$(base_lang_dirs))
 lang_dirs += $(addprefix zh-Hans.lproj/,$(base_lang_dirs))
 
 help_zips :=
-help_zips += cocoa/viewclient_mac_help_en.zip
+help_zips += $(foreach lang,en $(ALL_LINGUAS),cocoa/viewclient_mac_help_$(lang).zip)
 
 dist_noinst_DATA += $(addprefix cocoa/,$(lang_files))
 dist_noinst_DATA += fix-toolchain-paths.sh.in
@@ -190,10 +190,6 @@ ifeq ($(PUBLISH_DIR),)
 	done
 	$(INSTALL_DATA) $(srcdir)/cocoa/vmware-view.rdp \
 		$(appdir)/Contents/Resources
-	$(INSTALL_DATA) $(srcdir)/cocoa/English.lproj/Credits.html \
-		$(appdir)/Contents/Resources/English.lproj
-	$(INSTALL_DATA) $(srcdir)/cocoa/English.lproj/InfoPlist.strings  \
-		$(appdir)/Contents/Resources/English.lproj
 	@for i in $(lang_files) ; do \
 		echo $(INSTALL_DATA) $(srcdir)/cocoa/$$i \
 			$(appdir)/Contents/Resources/$$i ; \
@@ -217,9 +213,7 @@ ifeq ($(PUBLISH_DIR),)
 		$(appdir)/Contents/Frameworks
 
 stagedir := $(top_builddir)/dmg-stage
-if VIEW_EULAS
-dmgeula := "--license $(stagedir)/$(PACKAGING_NAME)-EULA-en.txt"
-endif
+
 dmg: app
 	-rm -rf $(stagedir)
 	mkdir -p $(stagedir)/$(appname)
@@ -227,16 +221,25 @@ dmg: app
 	cp $(top_srcdir)/cocoa/rdc.webloc $(stagedir)/$(appname)/"Download Microsoft RDC.webloc"
 	cp doc/open_source_licenses.txt $(stagedir)/$(appname)
 	cp $(ICONS_DIR)/view.icns $(stagedir)
-if VIEW_EULAS
-# XXX: Need to support multiple EULA languages...
-	cp $(top_builddir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir) || \
-		cp $(top_srcdir)/doc/$(PACKAGING_NAME)-EULA-en.txt $(stagedir)
-endif
 ifeq ($(findstring darwin,$(build_os)),darwin)
 	perl $(top_srcdir)/cocoa/pkg-dmg $(dmgeula) \
 		--source $(stagedir)/$(appname) \
 		--target $(top_builddir)/$(appdmg) \
 		--icon $(stagedir)/view.icns
+if VIEW_EULAS
+	$(HDIUTIL) unflatten $(top_builddir)/$(appdmg)
+	@for lang in en $(ALL_LINGUAS) ; do \
+		for dir in "$(srcdir)/doc" "$(builddir)/doc" ; do \
+			eula=$$dir/$(PACKAGING_NAME)-EULA-$$lang.rtf ; \
+			if test -f $$eula ; then \
+				echo $(ADD_LICENSE) "$(appdmg)" $$lang $$eula ; \
+				$(ADD_LICENSE) "$(appdmg)" $$lang $$eula ; \
+				break ; \
+			fi \
+		done \
+	done
+	$(HDIUTIL) flatten $(top_builddir)/$(appdmg)
+endif
 @ELSE@
 	cp $(top_srcdir)/cocoa/pkg-dmg $(stagedir)
 @ENDIF@

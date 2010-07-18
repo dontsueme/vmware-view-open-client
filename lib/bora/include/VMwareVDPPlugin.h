@@ -48,6 +48,10 @@ typedef enum VDPConnectionResult
     VDPCONNECT_SERVER_DISCONNECTED_MANUAL_LOGOUT, // User initiated disconnect or logout.
     VDPCONNECT_SERVER_DISCONNECTED_ADMIN_MANUAL,  // Server initiated disconnect. Admin manually disconnected the session from admin ui.
     VDPCONNECT_SERVER_DISCONNECTED_RECONNECT,     // Server initiated disconnect as a precursor to pending reconnect.
+    VDPCONNECT_SERVER_SVGA_DRIVER_INCOMPATIBLE,   // Server failed to attach to svgadevtap due to an incompatible version of svga drivers.
+    VDPCONNECT_TERA_DISCONNECT_HOST_DRIVER_MANUAL_USER_DISCONNECT,      // Tera 1 host card user disconnect.
+    VDPCONNECT_TERA_DISCONNECT_HOST_DRIVER_INCOMPATIBLE_DRIVER_VERSION, // Tera 1 host card driver version mismatch.
+    VDPCONNECT_ENCRYPTION_MISMATCH,               // Mismatch in client/server encryption algorithms.
     VDPCONNECT_MAX = 100,                         // Add any new error before this. Marker for our connection state reason boundary value.
 } VDPConnectionResult;
 

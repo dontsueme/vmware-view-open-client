@@ -168,7 +168,8 @@ App::Main(int argc,     // IN
    mWindow->Show();
 
 #ifdef VIEW_POSIX
-   Sig_Callback(SIGTERM, SIG_SAFE, (SigCallbackFunc)SigTermHandler, this);
+   Sig_Callback(SIGTERM, SIG_SAFE,
+                (SigCallbackFunc)SigTermHandlerHelper, this);
 #endif
 
    gtk_main();
@@ -317,6 +318,35 @@ App::GetLocaleDir()
 /*
  *-----------------------------------------------------------------------------
  *
+ * cdk::App::SigTermHandlerHelper --
+ *
+ *      Helper function for SIGTERM handler.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+#ifdef VIEW_POSIX
+/* static */ void
+App::SigTermHandlerHelper(int s,            // IN
+                          siginfo_t *info,  // IN
+                          void *clientData) // IN
+{
+   App *that = reinterpret_cast<App *>(clientData);
+   ASSERT(that);
+   that->SigTermHandler(s, info);
+}
+#endif
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
  * cdk::App::SigTermHandler --
  *
  *      Handler for SIGTERM.  Close window so that we exit gracefully.
@@ -333,15 +363,12 @@ App::GetLocaleDir()
 #ifdef VIEW_POSIX
 void
 App::SigTermHandler(int s,            // IN
-                    siginfo_t *info,  // IN/UNUSED
-                    void *clientData) // IN
+                    siginfo_t *info)  // IN/UNUSED
 {
    ASSERT(s == SIGTERM);
-   App *that = reinterpret_cast<App *>(clientData);
-   ASSERT(that);
-
+   ASSERT(mWindow != NULL);
    Warning("Received signal %d. Exiting.\n", s);
-   that->mWindow->Close();
+   mWindow->Close();
 }
 #endif
 
@@ -374,6 +401,7 @@ App::TriageError(CdkError error,
          error, message.c_str(), Util::FormatV(details.c_str(), args).c_str());
       Util::UserWarning(errorMsg.c_str());
       Log(errorMsg.c_str());
+      delete mWindow;
       exit(error);
    }
 

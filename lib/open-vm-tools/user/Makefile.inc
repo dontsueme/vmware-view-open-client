@@ -24,4 +24,4 @@ if VIEW_POSIX
 libUser_a_SOURCES += lib/open-vm-tools/user/utilPosix.c
 endif # VIEW_POSIX
 
-libUser_a_CFLAGS = @LIB_USER_CPPFLAGS@
+libUser_a_CFLAGS = $(LIB_USER_CPPFLAGS) $(GLIB_CFLAGS)

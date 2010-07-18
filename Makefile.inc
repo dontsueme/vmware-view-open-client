@@ -330,9 +330,9 @@ bindist: all-am
 	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/ja
 	$(MKDIR_P) $(TAR_STAGE_DIR)/doc/help/zh_CN
 	$(MKDIR_P) $(TAR_STAGE_DIR)/patches
-	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view \
+	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view$(EXEEXT) \
 		$(TAR_STAGE_DIR)/bin
-	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view-tunnel \
+	STRIPPROG='$(STRIP)' $(INSTALL_STRIP_PROGRAM) vmware-view-tunnel$(EXEEXT) \
 		$(TAR_STAGE_DIR)/bin
 	$(INSTALL_DATA) README.txt $(TAR_STAGE_DIR)
 	$(INSTALL_DATA) doc/open_source_licenses.txt \
@@ -371,6 +371,9 @@ endif
 DELIVERABLES :=
 
 if VIEW_GTK
+if VIEW_WIN32
+DELIVERABLES += $(bin_PROGRAMS)
+else
 DELIVERABLES += bindist
 
 ifneq ($(RPMBUILD),)
@@ -380,6 +383,7 @@ DELIVERABLES += rpms
 ifneq ($(DPKG_DEB),)
 DELIVERABLES += debs
 @ENDIF@
+endif # VIEW_WIN32
 endif # VIEW_GTK
 
 if VIEW_COCOA
@@ -390,6 +394,9 @@ deliverables: $(DELIVERABLES)
 ifneq ($(PUBLISH_DIR),)
 	$(MKDIR_P) $(PUBLISH_DIR)
 if VIEW_GTK
+if VIEW_WIN32
+# nothing to do for win32/mingw32 as yet.
+else
 	$(INSTALL_DATA) $(TAR_STAGE_DIR).tar.gz $(PUBLISH_DIR)
 ifneq ($(RPMBUILD),)
 	$(INSTALL_DATA) \
@@ -405,6 +412,7 @@ ifneq ($(DPKG_DEB),)
 	$(INSTALL_DATA) $(PACKAGING_NAME)_$(VERSION)_$(DEB_ARCH).deb \
 		$(PUBLISH_DIR)
 @ENDIF@ # DPKG_DEB
+endif # VIEW_WIN32
 endif # VIEW_GTK
 if VIEW_COCOA
 ifeq ($(findstring darwin,$(build_os)),darwin)

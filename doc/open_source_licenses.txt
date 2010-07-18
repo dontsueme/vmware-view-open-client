@@ -1,6 +1,6 @@
 open_source_licenses.txt
 VMware View Open Client e.x.p
-Build 264434, 2010-06-02
+Build 271013, 2010-06-25
 
 
 The following copyright statements and licenses apply to various open source
