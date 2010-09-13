@@ -41,6 +41,7 @@
 #else
 #include "ws2tcpip.h"
 #include "winsockerr.h"
+#include "mingw32Util.h"
 #endif
 #include <string.h>
 #include <stdlib.h>
@@ -1183,7 +1184,21 @@ TunnelProxySocketRecvCb(void *clientData) /* IN: TPChannel */
    g_assert(channel);
 
    while (throttle--) {
+#ifdef __MINGW32__
+      recvLen = recv(channel->fd, recvBuf, sizeof(recvBuf), 0);
+      if (recvLen == SOCKET_ERROR) {
+         if (WSAGetLastError() == WSAEWOULDBLOCK) {
+            goto pollAgain;
+         } else {
+            g_printerr(
+               _("Error reading from tunnel HTTP socket: %d\n"),
+               WSAGetLastError());
+            recvLen = 0;
+         }
+      }
+#else
       recvLen = read(channel->fd, recvBuf, sizeof(recvBuf));
+#endif
       switch (recvLen) {
       case -1:
          switch (errno) {
@@ -1260,16 +1275,24 @@ TunnelProxySocketConnectCb(void *clientData) /* IN */
 
    fd = accept(listener->fd, NULL, NULL);
    if (fd < 0) {
+#ifdef __MINGW32__
+      if (WSAGetLastError() != WSAEWOULDBLOCK) {
+         g_printerr("Could not accept client socket: %d\n", WSAGetLastError());
+      }
+#else
       if (errno != EWOULDBLOCK) {
          g_printerr("Could not accept client socket: %s\n", strerror(errno));
       }
+#endif
       goto fin;
    }
 
    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
               (const void *)&nodelay, sizeof(nodelay));
 
-#ifndef __MINGW32__
+#ifdef __MINGW32__
+   SET_NONBLOCKING(fd);
+#else
 #ifdef O_NONBLOCK
    flags = O_NONBLOCK;
 #else
@@ -1630,12 +1653,27 @@ TunnelProxyHandleInChunk(TunnelProxy *tp, // IN
              * that drains it.
              */
             while (len) {
+#ifdef __MINGW32__
+               bytesWritten = send(channel->fd, buf, len, 0);
+               if (bytesWritten == SOCKET_ERROR) {
+                  DWORD error = WSAGetLastError();
+                  if (error == WSAEWOULDBLOCK) {
+                     errno = EWOULDBLOCK;
+                  } else {
+                     g_printerr("Error writing to chunk: %d\n",
+                        WSAGetLastError());
+                  }
+                  bytesWritten = -1;
+               }
+#else
                bytesWritten = write(channel->fd, buf, len);
+#endif
                if (bytesWritten < 0) {
                   if (errno != EAGAIN &&
                       errno != EINTR &&
                       errno != EWOULDBLOCK) {
-                     g_printerr("Error writing to chunk: %s\n", strerror(errno));
+                     g_printerr("Error writing to chunk: %s\n",
+                        strerror(errno));
                      len = 0;
                      break;
                   }
@@ -2454,7 +2492,9 @@ TunnelProxyListenSocket(const char *ipStr, // IN
    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
               (const void *)&nodelay, sizeof(nodelay));
 
-#ifndef __MINGW32__
+#ifdef __MINGW32__
+   SET_NONBLOCKING(fd);
+#else
 #ifdef O_NONBLOCK
    flags = O_NONBLOCK;
 #else

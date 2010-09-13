@@ -1810,7 +1810,8 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/bora/include/log.h lib/bora/include/logInt.h \
 	lib/bora/include/loglevel_tools.h \
 	lib/bora/include/mallocLinux.h \
-	lib/bora/include/mallocTracker.h lib/bora/include/poll.h \
+	lib/bora/include/mallocTracker.h \
+	lib/bora/include/mingw32Util.h lib/bora/include/poll.h \
 	lib/bora/include/pollImpl.h lib/bora/include/sig.h \
 	lib/bora/include/sigPosix.h lib/bora/include/syncRecMutex.h \
 	lib/bora/include/sysSocket.h lib/bora/include/url.h \

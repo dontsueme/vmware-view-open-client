@@ -813,6 +813,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    gboolean optPrintEnvironmentInfo = false;
    gboolean optOnce = false;
    char *optKbdLayout = NULL;
+   char *optDesktopSize = NULL;
 
    GOptionEntry optEntries[] = {
       { "keep-wm-bindings", 'K', 0, G_OPTION_ARG_NONE, &optAllowWMBindings,
@@ -835,7 +836,7 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       { "background", 'b', 0 , G_OPTION_ARG_FILENAME, &optBackground,
         N_("Image file to use as background in full screen mode."), N_("<image>") },
       { "redirect", 'r', 0 , G_OPTION_ARG_STRING_ARRAY, &optRedirect,
-        N_("Forward device redirection to rdesktop"), N_("<device info>") },
+        N_("Forward device redirection to rdesktop."), N_("<device info>") },
       { "logo", '\0', 0, G_OPTION_ARG_FILENAME, &optCustomLogo,
         N_("Display a custom logo."), N_("<image>") },
       { "mmrPath", 'm', 0, G_OPTION_ARG_STRING, &optMMRPath,
@@ -849,8 +850,9 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       { "usb", '\0', 0, G_OPTION_ARG_STRING_ARRAY, &optUsb,
         N_("Options for USB forwarding."), N_("<usb options>") },
       { "protocol", '\0', 0, G_OPTION_ARG_STRING, &optProtocol,
-        N_("Preferred connection protocol [RDP|PCOIP|RGS|localvm]"),
-        N_("<protocol name>") },
+        N_("Preferred connection protocol."),
+        // no need to translate the protocol names
+        "(RDP|PCOIP|RGS|localvm)" },
       { "unattended", '\0', 0, G_OPTION_ARG_NONE, &optKioskMode,
         N_("Enable unattended (kiosk) mode."), NULL },
       { "printEnvironmentInfo", '\0', 0, G_OPTION_ARG_NONE, &optPrintEnvironmentInfo,
@@ -858,8 +860,12 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
       { "once", '\0', 0, G_OPTION_ARG_NONE, &optOnce,
         N_("Do not retry on error events in unattended mode."), NULL },
       { "kbdLayout", 'k', 0, G_OPTION_ARG_STRING, &optKbdLayout,
-        N_("Initial keyboard layout locale (en-us, de, fr, etc...)"),
+        N_("Initial keyboard layout locale (en-us, de, fr, etc...)."),
         N_("<kbdlayout name>") },
+      { "desktopSize", '\0', 0, G_OPTION_ARG_STRING, &optDesktopSize,
+        N_("Set desktop display size."),
+        // no need to translate the mode names
+        "(large|small|full|all|WxH)" },
       { NULL }
    };
 
@@ -1094,6 +1100,28 @@ Prefs::ParseArgs(int *argcp,         // IN/OUT
    if (optPrintEnvironmentInfo) {
       PrintEnvironmentInfo();
    }
+
+   guint width, height;
+   if (optDesktopSize && GetBool(KEY_ALLOW_DEFAULT_DESKTOP_SIZE, true)) {
+      if (strcasecmp(optDesktopSize, "large") == 0) {
+         Dict_SetLong(mOptDict, Prefs::LARGE_WINDOW, KEY_DEFAULT_DESKTOP_SIZE);
+      } else if (strcasecmp(optDesktopSize, "small") == 0) {
+         Dict_SetLong(mOptDict, Prefs::SMALL_WINDOW, KEY_DEFAULT_DESKTOP_SIZE);
+      } else if (strcasecmp(optDesktopSize, "full") == 0) {
+         Dict_SetLong(mOptDict, Prefs::FULL_SCREEN, KEY_DEFAULT_DESKTOP_SIZE);
+      } else if (strcasecmp(optDesktopSize, "all") == 0) {
+         Dict_SetLong(mOptDict, Prefs::ALL_SCREENS, KEY_DEFAULT_DESKTOP_SIZE);
+      } else if (GetBool(KEY_ALLOW_DEFAULT_CUSTOM_DESKTOP_SIZE, true) &&
+                 (sscanf(optDesktopSize, "%ux%u", &width, &height) == 2)) {
+         Dict_SetLong(mOptDict, Prefs::CUSTOM_SIZE, KEY_DEFAULT_DESKTOP_SIZE);
+         Dict_SetLong(mOptDict, MAX(640, width), KEY_DEFAULT_DESKTOP_WIDTH);
+         Dict_SetLong(mOptDict, MAX(480, height), KEY_DEFAULT_DESKTOP_HEIGHT);
+      } else {
+         Util::UserWarning(_("Unknown desktop display size: %s. Using default size.\n"),
+                           optDesktopSize);
+      }
+   }
+   g_free(optDesktopSize);
 }
 
 

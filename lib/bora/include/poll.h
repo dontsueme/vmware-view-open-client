@@ -147,6 +147,9 @@ typedef uint32 PollClassSet;
 #define POLL_FLAG_WRITE			0x08	// device is ready for writing
 #define POLL_FLAG_SOCKET      	        0x10	// device is a Windows socket
 #define POLL_FLAG_NO_BULL               0x20    // callback does its own locking
+#ifdef __MINGW32__
+#define POLL_FLAG_FD                    0x40    // device is a Windows file descriptor.
+#endif
 
 
 /*
@@ -215,6 +218,12 @@ EXTERN VMwareStatus Poll_CB_Device(PollerFunction f,
 			           void *clientData,
 			           PollDevHandle device,
 			           Bool periodic);
+
+EXTERN VMwareStatus Poll_CB_Device_With_Flags(PollerFunction f,
+			           void *clientData,
+			           PollDevHandle device,
+			           Bool periodic,
+			           int flags);
 
 EXTERN Bool Poll_CB_DeviceRemove(PollerFunction f,
 				 void *clientData,
