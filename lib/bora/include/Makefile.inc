@@ -36,6 +36,7 @@ dist_noinst_HEADERS += lib/bora/include/logInt.h
 dist_noinst_HEADERS += lib/bora/include/loglevel_tools.h
 dist_noinst_HEADERS += lib/bora/include/mallocLinux.h
 dist_noinst_HEADERS += lib/bora/include/mallocTracker.h
+dist_noinst_HEADERS += lib/bora/include/mingw32Util.h
 dist_noinst_HEADERS += lib/bora/include/poll.h
 dist_noinst_HEADERS += lib/bora/include/pollImpl.h
 dist_noinst_HEADERS += lib/bora/include/sig.h

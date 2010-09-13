@@ -41,6 +41,7 @@
 #else
 #include "ws2tcpip.h"
 #include "winsockerr.h"
+#include "mingw32Util.h"
 #endif
 #include <locale.h>     /* For setlocale */
 #include <openssl/err.h>
@@ -205,7 +206,22 @@ TunnelSocketRead(int fd,              // IN
    char *reason = NULL;
 
    do {
+#ifdef __MINGW32__
+      recvLen = recv(fd, tmpBuf, sizeof(tmpBuf), 0);
+      if (recvLen == SOCKET_ERROR) {
+         if (WSAGetLastError() == WSAEWOULDBLOCK) {
+            recvLen = -1;
+            errno = EAGAIN;
+         } else {
+            reason = g_strdup_printf(
+               _("Error reading from tunnel HTTP socket: %d"),
+               WSAGetLastError());
+            recvLen = 0;
+         }
+      }
+#else
       recvLen = read(fd, tmpBuf, sizeof(tmpBuf));
+#endif
       switch (recvLen) {
       case -1:
          switch (errno) {
@@ -353,7 +369,24 @@ TunnelSocketWrite(int fd,              // IN
       ssize_t bytesWritten;
       size_t toWrite = len;
       while (toWrite > 0) {
+#ifdef __MINGW32__
+         bytesWritten = send(fd, bytes, toWrite, 0);
+         if (bytesWritten == SOCKET_ERROR) {
+            int error = WSAGetLastError();
+            if (error == WSAEWOULDBLOCK) {
+               errno = EWOULDBLOCK;
+            } else {
+               reason = g_strdup_printf(
+                  _("Error writing to tunnel HTTP socket: %d\n"),
+                  WSAGetLastError());
+               TunnelDisconnectCb(gTunnelProxy, NULL, reason, NULL);
+               return -1;
+            }
+            bytesWritten = -1;
+         }
+#else
          bytesWritten = write(fd, bytes, toWrite);
+#endif
          if (bytesWritten < 0) {
             if (errno != EWOULDBLOCK &&
                 errno != EAGAIN &&
@@ -895,7 +928,10 @@ TunnelConnectSocket(const char *hostname, // IN
       long flags;
       setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                  (const void *)&nodelay, sizeof(nodelay));
-#ifndef __MINGW32__
+
+#ifdef __MINGW32__
+      SET_NONBLOCKING(fd);
+#else
 #ifdef O_NONBLOCK
       flags = O_NONBLOCK;
 #else
@@ -1071,6 +1107,20 @@ Tunnel_Main(int argc,    // IN
    loop = g_main_loop_new(NULL, FALSE);
 #elif defined(VIEW_COCOA)
    Poll_InitCF();
+#endif
+
+#ifdef __MINGW32__
+{
+   // Initialize winsock API.
+   WORD versionRequested;
+   WSADATA wsaData;
+
+   versionRequested = MAKEWORD(2, 0);
+   if (WSAStartup(versionRequested, &wsaData) != 0) {
+      g_printerr("WSAStartup failed; unable to continue.\n");
+      return 2;
+   }
+}
 #endif
 
    gTunnelProxy = TunnelProxy_Create(gConnectionIdArg, NULL, NULL, NULL, NULL,

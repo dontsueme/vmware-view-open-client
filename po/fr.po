@@ -392,7 +392,7 @@ msgstr "Déconnexion"
 
 #: ../desktop.cc:860
 msgid "Rolling back checkout"
-msgstr "Restauration de l'extraction"
+msgstr "Restauration de l'emprunt"
 
 #: ../desktop.cc:862
 msgid "The desktop's local session is being rolled back"
@@ -408,12 +408,12 @@ msgstr "Le poste de travail est endommagé"
 
 #: ../desktop.cc:868
 msgid "Checked out to another machine"
-msgstr "Désactivé pour une autre machine"
+msgstr "Emprunté pour une autre machine"
 
 #: ../desktop.cc:870
 #, c-format
 msgid "Check in paused, %s"
-msgstr "Archivage interrompu, %s"
+msgstr "Restitution interrompue, %s"
 
 #: ../desktop.cc:873
 #, c-format
@@ -656,7 +656,7 @@ msgid "Are you sure you want to rollback %s?\n"
 "last backup will be discarded."
 msgstr "Voulez-vous vraiment restaurer %s ?\n"
 "\n"
-"Toutes les modifications apportées au poste de travail extrait sur une autre machine depuis votre dernière sauvegarde seront ignorées."
+"Toutes les modifications apportées au poste de travail emprunté sur une autre machine depuis votre dernière sauvegarde seront ignorées."
 
 #: ../gtk/desktopSelectDlg.cc:790
 msgid "_Rollback"
@@ -966,7 +966,7 @@ msgstr "<nom protocole>"
 
 #: ../gtk/prefs.cc:855
 msgid "Enable unattended (kiosk) mode."
-msgstr "Activer le mode (plein écran) sans assistance."
+msgstr "Activer le mode (kiosk) sans assistance."
 
 #: ../gtk/prefs.cc:857
 msgid "Print environment information."

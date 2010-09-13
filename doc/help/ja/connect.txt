@@ -15,7 +15,7 @@ View Connection Server に接続するには
 [<b>安全な接続（SSL）を使用</b>]　企業の機密情報を保護してすべての接続を完全に暗号化するために安全な（SSL）接続を使用するときに選択します。安全でない接続を設定する場合でも、常に安全な接続を使用するように View 管理者が View Connection Server を構成している場合があります。
 
 注意：ポートおよび SSL オプションは、アドレス フィールドにそれらを直接入力することで指定することもできます。
-非 SSL 接続の場合は、これを入力します：http://&lt;URL&gt;[:ポート番号]。SSL 接続の場合は、これを入力します：https://&lt;URL&gt;[:ポート番号]。
+非 SSL 接続の場合は、次を入力します：http://&lt;URL&gt;[:ポート番号]。SSL 接続の場合は、次を入力します：https://&lt;URL&gt;[:ポート番号]。
 
 [<b>起動時に常にこのサーバに接続</b>]　View Client の起動時に View Connection Server の現在のインスタンスに直接接続するときに選択します。常に同じ View Connection Server に接続する場合は、このオプションを選択してください。選択しない場合は、View Client を起動するときに View Connection Server を選択するように求められます。
 
