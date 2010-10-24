@@ -1,7 +1,8 @@
 Source: vmware-view-open-client
 Section: contrib/x11
 Priority: optional
-Maintainer: Debian VMware Maintainers <vmware@lists.debian-maintainers.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian VMware Maintainers <vmware@lists.debian-maintainers.org>
 Uploaders: Daniel Baumann <daniel@debian.org>
 Build-Depends:
  debhelper (>= 7.0.50~), intltool, libboost-dev, libboost-signals-dev,
