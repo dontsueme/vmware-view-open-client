@@ -18,6 +18,8 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
 ################################################################################
 
+dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
+
 if VIEW_EULAS
 doc_DATA += $(foreach lang,en $(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).rtf)
 doc_DATA += $(foreach lang,en $(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).txt)

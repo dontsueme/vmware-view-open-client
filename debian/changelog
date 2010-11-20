@@ -1,3 +1,13 @@
+vmware-view-open-client (4.5.0-297975+dfsg-2) experimental; urgency=low
+
+  * Adding patch from Stefano Rivera <stefano@rivera.za.net> to fix
+    FTBFS with binutils-gold (Closes: #556761).
+  * Updating to debhelper version 8.
+  * Switching to source format 3.0 (quilt).
+  * Rediffing doc-pdf.patch
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 20 Nov 2010 16:57:23 +0100
+
 vmware-view-open-client (4.5.0-297975+dfsg-1) experimental; urgency=low
 
   * Merging upstream version 4.5.0-297975+dfsg.

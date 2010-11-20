@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh --with quilt ${@}
+	dh ${@}
 
 dfsg:
 	rm -f doc/*.pdf
