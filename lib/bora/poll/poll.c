@@ -230,6 +230,25 @@ Poll_CB_Device(PollerFunction f,
 }
 
 
+VMwareStatus
+Poll_CB_Device_With_Flags(PollerFunction f,
+	       void *clientData,
+	       PollDevHandle info,
+	       Bool periodic,
+	       int flags)
+{
+   return
+   Poll_Callback(POLL_CS_MAIN,
+		 POLL_FLAG_READ |
+		 POLL_FLAG_REMOVE_AT_POWEROFF |
+		 (periodic ? POLL_FLAG_PERIODIC : 0) | flags,
+		 f,
+		 clientData,
+		 POLL_DEVICE,
+		 info, NULL);
+}
+
+
 Bool
 Poll_CB_DeviceRemove(PollerFunction f,
 		     void *clientData,

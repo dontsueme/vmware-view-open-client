@@ -966,7 +966,7 @@ msgstr "<协议名称>"
 
 #: ../gtk/prefs.cc:855
 msgid "Enable unattended (kiosk) mode."
-msgstr "启用无人参与 (信息亭) 模式。"
+msgstr "启用无人参与 (kiosk) 模式。"
 
 #: ../gtk/prefs.cc:857
 msgid "Print environment information."
@@ -978,7 +978,7 @@ msgstr "在无人参与模式下发生错误事件时，不要重试。"
 
 #: ../gtk/prefs.cc:861
 msgid "Initial keyboard layout locale (en-us, de, fr, etc...)"
-msgstr "初始键盘布局区域设置 (英语、德语、法语等...)"
+msgstr "初始键盘布局区域设置（en-us、de、fr 等...）"
 
 #: ../gtk/prefs.cc:862
 msgid "<kbdlayout name>"
@@ -1046,9 +1046,9 @@ msgstr "%s %s\n"
 "需要事先得到 VMware 的书面许可。"
 "此处提及的所有其他标识和名称均为其各自公司的商标。\n"
 "\n"
-"版权所有 (C) 1998-2010 VMware, Inc.，保留所有权利。"
-"本产品受美国和国际版权及知识产权法律保护。"
-"VMware 软件产品受以下网站上列出的若干项专利保护"
+"版权所有 (C) 1998-2010 VMware, Inc.，保留所有权利。\n"
+"本产品受美国和国际版权及知识产权法律保护。\n"
+"VMware 软件产品受以下网站上列出的若干项专利保护\n"
 "%s\n"
 "\n"
 

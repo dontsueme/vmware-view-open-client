@@ -217,7 +217,6 @@ vmware_view_LDADD += $(GLIB_LIBS)
 endif
 if VIEW_GTK
 vmware_view_LDADD += $(GTK_LIBS)
-vmware_view_LDADD += -lX11
 endif
 vmware_view_LDADD += $(XML_LIBS)
 vmware_view_LDADD += $(CURL_LIBS)

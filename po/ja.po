@@ -966,7 +966,7 @@ msgstr "<プロトコル名>"
 
 #: ../gtk/prefs.cc:855
 msgid "Enable unattended (kiosk) mode."
-msgstr "無人（キオスク）モードを有効にします。"
+msgstr "無人 (kiosk) モードを有効にします。"
 
 #: ../gtk/prefs.cc:857
 msgid "Print environment information."

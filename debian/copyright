@@ -1,8 +1,3 @@
-Upstream-Contact: Jacob Berkman <jberkman@vmware.com>
-Upstream-Homepage: http://code.google.com/p/vmware-view-open-client
-Maintainer-Contact: Debian VMware Maintainers <vmware@lists.debian-maintainers.org>
-Maintainer-Homepage: http://vmware.debian-maintainers.org/
-
 Files: *
 Copyright: (C) 1998-2010 VMware, Inc. <http://www.vmware.com/>
 License: LGPL-2.1
@@ -153,7 +148,7 @@ License: other
  remains attached.
 
 Files: debian/*
-Copyright: (C) 2009-2010 Daniel Baumann <daniel@debian.org>
+Copyright: (C) 2009-2011 Daniel Baumann <daniel@debian.org>
 License: LGPL-2+
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public

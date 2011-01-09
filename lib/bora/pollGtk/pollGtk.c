@@ -64,6 +64,15 @@ typedef struct PollGtkEntry {
 
    /* Handle of the registered GTK callback  */
    guint gtkInputId;
+#ifdef __MINGW32__
+   /*
+    * Poll clients wanting to read from a monitored device must do
+    * so via the associated channel, as with files monitored via
+    * g_io_channel_win32_new_fd; so we cache the channel here
+    * incase it is needed.
+    */
+   GIOChannel *channel;
+#endif
 } PollGtkEntry;
 
 
@@ -313,6 +322,20 @@ PollGtkCallbackRemove(PollClassSet classSet,   // IN
       } else {
          key = foundEntry->gtkInputId;
       }
+#ifdef __MINGW32__
+      if (foundEntry->channel) {
+         g_io_channel_unref(foundEntry->channel);
+         /*
+          * Since the poll client can't close the fd of the channel, we
+          * need to shutdown the channel to close it for them.
+          */
+         GError *err = NULL;
+         g_io_channel_shutdown(foundEntry->channel, FALSE, &err);
+         g_free(err);
+         foundEntry->channel = NULL;
+      }
+      modify = FALSE;
+#endif
       g_hash_table_remove(searchTable, (gpointer)(intptr_t)key);
 
       if (modify) {
@@ -347,6 +370,19 @@ PollGtkRemoveOneCallback(PollGtkEntry *eventEntry) // IN
    case POLL_MAIN_LOOP:
    case POLL_DEVICE:
       g_source_remove(eventEntry->gtkInputId);
+#ifdef __MINGW32__
+      if (eventEntry->channel) {
+         g_io_channel_unref(eventEntry->channel);
+         /*
+          * Since the poll client can't close the fd of the channel, we
+          * need to shutdown the channel to close it for them.
+          */
+         GError *err = NULL;
+         g_io_channel_shutdown(eventEntry->channel, FALSE, &err);
+         g_free(err);
+         eventEntry->channel = NULL;
+      }
+#endif
       break;
    case POLL_VIRTUALREALTIME:
    case POLL_VTIME:
@@ -494,6 +530,11 @@ PollGtkCallback(PollClassSet classSet,   // IN
 #ifdef _WIN32
       if (flags & POLL_FLAG_SOCKET) {
          channel = g_io_channel_win32_new_socket(info);
+#ifdef __MINGW32__
+      } else if (flags & POLL_FLAG_FD) {
+         channel = g_io_channel_win32_new_fd(info);
+         newEntry->channel = channel;
+#endif
       } else {
          channel = g_io_channel_win32_new_messages(info);
       }
@@ -504,7 +545,14 @@ PollGtkCallback(PollClassSet classSet,   // IN
                                             conditionFlags,
                                             PollGtkEventCallback,
                                             newEntry);
+#ifdef __MINGW32__
+      if (!newEntry->channel) {
+         // if the channel is not cached then we can unreference it.
+         g_io_channel_unref(channel);
+      }
+#else
       g_io_channel_unref(channel);
+#endif
       key = info;
       insertTable = poll->deviceTable;
 
@@ -565,6 +613,10 @@ PollGtkBasicCallback(gpointer data) // IN: The eventEntry
     */
    cbFunc = eventEntry->f;
    clientData = eventEntry->clientData;
+#ifdef __MINGW32__
+   int flags = eventEntry->flags;
+   GIOChannel *channel = eventEntry->channel;
+#endif
 
    ret = eventEntry->flags & POLL_FLAG_PERIODIC;
 
@@ -582,7 +634,18 @@ PollGtkBasicCallback(gpointer data) // IN: The eventEntry
     * Poll_CallbackRemove is safe when the callback is already gone, but
     * the code above is not safe under those conditions.
     */
+#ifdef __MINGW32__
+   {
+      if (flags & POLL_FLAG_FD) {
+         void *cbData[] = { clientData, channel };
+         (*cbFunc)(cbData);
+      } else {
+         (*cbFunc)(clientData);
+      }
+   }
+#else
    (*cbFunc)(clientData);
+#endif
 
    return ret;
 }

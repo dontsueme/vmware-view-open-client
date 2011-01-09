@@ -17,7 +17,7 @@ So stellen Sie eine Verbindung mit View Connection Server her:
 Hinweis: Sie können den Port und die SSL-Optionen auch angeben, indem Sie sie direkt in das Adressfeld eingeben.
 Geben Sie für eine Nicht-SSL-Verbindung Folgendes ein: http://&lt;URL&gt;[:Portnummer]. Für eine SSL-Verbindung geben Sie Folgendes ein: https://&lt;URL&gt;[:Portnummer].
 
-<b>Beim Start immer mit diesem Server verbinden</b> – Wählen Sie diese Option, um beim Start von View Client sofort eine Verbindung mit der aktuellen Instanz von View Connection Server herzustellen. Aktivieren Sie diese Option, wenn Sie sich immer mit derselben View Connection Server-Instanz verbinden. Wenn Sie diese Option deaktivieren, werden Sie beim Start von View Client zur Auswahl einer View Connection Server-Instanz aufgefordert.
+<b>Beim Start immer mit diesem Server verbinden</b> – Wählen Sie diese Option, um beim Start von View Client sofort eine Verbindung mit der aktuellen Instanz von View Connection Server herzustellen. Aktivieren Sie diese Option, wenn Sie sich immer mit demselben View Connection Server verbinden. Wenn Sie diese Option deaktivieren, werden Sie beim Start von View Client zur Auswahl von einem View Connection Server aufgefordert.
 
 Hinweis: Wenn die Verbindung fehlschlägt, wird erneut das Dialogfeld zur Serverauswahl angezeigt. Nach erfolgreicher Verbindungsherstellung können Sie zum Dialogfeld für die Serverauswahl zurückkehren, indem Sie im ersten Dialogfeld, das nach der Verbindungsherstellung angezeigt wird, auf <b>Abbrechen</b> klicken.
 
