@@ -1,3 +1,28 @@
+vmware-view-open-client (4.5.0-297975+dfsg-3) unstable; urgency=low
+
+  * Removing unneeded README.source and headers in copyright file.
+  * Updating year in copyright file.
+  * Orphaning package.
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 09 Jan 2011 21:31:09 +0100
+
+vmware-view-open-client (4.5.0-297975+dfsg-2) experimental; urgency=low
+
+  * Adding patch from Stefano Rivera <stefano@rivera.za.net> to fix
+    FTBFS with binutils-gold (Closes: #556761).
+  * Updating to debhelper version 8.
+  * Switching to source format 3.0 (quilt).
+  * Rediffing doc-pdf.patch
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 20 Nov 2010 16:57:23 +0100
+
+vmware-view-open-client (4.5.0-297975+dfsg-1) experimental; urgency=low
+
+  * Merging upstream version 4.5.0-297975+dfsg.
+  * Updating to standards version 3.9.1.
+
+ -- Daniel Baumann <daniel@debian.org>  Mon, 13 Sep 2010 10:07:27 +0200
+
 vmware-view-open-client (4.5.0-271013+dfsg-1) unstable; urgency=low
 
   * Updating standards version to 3.9.0.

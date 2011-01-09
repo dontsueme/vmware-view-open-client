@@ -326,11 +326,6 @@ UNSUPPORTED_OP(RequestPinChange,
                 bool userSelectable));
 
 
-UNSUPPORTED_OP(RequestDisclaimer,
-               _("Unexpected disclaimer request."),
-               (const Util::string &disclaimer));
-
-
 UNSUPPORTED_OP(RequestPasswordChange,
                _("Unexpected password change request."),
                (const Util::string &username, const Util::string &domain));
@@ -583,6 +578,29 @@ KioskWindow::OnDesktopUIExit(Dlg *dlg,   // IN/UNUSED
                              int status) // IN/UNUSED
 {
    RequestBroker();
+}
+
+
+/*
+ *-----------------------------------------------------------------------------
+ *
+ * cdk::KioskWindow::RequestDisclaimer --
+ *
+ *      Trivially accepts the incoming disclaimer.
+ *
+ * Results:
+ *      None
+ *
+ * Side effects:
+ *      None
+ *
+ *-----------------------------------------------------------------------------
+ */
+
+void
+KioskWindow::RequestDisclaimer(const Util::string &disclaimer) // IN/UNUSED
+{
+   GetBroker()->AcceptDisclaimer();
 }
 
 

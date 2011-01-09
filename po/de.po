@@ -128,7 +128,7 @@ msgstr "Speichern des Befehlstexts für %s nicht möglich."
 #, c-format
 msgid "The server \"%s\" may not be a compatible View Connection Server. Check the "
 "server address and try again."
-msgstr "Der Server \"%s\" ist möglicherweise kein kompatibler View Connection Server. Überprüfen Sie die Serveradresse und versuchen Sie es erneut."
+msgstr "Der Server \"%s\" ist möglicherweise keine kompatible View Connection Server-Instanz. Überprüfen Sie die Serveradresse und versuchen Sie es erneut."
 
 #: ../baseXml.cc:946
 msgid "Request cancelled by user."
@@ -965,7 +965,7 @@ msgstr "<Protokollname>"
 
 #: ../gtk/prefs.cc:855
 msgid "Enable unattended (kiosk) mode."
-msgstr "Unbeaufsichtigten Modus (Kiosk) aktivieren."
+msgstr "Unbeaufsichtigten Modus (kiosk) aktivieren."
 
 #: ../gtk/prefs.cc:857
 msgid "Print environment information."
@@ -1442,7 +1442,7 @@ msgstr "Sie wurden abgemeldet"
 #: ../gtk/window.cc:3098
 msgid "Your smart card or token was removed, so you have been logged out of the "
 "View Connection Server."
-msgstr "Ihre Smartcard oder Ihr Token wurde entfernt. Daher wurden Sie vom View Connection Server abgemeldet."
+msgstr "Ihre Smartcard oder Ihr Token wurde entfernt. Daher wurden Sie von View Connection Server abgemeldet."
 
 #: ../gtk/windowSizeDlg.cc:66
 msgid "_Select"

@@ -6,7 +6,7 @@ So stellen Sie eine Verbindung mit einem Desktop her:
 1. Wählen Sie im View Client-Fenster einen Desktop aus der Liste aus.
 2. (Optional) Wählen Sie im Dropdown-Menü <b>Anzeige</b> die gewünschte Option. Bei Auswahl der Option <b>Vollbild</b> wird der Desktop im Vollbildmodus angezeigt. Wenn Sie die Option <b>Vollbild</b> auswählen und über mehrere Monitore verfügen, ziehen Sie das Fenster zur Desktop-Auswahl auf den Monitor, in dem Sie den Desktop anzeigen möchten.
 3. (Optional) In Abhängigkeit davon, wie Ihr View-Administrator das System konfiguriert hat, können Sie ein Anzeigeprotokoll auswählen. Klicken Sie auf den nach unten weisenden Pfeil, wählen Sie <b>Protokolle</b> und wählen Sie entweder <b>Microsoft RDP</b> oder <b>PCoIP</b> aus. Genaue Anweisungen erhalten Sie von Ihrem View-Administrator.
-4. Doppelklicken Sie auf den Desktop in der Liste, klicken klicken Sie auf <b>Verbinden</b> oder klicken Sie auf den nach unten weisenden Pfeil und wählen Sie <b>Verbinden</b>.
+4. Doppelklicken Sie auf den Desktop in der Liste, klicken Sie auf <b>Verbinden</b> oder klicken Sie auf den nach unten weisenden Pfeil und wählen Sie <b>Verbinden</b>.
 
 Ihre Auswahl wird für die nächste Verbindungsherstellung in den Einstellungen gespeichert.
 

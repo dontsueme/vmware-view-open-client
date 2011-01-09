@@ -422,7 +422,7 @@
 									</object>
 									<object class="NSMenuItem" id="647578275">
 										<reference key="NSMenu" ref="793037890"/>
-										<string key="NSTitle">还原</string>
+										<string key="NSTitle">重置</string>
 										<string key="NSKeyEquiv"/>
 										<int key="NSMnemonicLoc">2147483647</int>
 										<reference key="NSOnImage" ref="943755334"/>
@@ -520,7 +520,7 @@
 					</object>
 					<object class="NSMenuItem" id="575938079">
 						<reference key="NSMenu" ref="595369783"/>
-						<string key="NSTitle">还原</string>
+						<string key="NSTitle">重置</string>
 						<string key="NSKeyEquiv"/>
 						<int key="NSMnemonicLoc">2147483647</int>
 						<reference key="NSOnImage" ref="943755334"/>

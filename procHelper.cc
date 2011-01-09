@@ -229,9 +229,17 @@ ProcHelper::Start(Util::string procName,          // IN
       mPid = (pid != -1) ? (GPid)pid : gpid;
       mErrFd = childErr;
 
-      Poll_CB_Device(&ProcHelper::OnErr, this, mErrFd, false);
 #ifdef __MINGW32__
       mSourceId = g_child_watch_add(mPid, ProcHelper::OnProcExit, this);
+      /*
+       * We use periodic polling on mingw32, rather than one shot polling,
+       * because Poll's GIOChannel logic misbehaves when a channel is
+       * recreated for a file descriptor which was already associated
+       * with a channel.
+       */
+      Poll_CB_Device_With_Flags(&OnErr, this, mErrFd, true, POLL_FLAG_FD);
+#else
+      Poll_CB_Device(&OnErr, this, mErrFd, false);
 #endif
    }
 
@@ -261,7 +269,14 @@ ProcHelper::Kill()
 {
    if (mErrFd > -1) {
       Poll_CB_DeviceRemove(&ProcHelper::OnErr, this, false);
+#ifndef __MINGW32__
+      /*
+       * We're not allowed to manipulate a file descriptor managed by
+       * a GIOChannel so we don't close it here and instead rely on
+       * Poll_CB_DeviceRemove to shut it down for us.
+       */
       close(mErrFd);
+#endif
       mErrFd = -1;
    }
 
@@ -272,7 +287,10 @@ ProcHelper::Kill()
    int status;
 #ifdef _WIN32
    DWORD exitCode;
-   if (GetExitCodeProcess(mPid, &exitCode) == 0) {
+   if (!TerminateProcess(mPid, 0)) {
+      Log("Unable to terminate process '%s' (%lu)\n", mProcName.c_str(), mPid);
+   }
+   if (!GetExitCodeProcess(mPid, &exitCode)) {
       exitCode = ~0L;
    }
    g_spawn_close_pid(mPid);
@@ -333,7 +351,13 @@ ProcHelper::Kill()
 void
 ProcHelper::OnErr(void *data) // IN: this
 {
+#ifdef __MINGW32__
+   void **cbData = reinterpret_cast<void **>(data);
+   ProcHelper *that = reinterpret_cast<ProcHelper *>(cbData[0]);
+   GIOChannel *channel = reinterpret_cast<GIOChannel *>(cbData[1]);
+#else
    ProcHelper *that = reinterpret_cast<ProcHelper*>(data);
+#endif
    ASSERT(that);
 
    if (that->mErrFd == -1) {
@@ -341,14 +365,38 @@ ProcHelper::OnErr(void *data) // IN: this
    }
 
    char buf[1024];
-   int cnt = read(that->mErrFd, buf, sizeof(buf) - 1);
-   if (cnt <= 0) {
+   int count;
+
+#ifdef __MINGW32__
+   if (channel) {
+      GIOError err;
+      gsize n;
+      /*
+       * If a channel is associated with this event then we must use
+       * it to read from the underlying device (see http://library.gnome.org/
+       * devel/glib/stable/glib-IO-Channels.html#g-io-channel-win32-new-fd
+       * for details.)
+       */
+      err = g_io_channel_read(channel, buf, sizeof(buf) - 1, &n);
+      if (err != G_IO_ERROR_NONE) {
+         count = -1;
+      } else {
+         count = (int)n;
+      }
+   } else {
+      count = read(that->mErrFd, buf, sizeof(buf) - 1);
+   }
+#else
+   count = read(that->mErrFd, buf, sizeof(buf) - 1);
+#endif
+
+   if (count <= 0) {
       Warning("%s(%d) died.\n", that->mProcName.c_str(), that->mPid);
       that->Kill();
       return;
    }
 
-   buf[cnt] = 0;
+   buf[count] = 0;
    char *line = buf;
 
    /*
@@ -364,6 +412,9 @@ ProcHelper::OnErr(void *data) // IN: this
       }
 
       *newline = 0; // Terminate line
+#ifdef __MINGW32__
+      *(newline - 1) = 0; // Stomp the '\r' which preceeds '\n' in Windows.
+#endif
       Util::string fullLine = that->mErrPartialLine + line;
       that->mErrPartialLine = "";
       line = &newline[1];
@@ -374,7 +425,13 @@ ProcHelper::OnErr(void *data) // IN: this
       that->onErr(fullLine);
    }
 
+#ifndef __MINGW32__
+   /*
+    * No need to add to Poll again because we poll periodically and
+    * are therefore not removed by the poller once the event has fired.
+    */
    Poll_CB_Device(&ProcHelper::OnErr, that, that->mErrFd, false);
+#endif
 }
 
 

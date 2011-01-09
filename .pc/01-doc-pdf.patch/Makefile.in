@@ -793,7 +793,7 @@ DIST_COMMON = $(am__configure_deps) $(am__dist_bin_SCRIPTS_DIST) \
 @VIEW_GTK_TRUE@am__append_26 = libPollGtk.a libGtm.a
 @VIEW_COCOA_TRUE@am__append_27 = libDui.a
 @VIEW_COCOA_TRUE@am__append_28 = $(GLIB_LIBS)
-@VIEW_GTK_TRUE@am__append_29 = $(GTK_LIBS) -lX11
+@VIEW_GTK_TRUE@am__append_29 = $(GTK_LIBS)
 @STATIC_ICU_TRUE@am__append_30 = $(ICUDATA_ENTRY_POINT)l_dat.s
 @VIEW_GTK_TRUE@@VIEW_WIN32_TRUE@am__append_31 = $(bin_PROGRAMS)
 @VIEW_GTK_TRUE@@VIEW_WIN32_FALSE@am__append_32 = bindist rpms debs
@@ -1823,6 +1823,7 @@ dist_noinst_HEADERS := lib/open-vm-tools/include/backdoor_def.h \
 	lib/bora/include/winsidtypes.h lib/bora/include/winsockerr.h \
 	lib/libp11/include/pkcs11.h extraTranslations.hh
 dist_noinst_SCRIPTS := cocoa/pkg-dmg
+dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
 noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
 	libPanicDefault.a libString.a libStubs.a libUnicode.a \
 	libUser.a libBasicHttp.a $(am__append_7) libLog.a \

@@ -12,13 +12,13 @@ Vos sélections sont enregistrées comme préférences pour votre prochaine conn
 
 <span underline="single">Restaurer un poste de travail</span>
 
-Vous pouvez restaurer un poste de travail virtuel désactivé sur un autre hôte. La restauration d’un poste de travail désactivé ignore les modifications faites sur le poste de travail, et toutes les données non enregistrées sur le serveur sont perdues.
+Vous pouvez restaurer un poste de travail virtuel emprunté sur un autre hôte. La restauration d’un poste de travail emprunté ignore les modifications faites sur le poste de travail, et toutes les données non enregistrées sur le serveur sont perdues.
 
 Pour restaurer un poste de travail :
-1. Cliquez sur la flèche vers le bas à côté du poste de travail désactivé que vous voulez restaurer.
+1. Cliquez sur la flèche vers le bas à côté du poste de travail emprunté que vous voulez restaurer.
 2. Sélectionnez <b>Rollback (Restaurer)</b>.
 
-La désactivation sur l'hôte distant est annulée et vous pouvez maintenant ouvrir une session sur le poste de travail sur l’hôte local.
+L’emprunt sur l'hôte distant est annulé et vous pouvez maintenant ouvrir une session sur le poste de travail sur l’hôte local.
 
 <span underline="single">Se déconnecter d'un poste de travail</span>
 
@@ -39,7 +39,7 @@ Pour fermer votre session sur un poste de travail :
 Vous êtes invité à enregistrer tous les fichiers ouverts si vous ne l’avez pas déjà fait.
 
 Pour fermer votre session depuis la fenêtre View Client :
-1. Cliquez sur la flèche vers le bas à côté du poste de travail désactivé à restaurer.
+1. Cliquez sur la flèche vers le bas à côté du poste de travail emprunté pour fermer la session.
 2. Sélectionnez <b>Log Off (Fermer la session)</b>.
 
 <span underline="single">Réinitialiser un poste de travail</span>

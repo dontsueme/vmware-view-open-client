@@ -1,20 +1,9 @@
 Author: Daniel Baumann <daniel@debian.org>
 Description: Removing pdf documents without source.
 
-diff -Naurp vmware-view-open-client.orig/Makefile.in vmware-view-open-client/Makefile.in
---- vmware-view-open-client.orig/Makefile.in	2010-06-04 15:38:27.000000000 +0000
-+++ vmware-view-open-client/Makefile.in	2010-06-04 15:39:45.000000000 +0000
-@@ -1820,7 +1820,6 @@ dist_noinst_HEADERS := lib/open-vm-tools
- 	lib/bora/include/winsidtypes.h lib/bora/include/winsockerr.h \
- 	lib/libp11/include/pkcs11.h extraTranslations.hh
- dist_noinst_SCRIPTS := cocoa/pkg-dmg
--dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
- noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
- 	libPanicDefault.a libString.a libStubs.a libUnicode.a \
- 	libUser.a libBasicHttp.a $(am__append_7) libLog.a \
 diff -Naurp vmware-view-open-client.orig/doc/Makefile.inc vmware-view-open-client/doc/Makefile.inc
---- vmware-view-open-client.orig/doc/Makefile.inc	2010-06-04 15:38:27.000000000 +0000
-+++ vmware-view-open-client/doc/Makefile.inc	2010-06-04 15:39:50.000000000 +0000
+--- vmware-view-open-client.orig/doc/Makefile.inc	2010-09-10 22:09:17.000000000 +0200
++++ vmware-view-open-client/doc/Makefile.inc	2010-11-20 17:02:05.510407094 +0100
 @@ -18,8 +18,6 @@
  # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
  ################################################################################
@@ -22,5 +11,16 @@ diff -Naurp vmware-view-open-client.orig/doc/Makefile.inc vmware-view-open-clien
 -dist_pdf_DATA += doc/View_Client_Admin_Guide-en.pdf
 -
  if VIEW_EULAS
- doc_DATA += doc/$(PACKAGING_NAME)-EULA-en.txt
- doc_DATA += doc/$(PACKAGING_NAME)-EULA-de.txt
+ doc_DATA += $(foreach lang,en $(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).rtf)
+ doc_DATA += $(foreach lang,en $(ALL_LINGUAS),doc/$(PACKAGING_NAME)-EULA-$(lang).txt)
+diff -Naurp vmware-view-open-client.orig/Makefile.in vmware-view-open-client/Makefile.in
+--- vmware-view-open-client.orig/Makefile.in	2010-09-13 10:06:37.377136786 +0200
++++ vmware-view-open-client/Makefile.in	2010-11-20 17:02:05.510407094 +0100
+@@ -1823,7 +1823,6 @@ dist_noinst_HEADERS := lib/open-vm-tools
+ 	lib/bora/include/winsidtypes.h lib/bora/include/winsockerr.h \
+ 	lib/libp11/include/pkcs11.h extraTranslations.hh
+ dist_noinst_SCRIPTS := cocoa/pkg-dmg
+-dist_pdf_DATA := doc/View_Client_Admin_Guide-en.pdf
+ noinst_LIBRARIES := libDict.a libErr.a libFile.a libMisc.a libPanic.a \
+ 	libPanicDefault.a libString.a libStubs.a libUnicode.a \
+ 	libUser.a libBasicHttp.a $(am__append_7) libLog.a \
