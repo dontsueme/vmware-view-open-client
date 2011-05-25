@@ -1,3 +1,9 @@
+vmware-view-open-client (4.5.0-297975+dfsg-3build1) oneiric; urgency=low
+
+  * Rebuild for OpenSSL 1.0.0.
+
+ -- Colin Watson <cjwatson@ubuntu.com>  Wed, 25 May 2011 01:37:18 +0100
+
 vmware-view-open-client (4.5.0-297975+dfsg-3) unstable; urgency=low
 
   * Removing unneeded README.source and headers in copyright file.
