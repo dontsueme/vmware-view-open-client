@@ -1,3 +1,10 @@
+vmware-view-open-client (4.5.0-297975+dfsg-3ubuntu1) precise; urgency=low
+
+  * Fix FTBFS: drop curl/types.h include as it doesn't exist anymore.
+    - Add 03-curl-include.patch
+
+ -- Felix Geyer <debfx-pkg@fobos.de>  Sat, 26 Nov 2011 23:50:05 +0100
+
 vmware-view-open-client (4.5.0-297975+dfsg-3build2) precise; urgency=low
 
   * Rebuild for libicu48.

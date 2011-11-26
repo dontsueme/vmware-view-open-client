@@ -1,2 +1,3 @@
 01-doc-pdf.patch
 02-binutils-gold.patch
+03-curl-include.patch
