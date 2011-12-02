@@ -1,3 +1,17 @@
+vmware-view-open-client (4.5.0-297975+dfsg-4) unstable; urgency=medium
+
+  [ Felix Geyer ]
+  * QA upload.
+  * Fix FTBFS: drop curl/types.h include as it doesn't exist anymore.
+    (Closes: #648507)
+    - Add 03-curl-include.patch
+
+  [ Alexander Reichle-Schmehl ]
+  * Bump standards to 3.9.2
+  * Set urgency to medium due to rc bug fix
+
+ -- Alexander Reichle-Schmehl <tolimar@debian.org>  Fri, 02 Dec 2011 19:09:54 +0100
+
 vmware-view-open-client (4.5.0-297975+dfsg-3) unstable; urgency=low
 
   * Removing unneeded README.source and headers in copyright file.
