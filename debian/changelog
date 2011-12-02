@@ -1,21 +1,16 @@
-vmware-view-open-client (4.5.0-297975+dfsg-3ubuntu1) precise; urgency=low
+vmware-view-open-client (4.5.0-297975+dfsg-4) unstable; urgency=medium
 
+  [ Felix Geyer ]
+  * QA upload.
   * Fix FTBFS: drop curl/types.h include as it doesn't exist anymore.
+    (Closes: #648507)
     - Add 03-curl-include.patch
 
- -- Felix Geyer <debfx-pkg@fobos.de>  Sat, 26 Nov 2011 23:50:05 +0100
+  [ Alexander Reichle-Schmehl ]
+  * Bump standards to 3.9.2
+  * Set urgency to medium due to rc bug fix
 
-vmware-view-open-client (4.5.0-297975+dfsg-3build2) precise; urgency=low
-
-  * Rebuild for libicu48.
-
- -- Colin Watson <cjwatson@ubuntu.com>  Mon, 21 Nov 2011 17:17:38 +0000
-
-vmware-view-open-client (4.5.0-297975+dfsg-3build1) oneiric; urgency=low
-
-  * Rebuild for OpenSSL 1.0.0.
-
- -- Colin Watson <cjwatson@ubuntu.com>  Wed, 25 May 2011 01:37:18 +0100
+ -- Alexander Reichle-Schmehl <tolimar@debian.org>  Fri, 02 Dec 2011 19:09:54 +0100
 
 vmware-view-open-client (4.5.0-297975+dfsg-3) unstable; urgency=low
 
