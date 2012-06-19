@@ -1,3 +1,9 @@
+vmware-view-open-client (4.5.0-297975+dfsg-4build1) quantal; urgency=low
+
+  * No change rebuild against boost1.49
+
+ -- Dmitrijs Ledkovs <dmitrij.ledkov@ubuntu.com>  Tue, 19 Jun 2012 16:38:51 +0100
+
 vmware-view-open-client (4.5.0-297975+dfsg-4) unstable; urgency=medium
 
   [ Felix Geyer ]
