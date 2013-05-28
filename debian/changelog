@@ -1,3 +1,9 @@
+vmware-view-open-client (4.5.0-297975+dfsg-4ubuntu1) saucy; urgency=low
+
+  * Link against GLIB_LIBS as well, to fix FTBFS.
+
+ -- Dmitrijs Ledkovs <dmitrij.ledkov@ubuntu.com>  Tue, 28 May 2013 09:25:33 +0100
+
 vmware-view-open-client (4.5.0-297975+dfsg-4build1) quantal; urgency=low
 
   * No change rebuild against boost1.49
