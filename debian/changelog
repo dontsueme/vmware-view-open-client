@@ -1,3 +1,9 @@
+vmware-view-open-client (4.5.0-297975+dfsg-4ubuntu3) trusty; urgency=low
+
+  * Specify multiarch boost lib dir location..
+
+ -- Dmitrijs Ledkovs <xnox@ubuntu.com>  Tue, 29 Oct 2013 00:54:44 +0000
+
 vmware-view-open-client (4.5.0-297975+dfsg-4ubuntu2) trusty; urgency=low
 
   * No change rebuild for Boost 1.54 transition.

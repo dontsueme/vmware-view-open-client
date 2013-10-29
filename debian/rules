@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+include /usr/share/dpkg/default.mk
+
 %:
 	dh ${@}
 
@@ -7,7 +9,7 @@ dfsg:
 	rm -f doc/*.pdf
 
 override_dh_auto_configure:
-	dh_auto_configure --  --with-buildtype=release
+	dh_auto_configure --  --with-buildtype=release --with-boost-libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
 
 override_dh_auto_test:
 	# test suite is incomplete and does not work
