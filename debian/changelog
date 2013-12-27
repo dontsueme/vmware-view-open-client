@@ -1,3 +1,9 @@
+vmware-view-open-client (4.5.0-297975+dfsg-4ubuntu4) trusty; urgency=medium
+
+  * No change rebuild against libicu52
+
+ -- Dimitri John Ledkov <xnox@ubuntu.com>  Fri, 27 Dec 2013 05:20:50 +0000
+
 vmware-view-open-client (4.5.0-297975+dfsg-4ubuntu3) trusty; urgency=low
 
   * Specify multiarch boost lib dir location..
